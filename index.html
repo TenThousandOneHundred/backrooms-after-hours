@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#141410" />
+    <meta
+      name="description"
+      content="A first-person Backrooms survival horror game. Explore the levels, evade their inhabitants, and find the five endings."
+    />
+    <link rel="icon" type="image/svg+xml" href="./mark.svg" />
+    <link rel="preload" as="image" href="./cover.webp" />
+    <title>Backrooms — After Hours</title>
+  </head>
+  <body>
+    <canvas id="world" aria-label="First-person game view" tabindex="-1"></canvas>
+    <div id="home">
+      <div class="cover" aria-hidden="true"></div>
+      <div class="home-shade" aria-hidden="true"></div>
+      <header class="home-header">
+        <div class="brand">
+          <img src="./mark.svg" width="40" height="40" alt="" />
+          <div><b>FIELD ARCHIVE</b><span>M.E.G. EXPLORATION GROUP</span></div>
+        </div>
+        <div class="top-controls">
+          <button id="sound" class="icon-button" type="button" aria-label="Mute audio"></button
+          ><button id="fullscreen" class="icon-button" type="button" aria-label="Enter fullscreen"></button>
+        </div>
+      </header>
+      <main class="home-main">
+        <div class="eyebrow"><span class="rule"></span>SINGLE-PLAYER SURVIVAL HORROR</div>
+        <h1><span>BACKROOMS</span><span>AFTER HOURS</span></h1>
+        <p class="intro">The lights are on. Nobody is here.<br />Explore the Backrooms and find a way out.</p>
+        <nav class="main-actions" aria-label="Main menu">
+          <button id="enter" class="start-button" type="button">
+            <span data-icon="play"></span><span id="enter-text">Enter the Backrooms</span
+            ><span data-icon="arrow"></span>
+          </button>
+          <div class="minor-buttons">
+            <button id="manual" type="button"><span data-icon="book"></span>Field manual</button
+            ><button id="settings" type="button"><span data-icon="settings"></span>Settings</button>
+          </div>
+          <button id="new-game" class="text-button" type="button" hidden>
+            Start a new run <span aria-hidden="true">↗</span>
+          </button>
+        </nav>
+      </main>
+      <div class="scene-id">
+        <span class="scene-line"></span>
+        <div>
+          <span class="micro">CURRENT FEED</span><b>Level 0 <i>/</i> The Lobby</b>
+        </div>
+      </div>
+      <footer class="home-footer">
+        <span class="feed-status"><i></i>CAM 01 <span class="slash">/</span> STANDBY</span
+        ><span class="headphone"><span data-icon="headphones"></span>Headphones recommended</span>
+      </footer>
+    </div>
+    <div id="hud" hidden>
+      <div class="hud-top">
+        <div><span id="hud-label" class="micro"></span><b id="hud-name"></b></div>
+        <div class="hud-actions">
+          <button id="hud-bag" class="icon-button" type="button" aria-label="Open inventory">
+            <span data-icon="bag"></span></button
+          ><button id="hud-pause" class="icon-button" type="button" aria-label="Pause game">
+            <span data-icon="pause"></span>
+          </button>
+        </div>
+      </div>
+      <div id="reticle"></div>
+      <div id="interact" hidden><kbd>E</kbd><span></span></div>
+      <div class="hud-bottom">
+        <div class="objective">
+          <span class="micro">CURRENT OBJECTIVE</span><span id="hud-objective"></span>
+        </div>
+        <div class="vitals">
+          <div><span>Stamina</span><meter id="stamina" min="0" max="100" value="100"></meter></div>
+          <div><span>Sanity</span><meter id="sanity" min="0" max="100" value="100"></meter></div>
+        </div>
+      </div>
+    </div>
+    <div id="overlay" hidden>
+      <section id="panel" role="dialog" aria-modal="true" tabindex="-1"></section>
+    </div>
+    <div id="toast" role="status" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

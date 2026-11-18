@@ -1,0 +1,72 @@
+.field-task {
+  position: fixed;
+  z-index: 7;
+  bottom: 16%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(380px, 80vw);
+  padding: 14px 19px 12px;
+  border-left: 2px solid #c69053;
+  color: #f0e5c7;
+  background: linear-gradient(100deg, rgba(15, 16, 13, 0.97), rgba(15, 16, 13, 0.87));
+  font:
+    12px/1.5 'IBM Plex Mono',
+    monospace;
+  pointer-events: none;
+}
+.field-task-label {
+  display: block;
+  color: #e4ae6b;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+}
+.field-task strong {
+  display: block;
+  font-size: 14px;
+  margin: 1px 0 8px;
+  font-weight: 500;
+}
+.field-task-track {
+  height: 7px;
+  background: #494a40;
+  position: relative;
+  overflow: hidden;
+  margin: 0 0 7px;
+}
+.field-task-track b {
+  position: absolute;
+  inset: 0;
+  background: #dacb9d;
+  transform-origin: left;
+}
+.field-task-track i {
+  display: none;
+}
+.field-task[data-needle='true'] .field-task-track:before {
+  content: '';
+  position: absolute;
+  left: 56%;
+  width: 27%;
+  height: 100%;
+  background: #927f52;
+}
+.field-task[data-needle='true'] i {
+  display: block;
+  position: absolute;
+  width: 3px;
+  height: 100%;
+  background: #fff8db;
+}
+.field-task[data-ready='true'] .field-task-instruction {
+  color: #ddebab;
+}
+.field-task[data-challenge='photo']:before,
+.field-task[data-challenge='entity-photo']:before {
+  content: '⌖';
+  position: fixed;
+  left: 50%;
+  bottom: 30vh;
+  color: #fff9;
+  transform: translateX(-50%);
+  font-size: 30px;
+}
