@@ -119,6 +119,10 @@ export class Game {
   private tension = 0;
   private nextBeat = 0;
   private lobbyWarning = -1;
+  private nextRing = 0;
+  private nextLockerScrape = 0;
+  private receiverScareAt = -1;
+  private phone?: GameObject;
   private enemyWasVisible = false;
   private scan?: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
   private scanAge = 100;
@@ -229,6 +233,10 @@ export class Game {
     this.grace = ['run', 'hotelchase'].includes(id) ? 2.75 : 8;
     this.enemyWasVisible = false;
     this.lobbyWarning = -1;
+    this.nextRing = 0;
+    this.nextLockerScrape = 0;
+    this.receiverScareAt = -1;
+    this.phone = stage.objects.find(o => o.model === 'telephone');
     this.tension = 0;
     this.callbacks.dread?.(0);
     this.keys.clear();
@@ -625,6 +633,11 @@ export class Game {
       if (notify) this.callbacks.message(this.stage.description);
       return;
     }
+    if (this.phone && (obj === this.phone || (obj.gives?.includes('rail3') && !this.has('exchange-call')))) {
+      this.haunt('flicker');
+      this.receiverScareAt = this.time + 1.3;
+      this.encounter?.investigate(this.phone.x, this.phone.z);
+    }
     if (obj.gives?.includes('archive-alarm')) {
       this.alarmTime = 18;
       this.sound.alarm();
@@ -903,12 +916,13 @@ export class Game {
     }
     this.cameraPose(dt, distance > 0.001);
     this.updateChallenge(dt);
+    if (this.phone) this.updateExchange();
     if (this.encounter) {
       const day = this.stage.id === 'village' && (this.time % 80 < 32 || this.time % 80 >= 69);
       if (
         this.stage.id === 'lobby' &&
         this.lobbyWarning < 0 &&
-        (this.time > 66 || this.state.flags.some((f) => /^rail\d/.test(f)))
+        (this.time > 42 || this.state.flags.some((f) => /^rail\d/.test(f)))
       ) {
         this.lobbyWarning = this.time;
         this.haunt('steps');
@@ -997,7 +1011,7 @@ export class Game {
         this.nextBeat++;
       }
       const noise = Math.abs(Math.sin(this.nextBeat * 47.47 + this.stage.id.length * 8.13));
-      this.nextHaunt = this.activeClock + 22 + noise * 45;
+      this.nextHaunt = this.activeClock + (this.stage.id === 'lobby' ? 14 + noise * 24 : 22 + noise * 45);
     }
     if (this.scan) {
       this.scanAge += dt;
@@ -1014,6 +1028,37 @@ export class Game {
       this.saveTimer = 0;
       if (distance > 0.001 || this.keys.size || danger > 0.1) this.persist();
     }
+  }
+  private updateExchange() {
+    const phone = this.phone!;
+    if (this.receiverScareAt >= 0 && this.time >= this.receiverScareAt) {
+      this.receiverScareAt = -1;
+      if (!this.hidden) {
+        this.callbacks.scare?.({ kind: 'bacteria', lethal: false });
+        this.lastScare = this.activeClock;
+      }
+      this.haunt('steps');
+    }
+    if (this.hidden) {
+      const hunter = this.encounter;
+      if (hunter && this.lobbyWarning >= 0 && this.time > this.lobbyWarning + 9 && this.time >= this.nextLockerScrape) {
+        const dx = hunter.x * TILE - this.x, dz = hunter.z * TILE - this.z;
+        const distance = Math.hypot(dx, dz);
+        if (distance < 9) {
+          this.sound.scrape((dx * Math.cos(this.yaw) + dz * Math.sin(this.yaw)) / Math.max(1, distance));
+          this.nextLockerScrape = this.time + 15;
+        }
+      }
+      return;
+    }
+    if (this.has('exchange-call') || this.time < this.nextRing) return;
+    const dx = phone.x * TILE - this.x, dz = phone.z * TILE - this.z;
+    const range = Math.hypot(dx, dz);
+    if (range > 38) return;
+    this.nextRing = this.time + (range < 9 ? 3.7 : 7.5);
+    const pan = (dx * Math.cos(this.yaw) + dz * Math.sin(this.yaw)) / Math.max(1, range);
+    this.sound.telephone(pan, Math.max(0.12, 1 - range / 40));
+    this.encounter?.investigate(phone.x, phone.z);
   }
   private haunt(event: 'flicker' | 'steps' | 'breath' | 'silhouette') {
     this.world?.haunt(event, this.camera);

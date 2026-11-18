@@ -195,6 +195,18 @@ export class Soundscape {
       this.sound(610, 170, 0.075, 0.1, 0.08, 'noise');
     }
   }
+  scrape(pan: number) {
+    for (const [delay, pitch] of [[0, 1480], [0.27, 1270], [0.84, 1710]]) {
+      this.sound(pitch, pitch * 0.31, 0.23, 0.22, pan, 'noise', delay);
+      this.sound(pitch * 0.22, 103, 0.19, 0.06, pan, 'sawtooth', delay);
+    }
+  }
+  telephone(pan: number, strength: number) {
+    for (const delay of [0, 0.24]) {
+      this.sound(445, 438, 0.16, 0.19 * strength, pan, 'square', delay);
+      this.sound(533, 516, 0.17, 0.11 * strength, pan, 'triangle', delay);
+    }
+  }
   alarm() {
     for (let i = 0; i < 10; i++) {
       this.sound(770, 650, 0.35, 0.14, 0.78, 'triangle', i * 1.4);

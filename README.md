@@ -4,7 +4,7 @@
 
 A first-person, single-player browser game inspired by *Escape the Backrooms*. Find four broken ladder pieces in the yellow lobby, make your way through the Habitable Zone, and follow the campaign into the Poolrooms, Terror Hotel, Plastic Mariana, and the arcade. The Bunker connects the ending routes. Four discoveries unlock the fifth ending on the same save.
 
-A Bacteria stalks Level 0. Footsteps in the next aisle can give it away before you see it. Sprinting makes noise, hiding breaks pursuit, and getting caught kills you and sends you back to your checkpoint.
+The east telephone exchange links Records, Dispatch, and the old switchboard to the original Level 0 corridors. Two ladder pieces went missing there. Ringing phones draw the Bacteria, and staying in its sight can turn a stalk into a charge. From inside a locker you can hear its claws dragging past. Footsteps in the next aisle can give it away before you see it. Sprinting makes noise, hiding breaks pursuit, and getting caught kills you and sends you back to your checkpoint.
 
 The game uses original, condensed layouts that recreate the campaign progression. Each area loads as you enter it. Checkpoints, puzzle progress, inventory, discovered endings, and settings are saved in the browser you use to play.
 

@@ -7,25 +7,25 @@ export const opening = [
     'The Lobby',
     'lobby',
     'The humming started before you opened your eyes. The carpet is still damp.',
-    'Find the four pieces of a maintenance ladder. The missing door key is in the ceiling cubby.',
+    'Find four ladder pieces. Two were carried into the east telephone exchange.',
     `
-##########################
-#......#.....1.........#.#
-#..##..#..######.##.!..#.#
-#..##.....#.....3#...#...#
-#......#..#..#...#...#.E.#
-####...#.....#...###.#...#
-#..2...#..K..#....T..#...#
-#....###.....#####.......#
-#......#..L..#....###.##.#
-#..##..#.....#....#...##.#
-#..##....###......#......#
-#.....#H.###.#....#...#.##
-#..4..#......##.......#..#
-###.###.##....#..##...#..#
-#...#...#...W.#..##......#
-#.......#..@.....#...N...#
-##########################`,
+##################################################
+#......#...............#.##....A....#.......1....#
+#..##..#..######.##.!..#.##.##..##..#..####..##..#
+#..##.....#......#...#......##..##.....#..#..##..#
+#......#..#..#...#...#.E.##.....####.###..#......#
+####...#.....#...###.#...##.###....#......#.####.#
+#..2...#..K..#....T..#...##...##.D.####...#...J..#
+#....###.....#####.......####....D......####.....#
+#......#..L..#....###.##.##..D...D.###.....#.###.#
+#..##..#.....#....#...##.##......D...#..F..#...#.#
+#..##....###......#......##..#####...#..3......#.#
+#.....#H.###.#....#...#.###..#...#...########..#.#
+#..4..#......##.......#..##......#....D.D......#.#
+###.###.##....#..##...#..##..#...####......###...#
+#...#...#...W.#..##..........#..........#....#...#
+#.......#..@.....#...N...##..G...#####..#........#
+##################################################`,
     {
       ...noteKeys(
         ['Left ladder rail', 'Lower rung assembly', 'Upper rung assembly', 'Right ladder rail'],
@@ -48,13 +48,18 @@ export const opening = [
       E: exit('Unlock the service door', 'pitwalk', ['lobby-key']),
       H: hide('Climb inside the grey service locker'),
       T: hide('Hide beneath the abandoned drafting desk', 'desk'),
+      A: note('Records / night shift', 'Every incoming call is logged under your name. The last entry is still wet.','sign'),
+      G: note('East telephone exchange', 'Records is at the north end. The red emergency phone is in Dispatch.','sign'),
+      F: act('Lift the red receiver', 'exchange-call', 'telephone', 'Your own voice whispers from the receiver. “Put it down. It heard you.”'),
+      J: hide('Slip into the switchboard cabinet'),
+      D: prop('desk'),
       W: note(
         'Pencil marks on a torn sleeve',
         'It follows the noise of running feet. Turn two corners, go low, get inside something. I heard it scratching outside this locker for ten minutes.',
       ),
       N: note(
         'Maintenance slip',
-        'Left the service key above the broken ladder. Four pieces, all in this wing.',
+        'Left the service key above the broken ladder. Two pieces went east to the telephone exchange. Look in Records and beside the red phone.',
       ),
     },
     'bacteria',

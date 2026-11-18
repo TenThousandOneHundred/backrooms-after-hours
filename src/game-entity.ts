@@ -88,6 +88,7 @@ export class Encounter {
   danger = 0;
   contact = false;
   private stalkClock = 10;
+  private pursuitSeconds = 0;
   private memory = 0;
   private repath = 0;
   private pause = 1.6;
@@ -113,6 +114,11 @@ export class Encounter {
       this.profile.speed = 3.65;
     }
     if (threat.speed) this.profile.speed = threat.speed;
+  }
+  investigate(x: number, z: number) {
+    this.lastSeen = [x, z];
+    this.memory = Math.max(this.memory, 16);
+    this.repath = 0;
   }
   tick(
     dt: number,
@@ -150,6 +156,8 @@ export class Encounter {
       ((line && !p.blind && inView && distance < visual && (!sweepingCamera || !crouched)) ||
         (moving && distance < hearing) ||
         p.chase === true);
+    const exposed = this.stage.id === 'lobby' && sense && line && inView && distance < 6;
+    this.pursuitSeconds = exposed ? this.pursuitSeconds + dt : 0;
     if (sense) {
       this.memory = p.memory;
       this.lastSeen = [Math.round(px), Math.round(pz)];
@@ -224,7 +232,9 @@ export class Encounter {
       const tx = next[0] - this.x,
         tz = next[1] - this.z,
         len = Math.hypot(tx, tz);
-      const dist = (dt * (this.memory > 0 ? p.speed : p.speed * 0.32)) / this.tileSize;
+      // A long uninterrupted sighting turns the slow stalk into a charge.
+      const speed = this.pursuitSeconds > 1.8 ? 4.35 : this.memory > 0 ? p.speed : p.speed * 0.32;
+      const dist = (dt * speed) / this.tileSize;
       if (len > 0.01) {
         this.angle = Math.atan2(tx, tz);
         this.x += tx * Math.min(1, dist / len);
