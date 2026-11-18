@@ -38,9 +38,25 @@ const stringList = (value: unknown): value is string[] =>
 const boundedStat = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 100;
 
+type Cursor = { run: string; expected: string | null };
+type Result = 'saved' | 'unavailable' | 'stale';
+const cursors = new WeakMap<Progress, Cursor>();
+let recent: { snapshot: Progress; cursor: Cursor; pending: number; failed: boolean } | undefined;
+
+function revision(raw: string | null): string | null {
+  if (!raw) return null;
+  try { return JSON.parse(raw).revision ?? raw; } catch { return raw; }
+}
+
 export function loadProgress(): Progress | null {
+  let raw: string | null;
+  try { raw = localStorage.getItem(SLOT); } catch { raw = null; }
+  if (recent && (recent.failed || (recent.pending && revision(raw) === recent.cursor.expected))) {
+    const copy = structuredClone(recent.snapshot);
+    cursors.set(copy, recent.cursor);
+    return copy;
+  }
   try {
-    const raw = localStorage.getItem(SLOT);
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (
@@ -70,17 +86,46 @@ export function loadProgress(): Progress | null {
     }
     if (typeof data.pending?.ending === 'string' && typeof data.pending?.target === 'string')
       result.pending = data.pending;
+    cursors.set(result, { run: data.run ?? crypto.randomUUID(), expected: revision(raw) });
     return result;
   } catch {
     return null;
   }
 }
 
-export function storeProgress(state: Progress): boolean {
+export async function storeProgress(state: Progress): Promise<Result> {
+  let cursor = cursors.get(state);
+  const predecessor = !cursor && recent?.pending ? recent.cursor : undefined;
+  if (!cursor) {
+    let baseline = null;
+    try { baseline = revision(localStorage.getItem(SLOT)); } catch { /* Session-only storage. */ }
+    cursor = { run: crypto.randomUUID(), expected: baseline };
+    cursors.set(state, cursor);
+  }
+  const owner = cursor;
+  const snapshot = structuredClone(state);
+  if (recent?.cursor !== owner) recent = { snapshot, cursor: owner, pending: 0, failed: false };
+  const entry = recent;
+  entry.snapshot = snapshot;
+  entry.pending++;
+  function write(): Result {
+    const stored = revision(localStorage.getItem(SLOT));
+    if (stored !== owner.expected && (!predecessor || stored !== predecessor.expected)) return 'stale';
+    const next = crypto.randomUUID();
+    localStorage.setItem(SLOT, JSON.stringify({ ...snapshot, run: owner.run, revision: next }));
+    owner.expected = next;
+    return 'saved';
+  }
   try {
-    localStorage.setItem(SLOT, JSON.stringify(state));
-    return true;
+    const locks = globalThis.navigator?.locks;
+    if (!locks) { entry.failed = true; return 'unavailable'; }
+    const result = await locks.request(SLOT, write);
+    entry.failed = false;
+    return result;
   } catch {
-    return false;
+    entry.failed = true;
+    return 'unavailable';
+  } finally {
+    entry.pending--;
   }
 }

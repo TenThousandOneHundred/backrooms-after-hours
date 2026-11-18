@@ -37,6 +37,7 @@ export async function runRoute({ lobbyOnly = false } = {}) {
     seed = (Math.imul(1664525, seed) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
+  const restore = [];
   let tick,
     game,
     now = performance.now(),
@@ -55,6 +56,7 @@ export async function runRoute({ lobbyOnly = false } = {}) {
       const scare = callbacks.scare,
         haunt = callbacks.haunt,
         dread = callbacks.dread;
+      restore.push(() => { Object.assign(callbacks, { scare, haunt, dread }); delete callbacks.auditInstalled; });
       callbacks.scare = (event) => {
         if (event.lethal) results.lethalAttacks++;
         else results.nearMisses++;
@@ -72,6 +74,8 @@ export async function runRoute({ lobbyOnly = false } = {}) {
       };
     }
     const draw = this.renderer.render.bind(this.renderer);
+    const originalRender = this.renderer.render;
+    restore.push(() => { this.renderer.render = originalRender; });
     this.renderer.render = (...args) => {
       if (drawing !== this.stage?.id || args[1] !== this.camera) {
         drawing = this.stage?.id;
@@ -186,6 +190,15 @@ export async function runRoute({ lobbyOnly = false } = {}) {
       if (!drop) throw Error(`Missing destination for ${o.id}`);
       go(drop, true);
       release();
+      if (game.challenge.hauling && !results.checks.includes('haul pause')) {
+        const cargo = game.world.objects.get(o.id);
+        const position = cargo.position.clone();
+        press('Tab');
+        if (!game.challenge.hauling || !cargo.position.equals(position)) throw Error('Inventory dropped cargo');
+        press('Tab');
+        if (!game.challenge.hauling || !cargo.position.equals(position)) throw Error('Resume dropped cargo');
+        results.checks.push('haul pause');
+      }
     }
     if (spec.kind === 'wind') hold('KeyE', true);
     if (spec.kind === 'coaster' && !game.state.flashlight) press('KeyF');
@@ -194,6 +207,12 @@ export async function runRoute({ lobbyOnly = false } = {}) {
       if (spec.kind === 'entity-photo' || spec.kind === 'coaster') {
         const e = game.encounter;
         if (e) look(Math.atan2(e.x * TILE - game.x, game.z - e.z * TILE));
+      }
+      if (spec.kind === 'entity-photo' && form.dataset.ready === 'true' && !results.checks.includes('empty frame')) {
+        look(game.yaw, 1.36);
+        press('KeyE');
+        if (!game.challenge.object || form.dataset.ready === 'true') throw Error('Empty photo accepted');
+        results.checks.push('empty frame');
       }
       if (form.dataset.ready === 'true') press('KeyE');
       advance(0.09);
@@ -458,6 +477,10 @@ export async function runRoute({ lobbyOnly = false } = {}) {
         const exit = stage.objects.find((o) => o.kind === 'exit' && o.target === next && game.eligible(o));
         const target = candidates[0] ?? finish ?? exit;
         if (!target) throw Error(`No unlocked progression from ${id} to ${next}`);
+        if (id === 'plastic' && target.kind === 'exit') {
+          // Follow the north passage around the shark's spawn in the south channel.
+          if (!go({ x: 18, z: 4 }, true) || !go({ x: 23, z: 3 }, true)) continue;
+        }
         go(target);
         if (id === 'lobby' && target.kind === 'pickup' && !results.checks.includes('checkpoint')) {
           release();
@@ -510,5 +533,7 @@ export async function runRoute({ lobbyOnly = false } = {}) {
     window.requestAnimationFrame = originalRAF;
     window.cancelAnimationFrame = originalCancel;
     Math.random = originalRandom;
+    for (const undo of restore.reverse()) undo();
+    if (game && !game.disposed) { game.frameId = 0; game.run(); }
   }
 }

@@ -124,6 +124,10 @@ export class Game {
   private scanAge = 100;
   private warnedStorage = false;
   private disposed = false;
+  private entityCenterHeight = 1;
+  private projected = new THREE.Vector3();
+  private lightOrigin = new THREE.Vector3();
+  private lightAxis = new THREE.Vector3();
   private vector = new THREE.Vector3();
   private direction = new THREE.Vector3();
   private aimOffsets = new Map<string, THREE.Vector3>();
@@ -216,6 +220,7 @@ export class Game {
     this.scene = new THREE.Scene();
     this.stage = stage;
     this.world = buildWorld(this.scene, stage);
+    if (this.world.entity) this.entityCenterHeight = new THREE.Box3().setFromObject(this.world.entity).getCenter(this.vector).y;
     this.scene.add(this.camera);
     this.encounter = stage.threat ? new Encounter(stage, TILE) : undefined;
     this.state.stage = id;
@@ -300,7 +305,8 @@ export class Game {
       this.cinema = new EndingCinema(detail);
       this.cinema.render(this.renderer, this.camera.aspect, 0);
     }
-    if (next !== 'playing') this.challenge.clear();
+    if (next === 'pause' || next === 'playing') this.challenge.setPaused(next === 'pause');
+    else this.challenge.clear();
     this.mode = next;
     this.keys.clear();
     this.dragging = false;
@@ -375,6 +381,10 @@ export class Game {
   }
   private lockChanged = () => {
     const owned = document.pointerLockElement === this.canvas;
+    if (owned && this.mode !== 'playing') {
+      document.exitPointerLock();
+      return;
+    }
     if (this.pointerOwned && !owned && this.mode === 'playing') this.pause();
     this.pointerOwned = owned;
   };
@@ -454,6 +464,10 @@ export class Game {
   }
   private interact() {
     if (this.challenge.object) {
+      if (this.challenge.object.challenge?.kind === 'entity-photo') {
+        this.cameraPose(0, false);
+        this.updateChallenge(0);
+      }
       if (this.challenge.press()) this.finishChallenge();
       return;
     }
@@ -529,23 +543,31 @@ export class Game {
     this.challenge.clear();
     if (obj) this.complete(obj);
   }
+  private entityPoint() {
+    const e = this.encounter!;
+    return this.vector.set(e.x * TILE, this.entityCenterHeight, e.z * TILE);
+  }
+  private entityVisible(frame = 1) {
+    const e = this.encounter;
+    if (!e || Math.hypot(e.x - this.x / TILE, e.z - this.z / TILE) >= 14) return false;
+    const point = this.projected.copy(this.entityPoint()).project(this.camera);
+    return point.z >= -1 && point.z <= 1 && Math.abs(point.x) <= frame && Math.abs(point.y) <= frame &&
+      clearSight(this.stage, this.x / TILE, this.z / TILE, e.x, e.z);
+  }
+  private entityLit() {
+    if (!this.lamp.intensity || !this.encounter) return false;
+    this.lamp.getWorldPosition(this.lightOrigin);
+    this.lampTarget.getWorldPosition(this.lightAxis).sub(this.lightOrigin).normalize();
+    const offset = this.entityPoint().sub(this.lightOrigin);
+    return offset.length() <= this.lamp.distance && offset.normalize().dot(this.lightAxis) >= Math.cos(this.lamp.angle);
+  }
   private updateChallenge(dt: number) {
     const obj = this.challenge.object;
     if (!obj?.challenge) return;
     const spec = obj.challenge;
     const mesh = this.world?.objects.get(obj.id);
     const range = Math.hypot(this.x - obj.x * TILE, this.z - obj.z * TILE);
-    let entityInFrame = false;
-    if (spec.kind === 'entity-photo' && this.encounter) {
-      const dx = this.encounter.x - this.x / TILE,
-        dz = this.encounter.z - this.z / TILE,
-        d = Math.hypot(dx, dz);
-      const facing = (Math.sin(this.yaw) * dx - Math.cos(this.yaw) * dz) / Math.max(0.01, d);
-      entityInFrame =
-        d < 14 &&
-        facing > 0.89 &&
-        clearSight(this.stage, this.x / TILE, this.z / TILE, this.encounter.x, this.encounter.z);
-    }
+    const entityInFrame = spec.kind === 'entity-photo' && this.entityVisible(0.65);
     const destination =
       spec.kind === 'haul'
         ? this.stage.objects.find((o) => o.gives?.includes(spec.destination) || o.id === spec.destination)
@@ -717,14 +739,15 @@ export class Game {
     if (this.grounded && !['X', '!'].includes(tileAt(this.stage, this.x / TILE, this.z / TILE)))
       this.state.checkpoint = { x: this.x, z: this.z, yaw: this.yaw, pitch: this.pitch };
   }
-  private persist() {
+  private async persist() {
     if (!this.stage) return;
     if (this.grounded && !pitFloor(this.stage, this.x, this.z) && !this.hidden && this.mode !== 'death')
       this.state.position = { x: this.x, z: this.z, yaw: this.yaw, pitch: this.pitch };
-    const ok = storeProgress(this.state);
-    if (!ok && !this.warnedStorage) {
+    const result = await storeProgress(this.state);
+    if (this.disposed) return;
+    if (result !== 'saved' && !this.warnedStorage) {
       this.warnedStorage = true;
-      this.callbacks.message('Browser storage unavailable. Progress will last for this session.');
+      this.callbacks.message(result === 'stale' ? 'Another tab updated this campaign. Return to the title screen to load its save.' : 'Browser storage unavailable. Progress will last for this session.');
     }
   }
   private cameraPose(dt: number, moving: boolean) {
@@ -903,7 +926,8 @@ export class Game {
         dt,
         this.x / TILE,
         this.z / TILE,
-        this.yaw,
+        this.entityVisible(),
+        this.entityLit(),
         distance > 0.001,
         sprint,
         crouched,

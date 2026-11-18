@@ -118,7 +118,8 @@ export class Encounter {
     dt: number,
     px: number,
     pz: number,
-    yaw: number,
+    visible: boolean,
+    illuminated: boolean,
     moving: boolean,
     sprinting: boolean,
     crouched: boolean,
@@ -132,8 +133,7 @@ export class Encounter {
       dz = this.z - pz,
       distance = Math.hypot(dx, dz);
     const line = distance < 16 && clearSight(this.stage, this.x, this.z, px, pz);
-    const facing = (Math.sin(yaw) * dx - Math.cos(yaw) * dz) / Math.max(0.001, distance);
-    const looking = line && facing > 0.74 && !hidden;
+    const looking = visible && line && !hidden;
     const enemyFacing = (-dx * Math.sin(this.angle) - dz * Math.cos(this.angle)) / Math.max(0.001, distance);
     const sweepingCamera = this.kind === 'camera';
     const inView = distance < 1.0 || enemyFacing > (sweepingCamera ? 0.68 : crouched ? 0.52 : -0.32);
@@ -166,11 +166,11 @@ export class Encounter {
       this.contact = this.attack > 1.25;
       return;
     }
-    if (grace > 0 || (looking && p.gaze === 'freeze' && (this.kind !== 'king' || flashlight))) {
+    if (grace > 0 || (looking && p.gaze === 'freeze')) {
       this.attack = 0;
       return;
     }
-    const retreat = looking && p.gaze === 'retreat' && flashlight;
+    const retreat = looking && p.gaze === 'retreat' && illuminated;
     this.repath -= dt;
     this.pause -= dt;
     this.stalkClock -= dt;

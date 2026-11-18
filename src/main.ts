@@ -501,6 +501,7 @@ document.addEventListener(
     if (event.code === 'Tab' && (mode === 'playing' || mode === 'inventory')) {
       event.preventDefault();
       event.stopImmediatePropagation();
+      if (event.repeat) return;
       if (mode === 'playing') showInventory();
       else game?.resume();
       return;

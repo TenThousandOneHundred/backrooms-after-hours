@@ -11,6 +11,7 @@ export class Soundscape {
   private nextDetail = 3;
   private stepSide = -1;
   private closed = false;
+  private paused = false;
 
   unlock() {
     if (this.closed) return;
@@ -30,7 +31,7 @@ export class Soundscape {
   setVolume(v: number) {
     this.volume = limit(v, 0, 1);
     if (this.master && this.context)
-      this.master.gain.setTargetAtTime(this.volume * 0.52, this.context.currentTime, 0.045);
+      this.master.gain.setTargetAtTime(this.volume * 0.52 * (this.paused ? 0.22 : 1), this.context.currentTime, 0.045);
   }
   private noise(color: string): AudioBuffer {
     const cached = this.buffers.get(color);
@@ -201,6 +202,7 @@ export class Soundscape {
     }
   }
   pause(paused: boolean) {
+    this.paused = paused;
     if (!this.master || !this.context) return;
     this.master.gain.setTargetAtTime(
       this.volume * 0.52 * (paused ? 0.22 : 1),

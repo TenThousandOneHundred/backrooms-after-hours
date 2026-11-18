@@ -71,6 +71,9 @@ export class FieldChallenge {
     document.body.append(root);
     this.display = root;
   }
+  setPaused(paused: boolean) {
+    if (this.display) this.display.hidden = paused;
+  }
   clear() {
     this.cleanup?.();
     this.cleanup = undefined;
@@ -126,7 +129,7 @@ export class FieldChallenge {
       if (amount >= 1) return 'done';
     } else if (spec.kind === 'photo' || spec.kind === 'entity-photo') {
       const framed = spec.kind === 'entity-photo' ? frame.entityInFrame : frame.aimed;
-      task.progress = Math.max(0, Math.min(0.48, task.progress + (framed ? dt : -dt * 2)));
+      task.progress = Math.max(0, Math.min(0.48, framed ? task.progress + dt : 0));
       amount = task.progress / 0.48;
       ready = framed && amount >= 0.99;
       instruction = ready

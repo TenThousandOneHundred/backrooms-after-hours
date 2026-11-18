@@ -182,6 +182,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     if (family === 'alarm') value *= 0.73;
     if (family === 'pipes') value *= 0.7;
     if (family === 'suburb' && stage.id === 'suburbs') value *= 0.59;
+    if (kind === 'floor' && tile(tx, tz) === '!') value *= 0.13;
     return Math.max(0.022, value * style.level);
   }
   function quad(
@@ -619,6 +620,12 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
       }
       if (!isOutdoor)
         quad(ceilings, [ox, h, oz], [TILE, 0, 0], [0, 0, TILE], [0, -1, 0], 3, 3, TILE, 'ceil', x, z);
+      if (tileType === '!') {
+        for (const [dx, dz] of DIRS) {
+          if (tile(x + dx, z + dz) !== '!')
+            b('#94a985', cx + dx * (TILE / 2 - 0.04), 0.02, cz + dz * (TILE / 2 - 0.04), dx ? 0.08 : TILE, 0.012, dz ? 0.08 : TILE);
+        }
+      }
       if (family === 'pool' && !pit) {
         if ((x + z) % 4 < 2) {
           const w = 0.12 + rand * 0.35,
@@ -887,6 +894,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     root.add(group);
   }
   const entity = stage.threat ? makeEntity(kit, stage.threat.kind) : null;
+  const entityHeightScale = entity?.scale.y ?? 1;
   if (entity && stage.threat) {
     entity.position.set(stage.threat.x * TILE, 0, stage.threat.z * TILE);
     root.add(entity);
@@ -1043,7 +1051,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
       if (entity) {
         const threat = stage.threat?.kind.toLowerCase() ?? '';
         if (/smil|moth|angler/.test(threat)) entity.position.y = 0.07 * Math.sin(t * 3);
-        else entity.scale.y = 1 + 0.012 * Math.sin(t * 3.7);
+        else entity.scale.y = entityHeightScale * (1 + 0.012 * Math.sin(t * 3.7));
       }
     },
     dispose() {
