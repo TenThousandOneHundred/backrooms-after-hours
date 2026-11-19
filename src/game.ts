@@ -67,6 +67,7 @@ const controls = new Set([
   'Digit1',
   'Digit2',
 ]);
+export const playerSpeed = { walk: 4, sprint: 6.8, crouch: 1.75 } as const;
 const defaultSettings: GameSettings = { sensitivity: 1, volume: 0.65, headBob: true, quality: 'high' };
 
 export class Game {
@@ -882,7 +883,7 @@ export class Game {
       beforeZ = this.z;
     if (moving) {
       const norm = Math.hypot(f, s);
-      const speed = crouched ? 1.38 : sprint ? 5.35 : 3.12;
+      const speed = crouched ? playerSpeed.crouch : sprint ? playerSpeed.sprint : playerSpeed.walk;
       const dx = ((Math.sin(this.yaw) * f + Math.cos(this.yaw) * s) * speed * dt) / norm;
       const dz = ((-Math.cos(this.yaw) * f + Math.sin(this.yaw) * s) * speed * dt) / norm;
       if (this.canStand(this.x + dx, this.z)) this.x += dx;
@@ -1126,11 +1127,15 @@ export class Game {
     const size = bounds.getSize(new THREE.Vector3()),
       head = bounds.getCenter(new THREE.Vector3());
     head.y = bounds.min.y + size.y * (kind === 'bellwether' ? .36 : .73);
-    if (kind === 'bacteria') mesh.getObjectByName('Skull')?.getWorldPosition(head);
+    const skull = kind === 'bacteria' ? mesh.getObjectByName('Skull') : undefined;
+    if (skull) {
+      skull.getWorldPosition(head);
+      head.y += 0.11;
+    }
     const facing = mesh.getWorldDirection(new THREE.Vector3());
     facing.y = 0;
     facing.normalize();
-    const distance = kind === 'bacteria' ? 0.77 : clamp(size.y * 0.69, 1.1, 2.8);
+    const distance = kind === 'bacteria' ? 0.95 : clamp(size.y * 0.69, 1.1, 2.8);
     let eye = head.clone().addScaledVector(facing, distance);
     if (tileAt(this.stage, eye.x / TILE, eye.z / TILE) === '#') {
       const towardPlayer = new THREE.Vector3(this.x - head.x, 0, this.z - head.z).normalize();
@@ -1141,9 +1146,13 @@ export class Game {
     camera.fov = 66;
     camera.lookAt(head);
     camera.updateProjectionMatrix();
-    const rim = new THREE.PointLight(0xffd1a2, 7, 5, 1.35);
+    const rim = new THREE.PointLight(skull ? 0xe0dbc2 : 0xffd1a2, skull ? 1.9 : 7, 5, 1.35);
     rim.position.copy(eye);
     rim.position.y += 0.25;
+    if (skull) {
+      rim.position.x += facing.z * 0.44;
+      rim.position.z -= facing.x * 0.44;
+    }
     this.scene.add(rim);
     try {
       this.renderer.render(this.scene, camera);

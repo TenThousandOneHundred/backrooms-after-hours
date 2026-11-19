@@ -1,5 +1,6 @@
 import { AnimationMixer, Group, LoopOnce, SkinnedMesh } from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
+import { bacteriaChargeSeconds } from './game-entity';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 
 let asset: GLTF | undefined;
@@ -51,7 +52,7 @@ export function makeBacteria() {
     if (locomotion(state)) {
       const stride = state === 'Chase' ? 2.24 : 1.26;
       current.timeScale = speed * current.getClip().duration / stride;
-    } else current.timeScale = 1;
+    } else current.timeScale = state === 'Strike' ? current.getClip().duration / bacteriaChargeSeconds : 1;
     mixer.update(dt);
   };
   root.userData.release = () => {

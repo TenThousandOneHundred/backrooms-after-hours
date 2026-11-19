@@ -62,25 +62,28 @@ type Profile = {
   chase?: boolean;
 };
 const profiles: Record<string, Profile> = {
-  bacteria: { sight: 8, hearing: 4.2, speed: 3.05, memory: 4.5 },
-  skinstealer: { sight: 7, hearing: 2.5, speed: 2.85, memory: 4 },
-  smiler: { sight: 13, hearing: 5.6, speed: 3.55, memory: 5 },
-  hound: { sight: 6, hearing: 4.8, speed: 3.5, memory: 3, gaze: 'retreat' },
-  partygoer: { sight: 6, hearing: 3.15, speed: 3.25, memory: 2.6 },
-  crawler: { sight: 0, hearing: 7.2, speed: 3.25, memory: 3.5, blind: true },
-  animation: { sight: 8, hearing: 2, speed: 3.75, memory: 4, gaze: 'freeze' },
-  king: { sight: 7, hearing: 3.5, speed: 3.1, memory: 4, gaze: 'retreat' },
+  bacteria: { sight: 8, hearing: 4.2, speed: 3.96, memory: 4.5 },
+  skinstealer: { sight: 7, hearing: 2.5, speed: 3.71, memory: 4 },
+  smiler: { sight: 13, hearing: 5.6, speed: 4.62, memory: 5 },
+  hound: { sight: 6, hearing: 4.8, speed: 4.55, memory: 3, gaze: 'retreat' },
+  partygoer: { sight: 6, hearing: 3.15, speed: 4.23, memory: 2.6 },
+  crawler: { sight: 0, hearing: 7.2, speed: 4.23, memory: 3.5, blind: true },
+  animation: { sight: 8, hearing: 2, speed: 4.88, memory: 4, gaze: 'freeze' },
+  king: { sight: 7, hearing: 3.5, speed: 4.03, memory: 4, gaze: 'retreat' },
   camera: { sight: 7, hearing: 0, speed: 0, memory: 1 },
-  membri: { sight: 6, hearing: 2.4, speed: 3.25, memory: 3.6, gaze: 'freeze' },
-  leviathan: { sight: 2.3, hearing: 2.3, speed: 3.1, memory: 4 },
-  shark: { sight: 7, hearing: 3.8, speed: 3.5, memory: 4.2 },
-  wretch: { sight: 0, hearing: 4.5, speed: 3.2, memory: 3.1, blind: true },
-  moth: { sight: 2.3, hearing: 1.1, speed: 2.8, memory: 2 },
-  watcher: { sight: 9, hearing: 1.4, speed: 3.95, memory: 4, gaze: 'freeze' },
-  kitty: { sight: 8, hearing: 2, speed: 3.85, memory: 3, gaze: 'freeze' },
-  clump: { sight: 4.4, hearing: 4.3, speed: 2.7, memory: 4.5 },
-  faceling: { sight: 6, hearing: 2.2, speed: 2.7, memory: 2.6 },
+  membri: { sight: 6, hearing: 2.4, speed: 4.23, memory: 3.6, gaze: 'freeze' },
+  leviathan: { sight: 2.3, hearing: 2.3, speed: 4.03, memory: 4 },
+  shark: { sight: 7, hearing: 3.8, speed: 4.55, memory: 4.2 },
+  wretch: { sight: 0, hearing: 4.5, speed: 4.16, memory: 3.1, blind: true },
+  moth: { sight: 2.3, hearing: 1.1, speed: 3.64, memory: 2 },
+  watcher: { sight: 9, hearing: 1.4, speed: 5.14, memory: 4, gaze: 'freeze' },
+  kitty: { sight: 8, hearing: 2, speed: 5, memory: 3, gaze: 'freeze' },
+  clump: { sight: 4.4, hearing: 4.3, speed: 3.51, memory: 4.5 },
+  faceling: { sight: 6, hearing: 2.2, speed: 3.51, memory: 2.6 },
 };
+// A charge covers roughly 7.5 metres before the hunter has to recover.
+export const bacteriaChargeSeconds = 0.85;
+
 export class Encounter {
   x: number;
   z: number;
@@ -114,7 +117,7 @@ export class Encounter {
     this.profile = { ...(profiles[this.kind] ?? profiles.bacteria) };
     if (['run', 'hotelchase', 'pipes', 'pipesreturn'].includes(stage.id)) {
       this.profile.chase = true;
-      this.profile.speed = 3.65;
+      this.profile.speed = 4.75;
     }
     if (threat.speed) this.profile.speed = threat.speed;
   }
@@ -163,7 +166,7 @@ export class Encounter {
     this.recovery = Math.max(0, this.recovery - dt);
     if (this.lunging && !exposed) this.recovery = 3;
     this.pursuitSeconds = exposed && this.recovery === 0 ? this.pursuitSeconds + dt : 0;
-    if (this.pursuitSeconds >= 2.9) {
+    if (this.pursuitSeconds >= 1.8 + bacteriaChargeSeconds) {
       this.pursuitSeconds = 0;
       this.recovery = 3;
     }
@@ -242,7 +245,7 @@ export class Encounter {
         tz = next[1] - this.z,
         len = Math.hypot(tx, tz);
       // A long uninterrupted sighting turns the slow stalk into a charge.
-      const speed = this.lunging ? 6.85 : this.winding ? 0.65 : this.memory > 0 ? p.speed : p.speed * 0.32;
+      const speed = this.lunging ? 8.85 : this.winding ? 0.8 : this.memory > 0 ? p.speed : p.speed * 0.32;
       const dist = (dt * speed) / this.tileSize;
       if (len > 0.01) {
         this.angle = Math.atan2(tx, tz);

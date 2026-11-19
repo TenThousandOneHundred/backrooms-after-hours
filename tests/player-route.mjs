@@ -6,7 +6,7 @@
 // A fixed-step animation clock accelerates the run. GPU frames are sampled per
 // scene; this is a control/playability test, separate from visual frame-rate QA.
 export async function runRoute({ lobbyOnly = false } = {}) {
-  const { Game } = await import('/src/game.ts');
+  const { Game, playerSpeed } = await import('/src/game.ts');
   const { TILE } = await import('/src/world.ts');
   const stages =
     'lobby pitwalk lower garage garagekeys darkdeck hub blackgarage pipes station office hotel hotelrooms pipesreturn fun pool run library village castle dark ocean depths cave projection courtyard1 suburbs outpost suburbs field arcade residential redrooms residential snack hotelchase courtyard2 deepool stagnant funplus school slides slides2 slides3 bunker blackgarage stair bunker dark pink bunker lowstation plastic gym overgrowth grass bunker arcade'.split(
@@ -339,7 +339,7 @@ export async function runRoute({ lobbyOnly = false } = {}) {
       hold('ShiftLeft', !crouch);
       const enemy = game.encounter;
       if (enemy?.danger > 0.65 && game.state.sanity < 50) press('Digit1');
-      advance(Math.max(0.035, Math.min(0.13, Math.hypot(dx, dz) / (crouch ? 1.38 : 5.35))));
+      advance(Math.max(0.035, Math.min(0.13, Math.hypot(dx, dz) / (crouch ? playerSpeed.crouch : playerSpeed.sprint))));
       if (Math.hypot(lastX - game.x, lastZ - game.z) < 0.035) stuck++;
       else stuck = 0;
       if (stuck > 70)
