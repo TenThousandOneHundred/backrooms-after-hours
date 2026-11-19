@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 export { loadResidents } from './residents';
 export { loadBacteria } from './bacteria';
-import { ENDINGS, START, stages, type GameObject, type Stage } from './campaign';
+import { ENDINGS, START, stages as campaignStages, type GameObject, type Stage } from './campaign';
 import { buildWorld, terrainHeight, TILE } from './world';
 import { Encounter, clearSight, tileAt } from './game-entity';
 import { Soundscape } from './game-sound';
 import { FieldChallenge } from './campaign-challenges';
+import type { ModPack } from './mods';
 import { EndingCinema } from './ending-cinema';
 import './campaign-challenges.css';
 import { freshProgress, loadProgress, storeProgress, type Progress } from './game-state';
@@ -36,7 +37,7 @@ export type GameCallbacks = {
 };
 export function readSummary(): { stage: string; endings: string[] } | null {
   const state = loadProgress();
-  return state && stages[state.stage]
+  return state && campaignStages[state.stage]
     ? { stage: state.stage, endings: state.endings.filter((id) => Object.hasOwn(ENDINGS, id)) }
     : null;
 }
@@ -142,6 +143,7 @@ export class Game {
   constructor(
     private canvas: HTMLCanvasElement,
     private callbacks: GameCallbacks,
+    private mod?: ModPack & { slot: string },
   ) {
     this.renderer = new THREE.WebGLRenderer({
       canvas,
@@ -195,17 +197,19 @@ export class Game {
   };
   start(resume: boolean) {
     if (this.disposed) return;
-    const state = resume ? loadProgress() : null;
-    this.state = state && stages[state.stage] ? state : freshProgress(START);
+    const state = resume ? loadProgress(this.mod?.slot) : null;
+    const stages = this.mod?.stages ?? campaignStages;
+    const validEnding = (id: string) => this.mod ? id === 'mod-escape' : Object.hasOwn(ENDINGS, id);
+    this.state = state && stages[state.stage] ? state : freshProgress(this.mod?.start ?? START);
     this.activeClock = 0;
     this.lastScare = -90;
     this.scareStages.clear();
     this.nextHaunt = 11;
     this.nextBeat = 0;
-    this.state.endings = this.state.endings.filter((id) => Object.hasOwn(ENDINGS, id));
+    this.state.endings = this.state.endings.filter(validEnding);
     if (
       this.state.pending &&
-      (!Object.hasOwn(ENDINGS, this.state.pending.ending) || !stages[this.state.pending.target])
+      (!validEnding(this.state.pending.ending) || !stages[this.state.pending.target])
     )
       this.state.pending = null;
     this.mode = 'playing';
@@ -219,7 +223,7 @@ export class Game {
   }
   private enter(id: string, restore = false) {
     this.challenge.clear();
-    const stage = stages[id];
+    const stage = (this.mod?.stages ?? campaignStages)[id];
     if (!stage) throw new Error(`Unknown campaign destination ${id}`);
     this.clearScan();
     this.scene.remove(this.camera);
@@ -313,7 +317,7 @@ export class Game {
   private change(next: Screen, detail?: string) {
     this.cinema?.dispose();
     this.cinema = undefined;
-    if (next === 'ending' && detail) {
+    if (next === 'ending' && detail && !this.mod) {
       this.cinema = new EndingCinema(detail);
       this.cinema.render(this.renderer, this.camera.aspect, 0);
     }
@@ -468,7 +472,7 @@ export class Game {
     );
   }
   private prettyNeed(flag: string) {
-    for (const s of Object.values(stages)) {
+    for (const s of Object.values(this.mod?.stages ?? campaignStages)) {
       const o = s.objects.find((obj) => obj.gives?.includes(flag));
       if (o) return o.name.replace(/^(take|pick up|collect|use|read|find|retrieve|grab)\s+/i, '');
     }
@@ -627,12 +631,12 @@ export class Game {
       const id = obj.ending;
       if (!this.state.endings.includes(id)) this.state.endings.push(id);
       if (!this.state.flags.includes(id)) this.state.flags.push(id);
-      this.state.pending = { ending: id, target: obj.target ?? START };
+      this.state.pending = { ending: id, target: obj.target ?? this.mod?.start ?? START };
       this.persist();
       this.change('ending', id);
       return;
     }
-    if (obj.target && stages[obj.target]) {
+    if (obj.target && (this.mod?.stages ?? campaignStages)[obj.target]) {
       this.enter(obj.target);
       if (notify) this.callbacks.message(this.stage.description);
       return;
@@ -760,7 +764,7 @@ export class Game {
     if (!this.stage) return;
     if (this.grounded && !pitFloor(this.stage, this.x, this.z) && !this.hidden && this.mode !== 'death')
       this.state.position = { x: this.x, z: this.z, yaw: this.yaw, pitch: this.pitch };
-    const result = await storeProgress(this.state);
+    const result = await storeProgress(this.state, this.mod?.slot);
     if (this.disposed) return;
     if (result !== 'saved' && !this.warnedStorage) {
       this.warnedStorage = true;
@@ -782,7 +786,7 @@ export class Game {
     this.lamp.intensity = scanner ? 0 : this.state.flashlight && !this.hidden ? 12 : 0;
   }
   private isScanner() {
-    return this.stage.id === 'dark' || /lights out/i.test(this.stage.name);
+    return !this.mod && (this.stage.id === 'dark' || /lights out/i.test(this.stage.name));
   }
   private flashlight() {
     if (this.isScanner()) {

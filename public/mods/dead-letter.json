@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "name": "Dead Letter Office",
+  "start": "sorting",
+  "levels": [
+    {
+      "id": "sorting",
+      "name": "Sorting Room",
+      "theme": "office",
+      "objective": "Find the brass key and open the records lift.",
+      "map": [
+        "############",
+        "#@.K.....E.#",
+        "#..###.....#",
+        "#..D....F..#",
+        "#......###.#",
+        "#...N......#",
+        "############"
+      ],
+      "markers": {
+        "K": { "kind": "pickup", "name": "Take brass key", "gives": "brass-key" },
+        "E": { "kind": "exit", "name": "Open records lift", "model": "elevator", "need": ["brass-key"], "to": "records" },
+        "D": { "kind": "prop", "model": "desk" },
+        "F": { "kind": "pickup", "name": "Take flashlight", "model": "flashlight", "gives": "torch" },
+        "N": { "kind": "note", "name": "Read the night clerk’s memo", "text": "If the ceiling knocks twice, stop walking. Wait until the bell rings." }
+      }
+    },
+    {
+      "id": "records",
+      "name": "Undeliverable Mail",
+      "theme": "archive",
+      "objective": "Read the returned envelope, then unlock the dispatch door.",
+      "map": [
+        "############",
+        "#@.N.....T.#",
+        "#..###.....#",
+        "#...S..#...#",
+        "#..&...#.E.#",
+        "#......#...#",
+        "############"
+      ],
+      "markers": {
+        "N": { "kind": "note", "name": "Read returned envelope", "text": "Postmarked 04:17. The clerk pencilled four digits under the stamp: 0417." },
+        "T": { "kind": "code", "name": "Enter dispatch code", "code": "0417", "gives": "dispatch-open" },
+        "S": { "kind": "prop", "model": "shelf" },
+        "E": { "kind": "escape", "name": "Leave through dispatch", "need": ["dispatch-open"] }
+      }
+    }
+  ]
+}

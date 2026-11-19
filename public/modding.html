@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141410">
+  <link rel="icon" href="./mark.svg">
+  <title>Modding guide · Backrooms After Hours</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #151712; color: #dedfd0; font: 16px/1.6 system-ui, sans-serif; }
+    main { max-width: 52rem; margin: auto; padding: 2rem clamp(1rem, 5vw, 3rem) 5rem; }
+    h1, h2, h3 { line-height: 1.15; text-wrap: balance; }
+    h1 { font-size: clamp(2.5rem, 7vw, 4rem); margin-bottom: .4rem; }
+    h2 { margin-top: 2.4rem; border-top: 1px solid #45483b; padding-top: 1.3rem; }
+    a { color: #ffcb79; text-underline-offset: .2em; }
+    nav { display: flex; flex-wrap: wrap; gap: 1rem; }
+    code, pre { font-family: ui-monospace, monospace; color: #f4d397; }
+    pre { overflow: auto; padding: 1rem; background: #0e100d; border-left: 2px solid #b49559; font-size: .86rem; }
+    dt { font-weight: 650; margin-top: .75rem; }
+    dd { margin: .1rem 0 0; }
+    td, th { text-align: left; vertical-align: top; padding: .5rem .7rem .5rem 0; border-bottom: 1px solid #393c32; }
+    table { width: 100%; border-collapse: collapse; }
+  </style>
+</head>
+<body><main>
+<nav aria-label="Game links"><a href="./">Back to the game</a><a href="./mods/dead-letter.json" download>Download Dead Letter Office</a></nav>
+<h1>Modding guide</h1>
+<p>Build a first-person expedition in a single JSON file. Draw rooms with letters, give the letters jobs, and decide what the player must do to escape.</p>
+
+<h2>Your first locked door</h2>
+<p>Copy this into a plain-text file named <code>night-shift.json</code>. Open <strong>Mods → Import file</strong> on the title screen, choose the file, then select <strong>Play mod</strong>. Walk to the key and press <kbd>E</kbd>. Face the door and press <kbd>E</kbd> again to escape.</p>
+<pre><code>{
+  "format": 1,
+  "name": "Night Shift",
+  "start": "intake",
+  "levels": [{
+    "id": "intake",
+    "name": "Intake Office",
+    "theme": "lobby",
+    "objective": "Take the key and leave through the fire door.",
+    "map": [
+      "#########",
+      "#@.K..E.#",
+      "#.......#",
+      "#########"
+    ],
+    "markers": {
+      "K": { "kind": "pickup", "name": "Take fire key", "gives": "fire-key" },
+      "E": { "kind": "escape", "name": "Open fire door", "need": ["fire-key"] }
+    }
+  }]
+}</code></pre>
+<p>Try moving <code>K</code> to the other row and placing <code>%</code> in its old spot. Save and import again. The key has moved, and a Veil now watches the route to the exit.</p>
+
+<h2>File and level fields</h2>
+<p>Use JSON with double-quoted strings. Omit comments and trailing commas. Field names and symbols are case-sensitive. A pack has four required fields.</p>
+<dl>
+<dt><code>format</code> and <code>name</code></dt><dd>Use the number <code>1</code> for this language version. Give your pack a display name up to 72 characters long.</dd>
+<dt><code>start</code> and <code>levels</code></dt><dd>Set <code>start</code> to the ID of the first level. List 1–12 levels in <code>levels</code>. Doors connect levels by ID, so array order can differ from play order.</dd>
+</dl>
+<p>Every level requires <code>id</code>, <code>name</code>, <code>theme</code>, <code>objective</code>, <code>map</code>, and <code>markers</code>. Give each level a unique ID. IDs and flag names start with a lowercase letter and accept lowercase letters, digits, and hyphens, up to 32 characters. The level name appears in the HUD. The objective can contain up to 240 characters.</p>
+<p>Choose a theme from <code>lobby</code>, <code>hotel</code>, <code>pool</code>, <code>pipes</code>, <code>archive</code>, <code>office</code>, <code>garage</code>, <code>arcade</code>, and <code>blackout</code>. Each uses the game’s existing materials and lighting.</p>
+
+<h2>Map symbols</h2>
+<p>Each string draws one row from left to right. Use 3–32 rows and columns, give each row the same width, and enclose the map in walls. Keep interactive tiles accessible from the spawn.</p>
+<table><thead><tr><th>Symbol</th><th>In the room</th></tr></thead><tbody>
+<tr><td><code>#</code></td><td>Wall.</td></tr>
+<tr><td><code>.</code></td><td>Open floor.</td></tr>
+<tr><td><code>@</code></td><td>Player spawn. Place exactly one per level.</td></tr>
+<tr><td><code>A</code>–<code>Z</code></td><td>An object from this level’s <code>markers</code>. You choose the letters. Repeat a letter to place another copy. Copies share any flag they grant.</td></tr>
+<tr><td><code>!</code></td><td>Roaming monster spawn. Add the level’s <code>monster</code> field and exactly one <code>!</code> together.</td></tr>
+<tr><td><code>%</code></td><td>Veil. Looking at its masks for too long is fatal.</td></tr>
+<tr><td><code>&amp;</code></td><td>Bellwether. Move quietly or stay still after its warning knocks.</td></tr>
+</tbody></table>
+<p>Choose a roaming <code>monster</code> from <code>bacteria</code>, <code>hound</code>, <code>smiler</code>, <code>crawler</code>, <code>watcher</code>, and <code>partygoer</code>. A Crawler hunts by sound. A Watcher freezes under observation. To tune pursuit, add a numeric <code>speed</code> from 0.5 to 6 alongside <code>monster</code>. A level supports up to six resident creatures in addition to its roaming monster.</p>
+
+<h2>Marker language</h2>
+<p>Each marker takes a <code>kind</code> and an optional <code>model</code>. All interactive markers require a <code>name</code> up to 72 characters for the interaction prompt. A prop uses only <code>kind</code> and an optional <code>model</code>.</p>
+<table><thead><tr><th>Kind</th><th>Behavior and fields</th></tr></thead><tbody>
+<tr><td><code>pickup</code></td><td>Adds an item to inventory. Requires one <code>gives</code> flag.</td></tr>
+<tr><td><code>switch</code></td><td>Activates once and grants its required <code>gives</code> flag.</td></tr>
+<tr><td><code>code</code></td><td>Opens a keypad. Requires <code>code</code> and <code>gives</code>. Use a string up to 32 characters, such as <code>"0417"</code>. Matching ignores case and surrounding spaces.</td></tr>
+<tr><td><code>note</code></td><td>Shows its required <code>text</code> each time the player reads it.</td></tr>
+<tr><td><code>hide</code></td><td>Hiding place. Interact again to leave.</td></tr>
+<tr><td><code>exit</code></td><td>Leads to another level. Requires <code>to</code> with the destination ID.</td></tr>
+<tr><td><code>escape</code></td><td>Finishes the mod and records the escape.</td></tr>
+<tr><td><code>prop</code></td><td>Places scenery such as a shelf or chair.</td></tr>
+</tbody></table>
+<p>Flags are shared across a pack’s levels. <code>"gives": "power-on"</code> records a flag. <code>"need": ["power-on", "brass-key"]</code> requires both flags. A pickup, switch, keypad, exit, or escape can have up to 16 required flags. Pickups, switches, and keypads can also show optional completion <code>text</code> up to 240 characters long. Grant <code>torch</code> to enable the flashlight with <kbd>F</kbd>.</p>
+<p>To connect two levels, place a letter on the first map and define it as <code>{"kind":"exit","name":"Take lift","to":"basement"}</code>. Add a second level with <code>"id":"basement"</code> and an <code>escape</code> marker. Add a return exit if your puzzle requires backtracking.</p>
+<p>Available models are <code>key</code>, <code>flashlight</code>, <code>note</code>, <code>door</code>, <code>elevator</code>, <code>terminal</code>, <code>breaker</code>, <code>locker</code>, <code>shelf</code>, <code>desk</code>, <code>chair</code>, <code>crate</code>, <code>barrel</code>, <code>plant</code>, <code>valve</code>, and <code>sign</code>. Omit <code>model</code> to use the kind’s default.</p>
+
+<h2>Test and share</h2>
+<p>Use <strong>Load sample</strong> to play Dead Letter Office, or download its JSON above. It demonstrates a key, a lift, a Bellwether, and a keypad with an in-world clue. Play your own route from spawn to escape, including wrong codes, locked doors, and any one-way exits.</p>
+<p>Import errors identify the field or map location to fix. For an undefined tile, add the matching uppercase marker or replace the tile with a period. For an unreachable escape, check the destination IDs, flag spelling, and the order in which the player can activate each object. Each file can be up to 128 KiB and each level can use up to 96 letter tiles.</p>
+<p>Share the JSON file. Other players import it from the same Mods menu. The browser remembers the last imported pack and keeps its checkpoint separate from the main campaign and other mods. Reimport an earlier file to resume it. Editing the pack’s data starts a separate save, and changing only JSON indentation preserves the checkpoint.</p>
+</main></body></html>

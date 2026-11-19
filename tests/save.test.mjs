@@ -40,3 +40,37 @@ test('campaign saves survive stale writers, resets, legacy data and denied write
     if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
   }
 });
+
+test('mods and the campaign keep independent saves during concurrent and failed writes', async () => {
+  const { loadProgress, storeProgress, freshProgress } = await import('../src/game-state.ts?tab=mods');
+  const slots = new Map();
+  const originalLocks = Object.getOwnPropertyDescriptor(navigator, 'locks');
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const modSlot = 'backrooms-after-hours.mod.v1.example';
+  let denied = false;
+  Object.defineProperty(navigator, 'locks', { configurable: true, value: {
+    request: (_key, action) => Promise.resolve().then(action)
+  }});
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+    getItem: key => slots.get(key) ?? null,
+    setItem: (key, value) => { if (denied) throw Error('Quota exceeded'); slots.set(key, value); }
+  }});
+  try {
+    const campaign = freshProgress('lobby'), mod = freshProgress('mod-1');
+    const writes = [storeProgress(campaign), storeProgress(mod, modSlot)];
+    assert.equal(loadProgress().stage, 'lobby');
+    assert.equal(loadProgress(modSlot).stage, 'mod-1');
+    assert.deepEqual(await Promise.all(writes), ['saved', 'saved']);
+    denied = true;
+    mod.stage = 'mod-2';
+    assert.equal(await storeProgress(mod, modSlot), 'unavailable');
+    assert.equal(loadProgress(modSlot).stage, 'mod-2');
+    assert.equal(loadProgress().stage, 'lobby');
+    assert.equal(loadProgress(modSlot + '-other'), null);
+  } finally {
+    delete navigator.locks;
+    delete globalThis.localStorage;
+    if (originalLocks) Object.defineProperty(navigator, 'locks', originalLocks);
+    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
+  }
+});

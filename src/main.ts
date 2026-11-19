@@ -1,6 +1,7 @@
 import './style.css';
 import { icon } from './icons';
 import { Horror } from './horror';
+import { parseMod, MOD_LIMIT, type ModPack } from './mods';
 import { loadProgress } from './game-state';
 import type { Game, GameCallbacks, GameSettings } from './game';
 
@@ -32,6 +33,11 @@ const settings = readSettings();
 const horror = new Horror();
 horror.setVolume(settings.volume);
 let lastVolume = settings.volume || 0.65;
+type InstalledMod = ModPack & { slot: string };
+let selectedMod: InstalledMod | undefined;
+let activeMod: InstalledMod | undefined;
+const modKey = 'backrooms-after-hours.last-mod.v1';
+let modRequest = 0;
 let game: Game | null = null;
 let runtime: typeof import('./game') | undefined;
 let campaign: typeof import('./campaign') | undefined;
@@ -142,6 +148,7 @@ function titleScreen() {
   horror.clear();
   game?.dispose();
   game = null;
+  activeMod = undefined;
   inventory = [];
   hud.hidden = true;
   home.hidden = false;
@@ -172,14 +179,14 @@ const controls = [
   ['Pause / release mouse', ['Esc']],
 ] as const;
 function manual() {
-  const endingNames: Record<string, string> = campaign?.ENDINGS ?? {
+  const endingNames: Record<string, string> = activeMod ? { 'mod-escape': activeMod.name } : campaign?.ENDINGS ?? {
     wrong: 'Wrong Door',
     suburbs: 'The Suburbs',
     pink: 'The Pink House',
     city: 'Empty City',
     final: 'Final Escape',
   };
-  const endings = runtime?.readSummary()?.endings ?? [];
+  const endings = (activeMod ? loadProgress(activeMod.slot) : runtime?.readSummary())?.endings ?? [];
   const contents =
     manualTab === 'controls'
       ? controls
@@ -331,7 +338,7 @@ const callbacks: GameCallbacks = {
   message: notify,
   hud: (h) => {
     el('hud-label').textContent = h.label;
-    el('hud-name').textContent = campaign?.stages[h.stage]?.name ?? h.stage;
+    el('hud-name').textContent = (activeMod?.stages ?? campaign?.stages)?.[h.stage]?.name ?? h.stage;
     el('hud-objective').textContent = h.objective;
     const prompt = el('interact');
     prompt.hidden = !h.prompt;
@@ -382,6 +389,12 @@ const callbacks: GameCallbacks = {
     if (screen === 'ending') {
       home.hidden = true;
       hud.hidden = true;
+      if (activeMod) {
+        showPanel('ending', activeMod.name, 'You escaped', '<div class="panel-buttons">' +
+          actions('title', 'Title screen', 'exit', true) + '</div>');
+        wire('title', titleScreen);
+        return;
+      }
       const id = detail || 'final';
       showPanel(
         'ending',
@@ -420,17 +433,19 @@ const callbacks: GameCallbacks = {
     }
   },
 };
-async function startRun(resume: boolean) {
+async function startRun(resume: boolean, mod?: InstalledMod) {
   horror.unlock();
   horror.preload();
   horror.clear();
   enter.disabled = true;
   el('toast').hidden = true;
   try {
+    if (mod) showPanel('loading', mod.name, 'Entering expedition', '');
     if (!runtime) await loadRuntime();
     hidePanel();
     game?.dispose();
-    game = new runtime!.Game(el<HTMLCanvasElement>('world'), callbacks);
+    activeMod = mod;
+    game = new runtime!.Game(el<HTMLCanvasElement>('world'), callbacks, mod);
     game.applySettings({ ...settings });
     game.start(resume);
   } catch (err) {
@@ -470,6 +485,84 @@ wire('new-game', () => {
   );
   wire('cancel-new', titleScreen);
   wire('confirm-new', () => void startRun(false));
+});
+async function installMod(getSource: () => Promise<string>, remember: boolean) {
+  const request = ++modRequest;
+  const status = el('mod-status');
+  status.textContent = 'Reading expedition…';
+  try {
+    const source = await getSource();
+    const pack = parseMod(source);
+    const bytes = new TextEncoder().encode(JSON.stringify(JSON.parse(source)));
+    const hash = await crypto.subtle.digest('SHA-256', bytes);
+    const digest = Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, '0')).join('');
+    if (request !== modRequest || !status.isConnected) return;
+    selectedMod = { ...pack, slot: 'backrooms-after-hours.mod.v1.' + digest };
+    let warning = '';
+    if (remember) {
+      try { localStorage.setItem(modKey, source); }
+      catch { warning = 'Available this session. Import the file again after reloading.'; }
+    }
+    modsMenu(warning);
+  } catch (error) {
+    if (request === modRequest && status.isConnected)
+      status.textContent = error instanceof Error ? error.message : 'Could not read the mod file.';
+  }
+}
+function modsMenu(message = '') {
+  const pack = selectedMod;
+  const save = pack ? loadProgress(pack.slot) : null;
+  const finished = save?.pending?.ending === 'mod-escape';
+  const playLabel = finished ? 'Play again' : save ? 'Resume mod' : 'Play mod';
+  const levelCount = pack ? Object.keys(pack.stages).length : 0;
+  const summary = pack ? '<div class="mod-selection"><strong>' + safe(pack.name) + '</strong><span>' +
+    levelCount + (levelCount === 1 ? ' level' : ' levels') + (finished ? ' · Escaped' : '') +
+    '</span></div>' : '';
+  showPanel('mods', 'Custom expeditions', 'Mods',
+    '<p class="panel-text">Import a JSON mod or try the sample expedition.</p>' +
+    '<div class="mod-links"><a href="./modding.html" target="_blank" rel="noopener">Modding guide ↗</a>' +
+    '<a href="./mods/dead-letter.json" download>Download sample</a></div>' +
+    '<div class="panel-buttons">' + actions('mod-import', 'Import file') + actions('mod-example', 'Load sample') +
+    '</div><input type="file" accept=".json,application/json" id="mod-file" hidden>' +
+    '<p class="mod-status" id="mod-status" role="status">' + safe(message) + '</p>' + summary +
+    (pack ? '<div class="panel-buttons">' + actions('mod-play', playLabel, 'play', true) +
+      (save && !finished ? actions('mod-restart', 'Start over') : '') + '</div>' : ''), closeSubmenu);
+  wire('mod-import', () => el<HTMLInputElement>('mod-file').click());
+  el<HTMLInputElement>('mod-file').onchange = event => {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) void installMod(async () => {
+      if (file.size > MOD_LIMIT) throw new Error('File limit is 128 KiB.');
+      return file.text();
+    }, true);
+  };
+  wire('mod-example', () => void installMod(async () => {
+    const response = await fetch('./mods/dead-letter.json');
+    if (!response.ok) throw new Error('The sample could not be loaded.');
+    return response.text();
+  }, true));
+  if (pack) {
+    wire('mod-play', () => void startRun(!!save && !finished, pack));
+    wire('mod-restart', () => {
+      showPanel('mod-restart', pack.name, 'Restart mod?',
+        '<p class="panel-text">This replaces this mod’s checkpoint.</p><div class="panel-buttons">' +
+        actions('keep-mod', 'Keep checkpoint') + actions('restart-mod', 'Restart', 'play', true) +
+        '</div>', () => modsMenu());
+      wire('keep-mod', () => modsMenu());
+      wire('restart-mod', () => void startRun(false, pack));
+    });
+  }
+}
+wire('mods', () => {
+  returnTo = 'home';
+  modsMenu();
+  if (!selectedMod) {
+    try {
+      const previous = localStorage.getItem(modKey);
+      if (previous) void installMod(async () => previous, false);
+    } catch { /* Manual import still works. */ }
+  }
 });
 wire('manual', () => {
   returnTo = 'home';
@@ -512,12 +605,13 @@ document.addEventListener(
       event.stopImmediatePropagation();
       if (mode === 'pause' || mode === 'inventory') game?.resume();
       else if (mode === 'code') game?.closeCode();
-      else if (mode === 'settings' || mode === 'manual') closeSubmenu();
+      else if (mode === 'mod-restart') modsMenu();
+      else if (mode === 'mods' || mode === 'settings' || mode === 'manual') closeSubmenu();
       else if (mode === 'new' || mode === 'error') titleScreen();
       return;
     }
     if (event.key === 'Tab' && !overlay.hidden) {
-      const buttons = [...panel.querySelectorAll<HTMLElement>('button, input, select, [tabindex="0"]')];
+      const buttons = [...panel.querySelectorAll<HTMLElement>('button, input:not([hidden]), select, a[href], [tabindex="0"]')];
       if (!buttons.length) return;
       const first = buttons[0],
         last = buttons.at(-1)!;

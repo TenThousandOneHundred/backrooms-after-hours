@@ -788,3 +788,24 @@ select,
 #overlay[data-mode='death'] .micro {
   color: #df9a76;
 }
+
+.mod-links, .mod-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 18px;
+}
+.mod-links a {
+  color: var(--amber);
+  font-size: 13px;
+  text-underline-offset: 3px;
+}
+.mod-selection {
+  border-top: 1px solid #484b3e;
+  margin-top: 18px;
+  padding-top: 16px;
+}
+.mod-selection strong { overflow-wrap: anywhere; }
+.mod-selection span { color: #c4c5b8; font-size: 13px; }
+.mod-status { color: var(--amber); font-size: 13px; overflow-wrap: anywhere; }
+.mod-status:empty { display: none; }

@@ -26,6 +26,10 @@ In the Lobby, the Bacteria shares its hunting ground with two other creatures. T
 
 The field manual on the title screen lists controls and ending discoveries. Continue expedition returns to the latest checkpoint. Starting a new run replaces that browser's campaign record.
 
+## Make and play mods
+
+Open **Mods** on the title screen to import a JSON expedition or play **Dead Letter Office**, a two-level sample. Mods have independent checkpoints. The [modding guide](https://tenthousandonehundred.github.io/backrooms-after-hours/modding.html) includes a working first room, the tile alphabet, supported monsters, and the full marker reference. Edit the [sample file](public/mods/dead-letter.json) to build and share your own expedition.
+
 ## Run locally
 
 Use Node.js 24 and npm.
