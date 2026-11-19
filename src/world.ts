@@ -1,3 +1,4 @@
+import { makeResident } from './residents';
 import * as THREE from 'three';
 import type { Stage } from './campaign';
 import { hash, styleFor, texture, type Finish } from './world-materials';
@@ -893,6 +894,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     objects.set(spec.id, group);
     root.add(group);
   }
+  const residents = (stage.residents ?? []).map(site => makeResident(site, TILE, h));
+  for (const resident of residents) root.add(resident.mesh);
   const entity = stage.threat ? makeEntity(kit, stage.threat.kind) : null;
   const entityHeightScale = entity?.scale.y ?? 1;
   if (entity && stage.threat) {
@@ -1009,6 +1012,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     daySky = color('#8bafb3');
   return {
     objects,
+    residents,
     entity,
     haunt,
     update(t: number, dt: number) {

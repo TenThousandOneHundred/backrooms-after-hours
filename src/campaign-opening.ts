@@ -17,11 +17,11 @@ export const opening = [
 ####...#.....#...###.#...##.###....#......#.####.#
 #..2...#..K..#....T..#...##...##.D.####...#...J..#
 #....###.....#####.......####....D......####.....#
-#......#..L..#....###.##.##..D...D.###.....#.###.#
-#..##..#.....#....#...##.##......D...#..F..#...#.#
-#..##....###......#......##..#####...#..3......#.#
+#......#..L.%#....###.##.##..D...D.###.....#.###.#
+#..##..#.....#....#...##.##......D...#.&F..#...#.#
+#..##....###......#......##..#####...#..3.%....#.#
 #.....#H.###.#....#...#.###..#...#...########..#.#
-#..4..#......##.......#..##......#....D.D......#.#
+#..4.&#......##.......#..##......#....D.D......#.#
 ###.###.##....#..##...#..##..#...####......###...#
 #...#...#...W.#..##..........#..........#....#...#
 #.......#..@.....#...N...##..G...#####..#........#
@@ -49,7 +49,7 @@ export const opening = [
       H: hide('Climb inside the grey service locker'),
       T: hide('Hide beneath the abandoned drafting desk', 'desk'),
       A: note('Records / night shift', 'Every incoming call is logged under your name. The last entry is still wet.','sign'),
-      G: note('East telephone exchange', 'Records is at the north end. The red emergency phone is in Dispatch.','sign'),
+      G: note('East telephone exchange', 'Records is north. Someone scratched a second message below it: “When the ceiling knocks twice, get low. When the faces sing, look at the floor.”','sign'),
       F: act('Lift the red receiver', 'exchange-call', 'telephone', 'Your own voice whispers from the receiver. “Put it down. It heard you.”'),
       J: hide('Slip into the switchboard cabinet'),
       D: prop('desk'),
@@ -431,7 +431,7 @@ export const opening = [
 ######################
 #1...#2...#...3.#...E#
 #....#....#.....#.##.#
-#...................!#
+#.......%...........!#
 ####.####.###.###.##.#
 #@....K....H....#....#
 ######################`,

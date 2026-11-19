@@ -297,7 +297,8 @@ export async function runRoute({ lobbyOnly = false } = {}) {
       }
       const dx = tx - game.x,
         dz = tz - game.z;
-      const crouch = ['wretch', 'crawler', 'camera'].includes(game.stage.threat?.kind);
+      const crouch = ['wretch', 'crawler', 'camera'].includes(game.stage.threat?.kind) ||
+        /Two knocks|Bellwether listening/.test(game.residentHint);
       let heading = Math.atan2(dx, -dz);
       if (game.encounter && game.grace <= 0 && !crouch) {
         const ex = game.encounter.x * TILE - game.x,
@@ -328,7 +329,8 @@ export async function runRoute({ lobbyOnly = false } = {}) {
         offset = Math.round(angleDelta(heading - toward) / (Math.PI / 4));
         if (!game.state.flashlight && game.has('torch')) press('KeyF');
       }
-      look(heading - (offset * Math.PI) / 4);
+      const avert = game.residentHint.includes('look away');
+      look(heading - (offset * Math.PI) / 4, avert ? -1.18 : 0);
       hold('KeyW', Math.cos((offset * Math.PI) / 4) > 0.35);
       hold('KeyS', Math.cos((offset * Math.PI) / 4) < -0.35);
       hold('KeyD', Math.sin((offset * Math.PI) / 4) > 0.35);

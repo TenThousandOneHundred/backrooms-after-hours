@@ -195,6 +195,18 @@ export class Soundscape {
       this.sound(610, 170, 0.075, 0.1, 0.08, 'noise');
     }
   }
+  residentCue(cue: 'harmony' | 'knock' | 'listen' | 'toll', pan: number) {
+    if (cue === 'harmony') {
+      for (const pitch of [211, 267, 315]) this.sound(pitch, pitch * 1.09, 1.1, .12, pan, 'sine');
+    } else if (cue === 'knock') {
+      for (const delay of [0, .39]) this.sound(175, 48, .19, .43, pan, 'triangle', delay);
+    } else if (cue === 'listen') {
+      this.sound(1480, 1010, .34, .19, pan, 'noise');
+    } else {
+      this.sound(308, 293, 1.45, .34, pan, 'sine');
+      this.sound(718, 655, .83, .10, pan, 'triangle');
+    }
+  }
   inhale() {
     this.sound(340, 2100, 0.54, 0.28, -0.15, 'noise');
     this.sound(68, 136, 0.58, 0.20, 0.12, 'sawtooth');

@@ -1,3 +1,4 @@
+import type { ResidentSite } from './resident-behavior';
 import type { Challenge } from './campaign-challenges';
 export type Theme = string;
 export type ObjKind = 'pickup' | 'switch' | 'code' | 'exit' | 'ending' | 'note' | 'hide';
@@ -20,6 +21,7 @@ export type GameObject = {
 };
 export type Prop = { x: number; z: number; model: string; color?: number; label?: string; rotation?: number };
 export type Stage = {
+  residents?: ResidentSite[];
   id: string;
   name: string;
   label: string;
@@ -60,6 +62,7 @@ export function stage(
   const map: string[] = [],
     objects: GameObject[] = [],
     props: Prop[] = [];
+  const residents: ResidentSite[] = [];
   let spawn: [number, number] | undefined;
   let threat: Stage['threat'];
   const counts = new Map<string, number>();
@@ -67,6 +70,10 @@ export function stage(
     const row = [...rows[z].padEnd(width, '#')]
       .map((tile, x) => {
         if (tile === '#' || tile === '.' || tile === '|') return tile;
+        if (tile === '&' || tile === '%') {
+          residents.push({ x, z, kind: tile === '&' ? 'bellwether' : 'veil' });
+          return '.';
+        }
         if (tile === '~') return '!';
         if (tile === '@') {
           if (spawn) throw new Error(id + ' has duplicate spawn');
@@ -105,7 +112,7 @@ export function stage(
   };
   if (!sightLength(facing))
     facing = [0, Math.PI / 2, Math.PI, -Math.PI / 2].sort((a, b) => sightLength(b) - sightLength(a))[0];
-  return { id, label, name, theme, description, objective, map, spawn, facing, objects, props, threat };
+  return { id, label, name, theme, description, objective, map, spawn, facing, objects, props, threat, residents };
 }
 
 export const item = (

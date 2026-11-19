@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+export { loadResidents } from './residents';
 export { loadBacteria } from './bacteria';
 import { ENDINGS, START, stages, type GameObject, type Stage } from './campaign';
 import { buildWorld, terrainHeight, TILE } from './world';
@@ -121,6 +122,7 @@ export class Game {
   private nextBeat = 0;
   private lobbyWarning = -1;
   private nextRing = 0;
+  private residentHint = '';
   private nextLockerScrape = 0;
   private receiverScareAt = -1;
   private phone?: GameObject;
@@ -235,6 +237,7 @@ export class Game {
     this.enemyWasVisible = false;
     this.lobbyWarning = -1;
     this.nextRing = 0;
+    this.residentHint = '';
     this.nextLockerScrape = 0;
     this.receiverScareAt = -1;
     this.phone = stage.objects.find(o => o.model === 'telephone');
@@ -722,7 +725,7 @@ export class Game {
     const hud = {
       stage: this.stage.id,
       label: this.stage.label,
-      objective: this.stage.objective ?? this.stage.description,
+      objective: this.residentHint || this.stage.objective || this.stage.description,
       prompt,
       stamina: Math.round(this.state.stamina),
       sanity: Math.round(this.state.sanity),
@@ -984,7 +987,9 @@ export class Game {
       }
       this.closeEncounter(offDuty);
     }
-    const danger = this.encounter?.danger ?? 0;
+    const residentDanger = this.updateResidents(dt, distance, crouched);
+    if (this.mode === 'death') return;
+    const danger = Math.max(residentDanger, this.encounter?.danger ?? 0);
     const sanityDelta = this.hidden ? 0.75 : tile === '!' ? -11 : danger > 0.56 ? -2.2 * danger : -0.016;
     this.state.sanity = clamp(this.state.sanity + sanityDelta * dt, 0, 100);
     if (this.state.sanity === 0) {
@@ -1038,6 +1043,43 @@ export class Game {
       if (distance > 0.001 || this.keys.size || danger > 0.1) this.persist();
     }
   }
+  private updateResidents(dt: number, moved: number, crouched: boolean) {
+    let danger = 0;
+    this.residentHint = '';
+    for (const { site, mesh, behavior, animate } of this.world?.residents ?? []) {
+      const veil = site.kind === 'veil';
+      const dx = this.x - mesh.position.x, dz = this.z - mesh.position.z;
+      const range = Math.hypot(dx, dz);
+      const near = !this.hidden && this.grace <= 0 && range < (veil ? 12 : 8) &&
+        clearSight(this.stage, this.x / TILE, this.z / TILE, site.x, site.z);
+      this.vector.copy(mesh.position);
+      this.vector.y += veil ? .13 : -.9;
+      this.vector.sub(this.camera.position).normalize();
+      const watching = this.camera.getWorldDirection(this.direction).dot(this.vector) > 0.94;
+      const event = behavior.update(dt, near, watching, (moved > .001 && !crouched) || !this.grounded);
+      animate(this.time, Math.atan2(dx, dz));
+      const pan = (dx * -Math.cos(this.yaw) - dz * Math.sin(this.yaw)) / Math.max(1, range);
+      if (event === 'warn') this.sound.residentCue(veil ? 'harmony' : 'knock', pan);
+      if (event === 'listen') this.sound.residentCue('listen', pan);
+      if (event === 'toll') {
+        this.sound.residentCue('toll', pan);
+        this.encounter?.investigate(site.x, site.z);
+      }
+      if (event === 'capture') {
+        this.callbacks.scare?.({ kind: site.kind, lethal: true, frame: this.contactFrame(site.kind, mesh) });
+        this.die(veil ? 'The Veil caught your gaze. Turn away when its voices rise.' :
+          'The Bellwether heard you. After the knocks, stand still or crouch-walk until it tolls.');
+        return 1;
+      }
+      if (behavior.phase === 'warning' || behavior.phase === 'listening') {
+        const hint = veil ? 'The Veil • look away from the faces' : behavior.phase === 'warning' ?
+          'Two knocks • get low before it listens' : 'Bellwether listening • hold still or crouch-walk';
+        this.residentHint = this.residentHint ? this.residentHint + ' / ' + hint : hint;
+        danger = Math.max(danger, Math.min(1, .28 + behavior.exposure / (veil ? 2.2 : .7)));
+      }
+    }
+    return danger;
+  }
   private updateExchange() {
     const phone = this.phone!;
     if (this.receiverScareAt >= 0 && this.time >= this.receiverScareAt) {
@@ -1073,14 +1115,13 @@ export class Game {
     this.world?.haunt(event, this.camera);
     this.callbacks.haunt?.(event);
   }
-  private contactFrame(kind: string): string | undefined {
-    const mesh = this.world?.entity;
+  private contactFrame(kind: string, mesh: THREE.Object3D | null | undefined = this.world?.entity): string | undefined {
     if (!mesh || ['smiler', 'hound'].includes(kind)) return;
     const camera = new THREE.PerspectiveCamera(66, this.camera.aspect, 0.06, 100),
       bounds = new THREE.Box3().setFromObject(mesh);
     const size = bounds.getSize(new THREE.Vector3()),
       head = bounds.getCenter(new THREE.Vector3());
-    head.y = bounds.min.y + size.y * 0.73;
+    head.y = bounds.min.y + size.y * (kind === 'bellwether' ? .36 : .73);
     if (kind === 'bacteria') mesh.getObjectByName('Skull')?.getWorldPosition(head);
     const facing = mesh.getWorldDirection(new THREE.Vector3());
     facing.y = 0;

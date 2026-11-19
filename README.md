@@ -10,6 +10,8 @@ The game uses original, condensed layouts that recreate the campaign progression
 
 ![The playable yellow lobby, seen from the player’s perspective](docs/lobby.webp)
 
+In the Lobby, the Bacteria shares its hunting ground with two other creatures. The **Veil** sings when you look into its floating masks. Turn away or break sight to escape its hold. The ceiling-dwelling **Bellwether** knocks twice before listening. Stand still or crouch-walk until it tolls. The toll draws the roaming hunter toward the bell, giving you a chance to slip past. The masks also appear in the guest wing, and a Bellwether hangs in the archive.
+
 ## Controls
 
 | Action | Input |
@@ -47,7 +49,7 @@ The GitHub Pages workflow runs the campaign tests and TypeScript build, then dep
 
 Created as an unofficial fan game. *Escape the Backrooms* is the gameplay reference by Fancy Games and Blackbird Interactive, published by Secret Mode. The story route was cross-checked against a [recorded solo playthrough](https://www.youtube.com/watch?v=JSLfVceuQQU), a [campaign guide](https://steamcommunity.com/sharedfiles/filedetails/?id=2917649860), and the [publisher's Level 421 update](https://wearesecretmode.com/escape-the-backrooms-patch-notes).
 
-The Bacteria uses a skinned Blender model with painted vertex colors, a packed hide normal map, and six skeletal animations for listening, stalking, chasing, winding up, striking, and recovering. Its fatal close-up comes from the live 3D model. The editable [Blender source](art/Bacteria.blend) and [browser model](public/models/bacteria.glb) are included. The environments, other creatures, and sound are procedural. OpenAI ImageGen was used for the title artwork and the Hound and Smiler portraits. Three.js is distributed under the [MIT license](public/licenses/Three.txt). Barlow Condensed and IBM Plex Mono are bundled under the [Barlow](public/licenses/Barlow-Condensed.txt) and [IBM Plex](public/licenses/IBM-Plex-Mono.txt) SIL Open Font Licenses.
+The Bacteria uses a skinned Blender model with painted vertex colors, a packed hide normal map, and six skeletal animations for listening, stalking, chasing, winding up, striking, and recovering. Its fatal close-up comes from the live 3D model. The editable [Blender source](art/Bacteria.blend) and [browser model](public/models/bacteria.glb) are included. The Veil and Bellwether share a separate [Blender source file](art/Residents.blend). The environments, remaining creatures, and sound are procedural. OpenAI ImageGen was used for the title artwork and the Hound and Smiler portraits. Three.js is distributed under the [MIT license](public/licenses/Three.txt). Barlow Condensed and IBM Plex Mono are bundled under the [Barlow](public/licenses/Barlow-Condensed.txt) and [IBM Plex](public/licenses/IBM-Plex-Mono.txt) SIL Open Font Licenses.
 
 ## Playability checks
 
