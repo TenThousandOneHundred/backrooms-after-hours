@@ -936,6 +936,8 @@ export class Game {
         (this.stage.threat?.kind === 'camera' && this.has('office-camera')) ||
         (this.stage.id === 'outpost' && this.has('cured-agent'));
       this.alarmTime = Math.max(0, this.alarmTime - dt);
+      const previousX = this.encounter.x, previousZ = this.encounter.z;
+      const wasWinding = this.encounter.winding;
       this.encounter.tick(
         dt,
         this.x / TILE,
@@ -950,12 +952,18 @@ export class Game {
         offDuty ? 1 : this.grace,
         this.alarmTime > 0 ? this.stage.objects.find((o) => o.gives?.includes('archive-alarm')) : undefined,
       );
+      if (this.encounter.winding && !wasWinding) {
+        this.sound.inhale();
+        this.world?.haunt('flicker', this.camera);
+      }
       const mesh = this.world?.entity;
       if (mesh) {
         if (this.stage.id === 'village' || this.stage.id === 'lobby') mesh.visible = !offDuty;
         mesh.position.x = this.encounter.x * TILE;
         mesh.position.z = this.encounter.z * TILE;
         mesh.rotation.y = this.encounter.angle;
+        const speed = Math.hypot(this.encounter.x - previousX, this.encounter.z - previousZ) * TILE / Math.max(dt, 0.001);
+        mesh.userData.pose?.(this.time, dt, speed, this.encounter.winding, this.encounter.lunging);
       }
       if (this.encounter.contact && this.stage.threat?.kind === 'camera') {
         if (!this.has('office-camera')) {

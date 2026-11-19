@@ -62,7 +62,7 @@ type Profile = {
   chase?: boolean;
 };
 const profiles: Record<string, Profile> = {
-  bacteria: { sight: 7, hearing: 3.3, speed: 2.6, memory: 3 },
+  bacteria: { sight: 8, hearing: 4.2, speed: 3.05, memory: 4.5 },
   skinstealer: { sight: 7, hearing: 2.5, speed: 2.85, memory: 4 },
   smiler: { sight: 13, hearing: 5.6, speed: 3.55, memory: 5 },
   hound: { sight: 6, hearing: 4.8, speed: 3.5, memory: 3, gaze: 'retreat' },
@@ -89,6 +89,9 @@ export class Encounter {
   contact = false;
   private stalkClock = 10;
   private pursuitSeconds = 0;
+  private recovery = 0;
+  get winding() { return this.pursuitSeconds >= 1.1 && this.pursuitSeconds < 1.8; }
+  get lunging() { return this.pursuitSeconds >= 1.8; }
   private memory = 0;
   private repath = 0;
   private pause = 1.6;
@@ -156,8 +159,14 @@ export class Encounter {
       ((line && !p.blind && inView && distance < visual && (!sweepingCamera || !crouched)) ||
         (moving && distance < hearing) ||
         p.chase === true);
-    const exposed = this.stage.id === 'lobby' && sense && line && inView && distance < 6;
-    this.pursuitSeconds = exposed ? this.pursuitSeconds + dt : 0;
+    const exposed = this.kind === 'bacteria' && !distraction && sense && line && inView && distance < 6;
+    this.recovery = Math.max(0, this.recovery - dt);
+    if (this.lunging && !exposed) this.recovery = 3;
+    this.pursuitSeconds = exposed && this.recovery === 0 ? this.pursuitSeconds + dt : 0;
+    if (this.pursuitSeconds >= 2.9) {
+      this.pursuitSeconds = 0;
+      this.recovery = 3;
+    }
     if (sense) {
       this.memory = p.memory;
       this.lastSeen = [Math.round(px), Math.round(pz)];
@@ -233,7 +242,7 @@ export class Encounter {
         tz = next[1] - this.z,
         len = Math.hypot(tx, tz);
       // A long uninterrupted sighting turns the slow stalk into a charge.
-      const speed = this.pursuitSeconds > 1.8 ? 4.35 : this.memory > 0 ? p.speed : p.speed * 0.32;
+      const speed = this.lunging ? 6.85 : this.winding ? 0.65 : this.memory > 0 ? p.speed : p.speed * 0.32;
       const dist = (dt * speed) / this.tileSize;
       if (len > 0.01) {
         this.angle = Math.atan2(tx, tz);
@@ -242,9 +251,9 @@ export class Encounter {
       }
       if (len <= dist + 0.012 && !centering && !direct) this.path.shift();
     }
-    if (distance < 0.4 && !distraction && !hidden && !retreat && this.memory > 0 && line) {
+    if (distance < (this.lunging ? 0.52 : 0.4) && !distraction && !hidden && !retreat && this.memory > 0 && line) {
       this.attack += dt;
-      if (this.attack > 0.38) this.contact = true;
+      if (this.attack > (this.lunging ? 0.12 : 0.38)) this.contact = true;
     } else this.attack = 0;
   }
 }

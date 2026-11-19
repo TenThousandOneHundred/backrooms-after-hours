@@ -195,6 +195,11 @@ export class Soundscape {
       this.sound(610, 170, 0.075, 0.1, 0.08, 'noise');
     }
   }
+  inhale() {
+    this.sound(340, 2100, 0.54, 0.28, -0.15, 'noise');
+    this.sound(68, 136, 0.58, 0.20, 0.12, 'sawtooth');
+    this.sound(140, 39, 0.23, 0.33, 0, 'triangle', 0.58);
+  }
   scrape(pan: number) {
     for (const [delay, pitch] of [[0, 1480], [0.27, 1270], [0.84, 1710]]) {
       this.sound(pitch, pitch * 0.31, 0.23, 0.22, pan, 'noise', delay);

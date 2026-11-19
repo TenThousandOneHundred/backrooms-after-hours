@@ -55,7 +55,7 @@ export const opening = [
       D: prop('desk'),
       W: note(
         'Pencil marks on a torn sleeve',
-        'It follows the noise of running feet. Turn two corners, go low, get inside something. I heard it scratching outside this locker for ten minutes.',
+        'It heard my running feet. It sucked in a breath and went still. Then it crossed the whole corridor. Next time I heard it, I cut around the corner before it could spring.',
       ),
       N: note(
         'Maintenance slip',
