@@ -1,3 +1,4 @@
+import { makeBacteria } from './bacteria';
 import * as T from 'three';
 import type { GameObject } from './campaign';
 
@@ -508,120 +509,13 @@ export function makeModel(k: ModelKit, s: Spec) {
   return g;
 }
 
-// The limb pivots carry their geometry, so the same figure can listen, stalk and lunge.
-function makeBacteria(k: ModelKit) {
-  const root = new T.Group();
-  function pivot(parent: T.Group, x: number, y: number, z: number) {
-    const joint = new T.Group();
-    joint.position.set(x, y, z);
-    parent.add(joint);
-    return joint;
-  }
-  const tar = '#282724', sinew = '#61554a', bone = '#ab997b', socket = '#151716';
-  const body = pivot(root, 0, 1.35, 0);
-  k.ball(body, tar, 0, 0.42, -0.03, 0.39, 0.87, 0.31);
-  k.rod(body, sinew, [0, -0.13, -0.08], [0.06, 1.05, 0.06], 0.07);
-  const head = pivot(body, 0.055, 1.04, 0.11);
-  // Swept cables share one mesh per joint. Uneven knots break the silhouette at a distance.
-  function filaments(parent: T.Group, count: number, path: (i: number, u: number) => number[], radius: number) {
-    const positions: number[] = [], indices: number[] = [];
-    const segments = 14, sides = 5;
-    for (let i = 0; i < count; i++) {
-      const points = Array.from({length: segments + 1}, (_, j) => new T.Vector3(...path(i, j / segments)));
-      const curve = new T.CatmullRomCurve3(points);
-      const frames = curve.computeFrenetFrames(segments, false);
-      const base = positions.length / 3;
-      for (let j = 0; j <= segments; j++) {
-        const center = curve.getPointAt(j / segments);
-        const r = radius * (0.55 + 0.45 * Math.sin(Math.PI * j / segments)) * (1 + i % 3 * 0.24);
-        for (let n = 0; n < sides; n++) {
-          const t = n * Math.PI * 2 / sides;
-          const v = center.clone().addScaledVector(frames.normals[j], r * Math.cos(t)).addScaledVector(frames.binormals[j], r * Math.sin(t));
-          positions.push(v.x, v.y, v.z);
-          if (j < segments) {
-            const x = base + j * sides + n, y = base + j * sides + (n+1)%sides;
-            indices.push(x,y,x+sides, y,y+sides,x+sides);
-          }
-        }
-      }
-    }
-    const geo = new T.BufferGeometry();
-    geo.setAttribute('position', new T.Float32BufferAttribute(positions,3));
-    geo.setIndex(indices); geo.computeVertexNormals(); k.geometries.push(geo);
-    parent.add(new T.Mesh(geo,k.get('#403b32')));
-  }
-  k.ball(body,tar,0,0,0,0.38,0.36,0.25);
-  k.ball(head,tar,0,0.10,0.09,0.38,0.43,0.31);
-  k.ball(head,socket,0,-0.065,0.197,0.25,0.25,0.12);
-  filaments(head, 31, (i,u)=>{
-    const t=i*2.399+u*(4.8+i%5), r=0.15+0.09*Math.sin(Math.PI*u)+0.048*Math.sin(5*t+i);
-    return [Math.cos(t)*r+0.09*u*u,-0.16+u*(0.48+(i%5)*0.035),0.045+Math.sin(t)*r*0.76];
-  },0.012);
-  filaments(body, 16, (i,u)=>{
-    const t=i*2.399+u*3.7, r=0.13+0.16*Math.sin(Math.PI*u);
-    return [r*Math.cos(t),-0.08+1.05*u,0.01+r*0.72*Math.sin(t)];
-  },0.014);
-  const jaw = pivot(head, 0, -0.06, 0.09);
-  const arms: T.Group[] = [], elbows: T.Group[] = [], legs: T.Group[] = [], knees: T.Group[] = [];
-  for (const side of [-1, 1]) {
-    k.rod(head, sinew, [side*0.16,0.22,0.06],[side*0.12,0.075,0.21],0.027);
-    k.rod(head, bone, [side*0.15, 0.12, 0.14], [side*0.088, -0.055, 0.24], 0.032);
-    k.rod(jaw, bone, [side*0.12, 0.04, 0], [side*0.075, -0.16, 0.17], 0.027);
-    k.rod(jaw, bone, [side*0.075, -0.16, 0.17], [0,-0.18,0.18], 0.021);
-    for (let i=0; i<3; i++) {
-      const tooth = k.add(head, k.cone, '#d6c8ab', side*(0.034+i*0.03), -0.065, 0.233-i*0.009, 0.021, 0.075-i*0.012, 0.023);
-      tooth.rotation.z = Math.PI + side*0.14;
-    }
-    for (let i=0; i<6; i++) {
-      const y=0.24+i*0.105, width=0.18+0.11*Math.sin(i*0.48);
-      k.rod(body, sinew, [0,y+0.08,-0.12], [side*width,y,0], 0.031);
-      k.rod(body, i%2 ? sinew : bone, [side*width,y,0], [side*0.045,y-0.10,0.17], 0.019);
-    }
-    const hip=pivot(root,side*0.15,1.36,0), knee=pivot(hip,side*0.065,-0.66,0.11);
-    legs.push(hip); knees.push(knee);
-    k.rod(hip, tar,[0,0,0],[side*0.065,-0.66,0.11],0.074);
-    k.rod(knee, sinew,[0,0,0],[side*0.05,-0.62,-0.13],0.042);
-    k.ball(knee,tar,side*0.05,-0.63,-0.03,0.13,0.095,0.35);
-    const shoulder=pivot(body,side*0.3,0.78,0), elbow=pivot(shoulder,side*0.16,-0.73,-0.09);
-    arms.push(shoulder); elbows.push(elbow);
-    k.rod(body,tar,[0,0.81,-0.03],[side*0.31,0.78,0],0.07);
-    filaments(shoulder,5,(i,u)=>[side*0.16*u+0.071*Math.cos(i*2.4+u*6),-0.73*u,-0.09*u+0.064*Math.sin(i*2.4+u*6)],0.012);
-    filaments(hip,4,(i,u)=>[side*0.065*u+0.076*Math.cos(i*2.4+u*5),-0.66*u,0.11*u+0.07*Math.sin(i*2.4+u*5)],0.013);
-    const reach=side<0 ? 0.84 : 0.7;
-    k.rod(shoulder,tar,[0,0,0],[side*0.16,-0.73,-0.09],0.069);
-    k.rod(elbow,sinew,[0,0,0],[-side*0.04,-reach,0.16],0.041);
-    for(let i=0;i<4;i++) {
-      const tip=[side*(i-1.5)*0.05,-reach-0.21,0.22+i*0.016];
-      k.rod(elbow,tar,[-side*0.04,-reach,0.16],tip,0.017);
-      k.rod(elbow,bone,tip,[tip[0],tip[1]-0.07,tip[2]+0.10],0.01);
-    }
-  }
-  let phase=0;
-  root.userData.pose=(time:number, dt:number, speed:number, winding:boolean, lunging:boolean)=>{
-    phase+=speed*dt*3.9;
-    const stride=Math.min(1,speed/2.5);
-    body.rotation.x=lunging ? 0.63 : winding ? -0.18 : 0.12+0.045*Math.sin(phase)*stride;
-    head.rotation.z=0.21+0.12*Math.sin(time*1.8)+0.13*Math.pow(Math.max(0,Math.sin(time*3.4)),12);
-    head.rotation.x=-body.rotation.x*0.62;
-    jaw.rotation.x=lunging || winding ? -0.83 : -0.24-0.14*Math.sin(time*2.1);
-    for(let i=0;i<2;i++) {
-      const beat=Math.sin(phase+i*Math.PI);
-      legs[i].rotation.x=beat*stride*0.52;
-      knees[i].rotation.x=Math.max(0,-beat)*stride*0.56;
-      arms[i].rotation.x=lunging ? -1.32 : -beat*stride*0.44-0.12;
-      elbows[i].rotation.x=-0.12-Math.max(0,beat)*stride*0.42;
-    }
-  };
-  return root;
-}
-
 export function makeEntity(k: ModelKit, kind: string) {
   const g = new T.Group(),
     n = kind.toLowerCase();
   const b = (c: string, x: number, y: number, z: number, w: number, h: number, d: number, lit = true) =>
     k.ball(g, c, x, y, z, w, h, d, lit);
   const rod = (c: string, a: number[], u: number[], r: number) => k.rod(g, c, a, u, r);
-  if (/bact|wire|howler/.test(n)) return makeBacteria(k);
+  if (/bact|wire|howler/.test(n)) return makeBacteria();
   if (/smil/.test(n)) {
     b('#151b19', 0, 1.63, 0, 0.48, 0.58, 0.28);
     for (const side of [-1, 1]) {

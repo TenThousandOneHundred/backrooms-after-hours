@@ -420,7 +420,7 @@ export async function runRoute({ lobbyOnly = false } = {}) {
         throw Error('Attack did not produce a lethal jumpscare and death UI');
       const background = getComputedStyle(impact.querySelector('.attack-image')).backgroundImage;
       const src = background.match(/url\(["']?([^"')]+)/)?.[1];
-      if (!src || !src.endsWith('encounters/wire.webp')) throw Error('Missing Bacteria plate: ' + background);
+      if (!src?.startsWith('data:image/jpeg;base64,')) throw Error('Missing rendered Bacteria attack');
       const plate = new Image();
       plate.src = src;
       await plate.decode();
@@ -440,7 +440,7 @@ export async function runRoute({ lobbyOnly = false } = {}) {
         hunter: 'bacteria',
         closeDodge,
         deathTitle: 'You died',
-        plate: src,
+        plate: 'rendered Bacteria',
         platePixels: [plate.naturalWidth, plate.naturalHeight],
         savedPickup: rail.gives[0],
         peakDread: results.peakDread,

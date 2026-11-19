@@ -152,7 +152,7 @@ export class Horror {
   scare(hit: Attack) {
     const kind = hit.kind.toLowerCase();
     const plate = plates[kind];
-    const frame = plate ? base + plate + '.webp' : hit.frame;
+    const frame = hit.frame ?? (plate ? base + plate + '.webp' : undefined);
     const duration = hit.lethal ? 1080 : 370;
     clearTimeout(this.attackTimer);
     this.impact.className = '';

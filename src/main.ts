@@ -99,7 +99,8 @@ function refreshHome() {
 function loadRuntime() {
   if (!pendingLoad)
     pendingLoad = Promise.all([import('./game'), import('./campaign')])
-      .then(([g, c]) => {
+      .then(async ([g, c]) => {
+        await g.loadBacteria();
         runtime = g;
         campaign = c;
         refreshHome();

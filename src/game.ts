@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+export { loadBacteria } from './bacteria';
 import { ENDINGS, START, stages, type GameObject, type Stage } from './campaign';
 import { buildWorld, terrainHeight, TILE } from './world';
 import { Encounter, clearSight, tileAt } from './game-entity';
@@ -1074,16 +1075,17 @@ export class Game {
   }
   private contactFrame(kind: string): string | undefined {
     const mesh = this.world?.entity;
-    if (!mesh || ['smiler', 'bacteria', 'hound'].includes(kind)) return;
+    if (!mesh || ['smiler', 'hound'].includes(kind)) return;
     const camera = new THREE.PerspectiveCamera(66, this.camera.aspect, 0.06, 100),
       bounds = new THREE.Box3().setFromObject(mesh);
     const size = bounds.getSize(new THREE.Vector3()),
       head = bounds.getCenter(new THREE.Vector3());
     head.y = bounds.min.y + size.y * 0.73;
+    if (kind === 'bacteria') mesh.getObjectByName('Skull')?.getWorldPosition(head);
     const facing = mesh.getWorldDirection(new THREE.Vector3());
     facing.y = 0;
     facing.normalize();
-    const distance = clamp(size.y * 0.69, 1.1, 2.8);
+    const distance = kind === 'bacteria' ? 0.77 : clamp(size.y * 0.69, 1.1, 2.8);
     let eye = head.clone().addScaledVector(facing, distance);
     if (tileAt(this.stage, eye.x / TILE, eye.z / TILE) === '#') {
       const towardPlayer = new THREE.Vector3(this.x - head.x, 0, this.z - head.z).normalize();

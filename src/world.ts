@@ -1015,6 +1015,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
       clock.value = t;
       circuitAge += dt;
       apparitionAge += dt;
+      if (apparition.visible) apparition.userData.pose(t, dt, 0, false, false);
       if (circuitAge < 2.2) {
         const a = circuitAge;
         circuit.value =
@@ -1056,6 +1057,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     },
     dispose() {
       scene.remove(root);
+      apparition.userData.release();
+      entity?.userData.release?.();
       for (const m of instances) m.dispose();
       for (const g of geometries) g.dispose();
       for (const m of materials) m.dispose();
