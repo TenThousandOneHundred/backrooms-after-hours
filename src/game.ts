@@ -25,6 +25,8 @@ export type GameHUD = {
   stamina: number;
   sanity: number;
   items: string[];
+  voice: number;
+  heardVoice: boolean;
 };
 type Screen = 'playing' | 'pause' | 'death' | 'ending' | 'code';
 export type GameCallbacks = {
@@ -33,6 +35,7 @@ export type GameCallbacks = {
   screen: (s: Screen, detail?: string) => void;
   scare?: (encounter: { kind: string; lethal: boolean; frame?: string }) => void;
   dread?: (intensity: number) => void;
+  microphone?: (dt: number) => number;
   haunt?: (event: 'flicker' | 'steps' | 'breath' | 'silhouette') => void;
 };
 export function readSummary(): { stage: string; endings: string[] } | null {
@@ -125,6 +128,8 @@ export class Game {
   private lobbyWarning = -1;
   private nextRing = 0;
   private residentHint = '';
+  private voice = 0;
+  private heardTime = 0;
   private nextLockerScrape = 0;
   private receiverScareAt = -1;
   private phone?: GameObject;
@@ -243,6 +248,7 @@ export class Game {
     this.lobbyWarning = -1;
     this.nextRing = 0;
     this.residentHint = '';
+    this.heardTime = 0;
     this.nextLockerScrape = 0;
     this.receiverScareAt = -1;
     this.phone = stage.objects.find(o => o.model === 'telephone');
@@ -325,6 +331,10 @@ export class Game {
     if (next === 'pause' || next === 'playing') this.challenge.setPaused(next === 'pause');
     else this.challenge.clear();
     this.mode = next;
+    if (next !== 'playing') {
+      this.voice = 0;
+      this.heardTime = 0;
+    }
     this.keys.clear();
     this.dragging = false;
     if (next !== 'playing' && document.pointerLockElement === this.canvas) document.exitPointerLock();
@@ -735,6 +745,8 @@ export class Game {
       stamina: Math.round(this.state.stamina),
       sanity: Math.round(this.state.sanity),
       items,
+      voice: Math.round(this.voice * 100),
+      heardVoice: this.heardTime > 0,
     };
     const encoded = JSON.stringify(hud);
     if (encoded !== this.lastHUD) {
@@ -862,6 +874,7 @@ export class Game {
     this.time += dt;
     this.activeClock += dt;
     this.grace = Math.max(0, this.grace - dt);
+    this.heardTime = Math.max(0, this.heardTime - dt);
     if (this.keys.has('ArrowLeft')) this.yaw -= 1.9 * this.settings.sensitivity * dt;
     if (this.keys.has('ArrowRight')) this.yaw += 1.9 * this.settings.sensitivity * dt;
     const f =
@@ -928,14 +941,17 @@ export class Game {
     if (this.phone) this.updateExchange();
     if (this.encounter) {
       const day = this.stage.id === 'village' && (this.time % 80 < 32 || this.time % 80 >= 69);
-      if (
-        this.stage.id === 'lobby' &&
-        this.lobbyWarning < 0 &&
-        (this.time > 42 || this.state.flags.some((f) => /^rail\d/.test(f)))
-      ) {
-        this.lobbyWarning = this.time;
-        this.haunt('steps');
-        this.nextHaunt = Math.max(this.nextHaunt, this.activeClock + 27);
+      if (this.stage.id === 'lobby' && this.lobbyWarning < 0) {
+        const heard = this.grace <= 0 && this.encounter.canHearVoice(this.voice, this.x / TILE, this.z / TILE, this.hidden);
+        if (heard || this.time > 42 || this.state.flags.some(f => /^rail\d/.test(f))) {
+          this.lobbyWarning = this.time;
+          this.haunt('steps');
+          this.nextHaunt = Math.max(this.nextHaunt, this.activeClock + 27);
+          if (heard) {
+            this.encounter.investigate(Math.round(this.x / TILE), Math.round(this.z / TILE));
+            this.heardTime = 0.65;
+          }
+        }
       }
       const lurking =
         this.stage.id === 'lobby' && (this.lobbyWarning < 0 || this.time - this.lobbyWarning < 9);
@@ -960,7 +976,9 @@ export class Game {
         this.state.flashlight,
         offDuty ? 1 : this.grace,
         this.alarmTime > 0 ? this.stage.objects.find((o) => o.gives?.includes('archive-alarm')) : undefined,
+        this.voice,
       );
+      if (this.encounter.heardVoice) this.heardTime = 0.65;
       if (this.encounter.winding && !wasWinding) {
         this.sound.inhale();
         this.world?.haunt('flicker', this.camera);
@@ -1061,7 +1079,9 @@ export class Game {
       this.vector.y += veil ? .13 : -.9;
       this.vector.sub(this.camera.position).normalize();
       const watching = this.camera.getWorldDirection(this.direction).dot(this.vector) > 0.94;
-      const event = behavior.update(dt, near, watching, (moved > .001 && !crouched) || !this.grounded);
+      const audible = this.voice >= .1 && range <= 2 + this.voice * 7;
+      if (!veil && near && audible && behavior.phase === 'listening') this.heardTime = .65;
+      const event = behavior.update(dt, near, watching, audible || (moved > .001 && !crouched) || !this.grounded);
       animate(this.time, Math.atan2(dx, dz));
       const pan = (dx * -Math.cos(this.yaw) - dz * Math.sin(this.yaw)) / Math.max(1, range);
       if (event === 'warn') this.sound.residentCue(veil ? 'harmony' : 'knock', pan);
@@ -1073,7 +1093,7 @@ export class Game {
       if (event === 'capture') {
         this.callbacks.scare?.({ kind: site.kind, lethal: true, frame: this.contactFrame(site.kind, mesh) });
         this.die(veil ? 'The Veil caught your gaze. Turn away when its voices rise.' :
-          'The Bellwether heard you. After the knocks, stand still or crouch-walk until it tolls.');
+          'The Bellwether heard you. After the knocks, keep your voice down and stand still or crouch-walk until it tolls.');
         return 1;
       }
       if (behavior.phase === 'warning' || behavior.phase === 'listening') {
@@ -1201,6 +1221,7 @@ export class Game {
     const elapsed = clamp((now - this.lastFrame) / 1000, 0, 0.14);
     this.lastFrame = now;
     if (this.mode === 'playing') {
+      this.voice = this.callbacks.microphone?.(elapsed) ?? 0;
       const n = Math.max(1, Math.ceil(elapsed / 0.032));
       for (let i = 0; i < n && this.mode === 'playing'; i++) this.step(elapsed / n);
       if (this.mode === 'playing') this.renderer.render(this.scene, this.camera);

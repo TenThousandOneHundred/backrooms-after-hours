@@ -1,6 +1,7 @@
 import './style.css';
 import { icon } from './icons';
 import { Horror } from './horror';
+import { VoiceInput } from './voice-input';
 import { parseMod, MOD_LIMIT, type ModPack } from './mods';
 import { loadProgress } from './game-state';
 import type { Game, GameCallbacks, GameSettings } from './game';
@@ -71,6 +72,27 @@ function notify(message: string) {
   node.hidden = false;
   window.clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => (node.hidden = true), 4300);
+}
+let voiceEnabled = false;
+const mic = new VoiceInput(message => {
+  voiceEnabled = false;
+  refreshMic();
+  notify(message);
+});
+function refreshMic(volume = 0, heard = false) {
+  const live = mic.state === 'live';
+  el('mic-label').textContent = live ? (heard ? 'Heard you' : 'Mic live') :
+    mic.state === 'starting' ? 'Connecting…' : 'Mic off';
+  const meter = el<HTMLMeterElement>('mic-level');
+  meter.value = live ? volume : 0;
+  meter.hidden = !live;
+  el('mic-hud').classList.toggle('heard', live && heard);
+}
+function syncMic() {
+  if (voiceEnabled && mode === 'playing' && !document.hidden) {
+    void mic.start().then(() => refreshMic());
+  } else mic.stop();
+  refreshMic();
 }
 function updateSound() {
   const btn = el<HTMLButtonElement>('sound');
@@ -153,6 +175,7 @@ function titleScreen() {
   hud.hidden = true;
   home.hidden = false;
   mode = 'home';
+  syncMic();
   hidePanel();
   refreshHome();
   el('toast').hidden = true;
@@ -172,6 +195,7 @@ const controls = [
   ['Look', ['Mouse']],
   ['Interact / read', ['E']],
   ['Flashlight / lidar', ['F']],
+  ['Toggle microphone for monster hearing', ['M']],
   ['Sprint / crouch', ['Shift', 'C']],
   ['Jump', ['Space']],
   ['Field inventory', ['Tab']],
@@ -253,7 +277,10 @@ function settingsMenu() {
       '<div class="setting"><label for="quality">Graphics quality</label><select id="quality"><option value="high">High</option><option value="standard">Standard</option></select></div>' +
       '<div class="setting"><label for="head-bob">Head movement</label><input type="checkbox" id="head-bob" ' +
       (settings.headBob ? 'checked' : '') +
-      '></div><div class="panel-buttons">' +
+      '></div><div class="setting"><label for="voice-enabled">Monsters hear my microphone</label>' +
+      '<input type="checkbox" id="voice-enabled" aria-describedby="voice-help"' + (voiceEnabled ? ' checked' : '') + '></div>' +
+      '<p class="panel-text" id="voice-help">Your mic is active during play. Louder sounds carry farther. Audio stays on this device. Press M to toggle.</p>' +
+      '<div class="panel-buttons">' +
       actions('settings-done', 'Done', 'check', true) +
       '</div>',
     closeSubmenu,
@@ -286,6 +313,8 @@ function settingsMenu() {
     settings.headBob = bob.checked;
     persistSettings();
   };
+  const voiceToggle = el<HTMLInputElement>('voice-enabled');
+  voiceToggle.onchange = () => { voiceEnabled = voiceToggle.checked; };
   wire('settings-done', closeSubmenu);
 }
 function pauseMenu() {
@@ -332,11 +361,13 @@ const endingText: Record<string, string> = {
   final: 'The arcade lights come up. For the first time, someone is here to open the door.',
 };
 const callbacks: GameCallbacks = {
+  microphone: dt => mic.read(dt),
   haunt: (event) => horror.haunt(event),
   dread: (level) => horror.dread(level),
   scare: (encounter) => horror.scare(encounter),
   message: notify,
   hud: (h) => {
+    refreshMic(h.voice, h.heardVoice);
     el('hud-label').textContent = h.label;
     el('hud-name').textContent = (activeMod?.stages ?? campaign?.stages)?.[h.stage]?.name ?? h.stage;
     el('hud-objective').textContent = h.objective;
@@ -348,9 +379,14 @@ const callbacks: GameCallbacks = {
     inventory = h.items;
   },
   screen: (screen, detail) => {
-    if (screen !== 'playing') horror.quiet();
+    if (screen !== 'playing') {
+      mic.stop();
+      refreshMic();
+      horror.quiet();
+    }
     if (screen === 'playing') {
       mode = 'playing';
+      syncMic();
       home.hidden = true;
       hud.hidden = false;
       hidePanel();
@@ -588,10 +624,19 @@ wire('fullscreen', () => {
 });
 wire('hud-bag', showInventory);
 wire('hud-pause', () => game?.pause());
+window.addEventListener('pagehide', () => mic.stop());
 document.addEventListener('fullscreenchange', updateFullscreen);
 document.addEventListener(
   'keydown',
   (event) => {
+    if (mode === 'playing' && event.code === 'KeyM' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      if (!event.repeat) {
+        voiceEnabled = !voiceEnabled;
+        syncMic();
+      }
+      return;
+    }
     if (event.code === 'Tab' && (mode === 'playing' || mode === 'inventory')) {
       event.preventDefault();
       event.stopImmediatePropagation();

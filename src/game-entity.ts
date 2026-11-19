@@ -90,6 +90,7 @@ export class Encounter {
   angle = 0;
   danger = 0;
   contact = false;
+  heardVoice = false;
   private stalkClock = 10;
   private pursuitSeconds = 0;
   private recovery = 0;
@@ -104,10 +105,11 @@ export class Encounter {
   private lastSeen: Cell;
   private profile: Profile;
   private kind: string;
-  constructor(
-    private stage: Stage,
-    private tileSize: number,
-  ) {
+  private stage: Stage;
+  private tileSize: number;
+  constructor(stage: Stage, tileSize: number) {
+    this.stage = stage;
+    this.tileSize = tileSize;
     const threat = stage.threat!;
     this.x = threat.x;
     this.z = threat.z;
@@ -120,6 +122,13 @@ export class Encounter {
       this.profile.speed = 4.75;
     }
     if (threat.speed) this.profile.speed = threat.speed;
+  }
+  canHearVoice(volume: number, px: number, pz: number, hidden: boolean) {
+    if (volume < 0.1 || this.profile.hearing === 0) return false;
+    const radius = this.profile.hearing * (0.45 + 2.15 * volume) * (hidden ? 0.42 : 1);
+    const distance = Math.hypot(this.x - px, this.z - pz);
+    if (distance > radius) return false;
+    return distance <= radius * 0.52 || clearSight(this.stage, this.x, this.z, px, pz);
   }
   investigate(x: number, z: number) {
     this.lastSeen = [x, z];
@@ -139,8 +148,12 @@ export class Encounter {
     flashlight: boolean,
     grace: number,
     distraction?: { x: number; z: number },
+    voice = 0,
   ) {
     this.contact = false;
+    const wasHearingVoice = this.heardVoice;
+    this.heardVoice = grace <= 0 && !distraction && this.canHearVoice(voice, px, pz, hidden);
+    if (this.heardVoice && !wasHearingVoice) this.repath = 0;
     const dx = this.x - px,
       dz = this.z - pz,
       distance = Math.hypot(dx, dz);
@@ -170,11 +183,11 @@ export class Encounter {
       this.pursuitSeconds = 0;
       this.recovery = 3;
     }
-    if (sense) {
+    if (sense || this.heardVoice) {
       this.memory = p.memory;
       this.lastSeen = [Math.round(px), Math.round(pz)];
     } else this.memory = Math.max(0, this.memory - dt);
-    if (hidden) this.memory = 0;
+    if (hidden && !this.heardVoice) this.memory = 0;
     if (distraction) {
       this.memory = 2;
       this.lastSeen = [distraction.x, distraction.z];
@@ -227,7 +240,7 @@ export class Encounter {
     const ax = Math.round(this.x),
       az = Math.round(this.z);
     const direct =
-      !distraction && sense && !retreat && line && Math.round(px) === ax && Math.round(pz) === az;
+      !distraction && !hidden && (sense || this.heardVoice) && !retreat && line && Math.round(px) === ax && Math.round(pz) === az;
     // Reach the cell centre before making a new turn after re-routing mid-tile.
     let next = direct ? [px, pz] : this.path[0];
     let centering = false;

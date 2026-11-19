@@ -21,10 +21,17 @@ In the Lobby, the Bacteria shares its hunting ground with two other creatures. T
 | Sprint / crouch / jump | Shift / C or Ctrl / Space |
 | Interact, pick up, or hide | E |
 | Flashlight or lidar in Lights Out | F |
+| Toggle microphone for monster hearing | M |
 | Almond water / energy bar | 1 / 2 |
 | Inventory / pause | Tab / Esc |
 
 The field manual on the title screen lists controls and ending discoveries. Continue expedition returns to the latest checkpoint. Starting a new run replaces that browser's campaign record.
+
+## Microphone hearing
+
+Press **M** during play and allow microphone access, or enable **Monsters hear my microphone** in Settings before entering. The HUD meter shows your volume. **Heard you** means a nearby creature picked it up. Loud sounds reach farther, walls and lockers muffle them, and a roaming hunter can follow your last audible position even when you stand still. Stay quiet after the Bellwether’s warning knocks.
+
+The browser measures volume locally. The mic starts off, stops when you pause or leave play, and can be toggled at any time with **M**. Use headphones to keep sound from your speakers out of the mic.
 
 ## Make and play mods
 

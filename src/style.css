@@ -809,3 +809,6 @@ select,
 .mod-selection span { color: #c4c5b8; font-size: 13px; }
 .mod-status { color: var(--amber); font-size: 13px; overflow-wrap: anywhere; }
 .mod-status:empty { display: none; }
+
+#mic-hud.heard { color: #ffab84; }
+#mic-hud kbd { font-size: 9px; min-width: 15px; padding: 0 3px; }
