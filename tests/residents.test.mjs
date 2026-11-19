@@ -37,3 +37,20 @@ test('the Lobby hosts all three threats and the guest wing and archive have mixe
   assert.equal(stages.hotelrooms.residents[0].kind, 'veil');
   assert.equal(stages.library.residents[0].kind, 'bellwether');
 });
+
+test('the exported resident actions animate only joints of their own rig', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const data = await readFile(new URL('../public/models/residents.glb', import.meta.url));
+  const model = JSON.parse(data.toString('utf8', 20, 20 + data.readUInt32LE(12)));
+  const names = model.animations.map(a => a.name).sort();
+  assert.deepEqual(names, ['BellKnock', 'BellListen', 'BellRoost', 'BellToll', 'VeilDrift', 'VeilFixate']);
+  for (const clip of model.animations) {
+    const veil = clip.name.startsWith('Veil');
+    const skin = model.skins.find(s => s.joints.some(i => model.nodes[i].name === (veil ? 'Mask0' : 'Tongue')));
+    assert.ok(clip.channels.every(c => skin.joints.includes(c.target.node)));
+    const rotations = clip.channels.filter(c => c.target.path === 'rotation')
+      .map(c => model.nodes[c.target.node].name);
+    for (const part of veil ? ['Mask0', 'Mask1', 'Mask2', 'Tatter0'] : ['Tongue', 'Petal0', 'Petal9'])
+      assert.ok(rotations.includes(part), clip.name + ' missing ' + part);
+  }
+});

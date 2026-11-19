@@ -1,38 +1,56 @@
-import { Group } from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { AnimationMixer, LoopOnce, SkinnedMesh } from 'three';
+import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
+import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { ResidentBehavior, type ResidentSite } from './resident-behavior';
 
-let models: Group;
+let asset: GLTF;
 export async function loadResidents() {
-  models = (await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'models/residents.glb')).scene;
+  asset ??= await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'models/residents.glb');
 }
 
 export function makeResident(site: ResidentSite, tile: number, height: number) {
   const veil = site.kind === 'veil';
-  const mesh = models.getObjectByName(veil ? 'Veil' : 'Bellwether')!.clone(true);
+  const mesh = clone(asset.scene.getObjectByName(veil ? 'Veil' : 'Bellwether')!);
   mesh.position.set(site.x * tile, veil ? 1.85 : height - 0.04, site.z * tile);
-  const body = mesh.getObjectByName(veil ? 'VeilFaces' : 'BellThroat')!;
-  const fringe = mesh.getObjectByName(veil ? 'VeilHem' : 'BellFan')!;
-  const faces = veil ? [0, 1, 2].map(i => mesh.getObjectByName('Face' + i)!) : [];
   const behavior = new ResidentBehavior(site.kind);
-  function animate(t: number, yaw: number) {
+  const mixer = new AnimationMixer(mesh);
+  const idle = veil ? 'VeilDrift' : 'BellRoost';
+  const clips = asset.animations.filter(clip => clip.name.startsWith(veil ? 'Veil' : 'Bell'));
+  const actions = new Map(clips.map(clip => [clip.name, mixer.clipAction(clip)]));
+  for (const [name, action] of actions) {
+    if (name === idle) continue;
+    action.setLoop(LoopOnce, 1);
+    action.clampWhenFinished = true;
+  }
+  let active = actions.get(idle)!.play();
+  active.time = ((site.x * .31 + site.z * .17) % active.getClip().duration);
+  mixer.update(0);
+
+  function animate(dt: number, yaw: number) {
+    let name = idle;
     if (veil) {
       mesh.rotation.y = yaw;
-      body.position.y = fringe.position.y = Math.sin(t * 1.3) * .065;
-      body.rotation.z = .12 * Math.sin(t * 1.7) + behavior.exposure * .13;
-      body.position.z = behavior.exposure * .15;
-      faces.forEach((face, i) => {
-        face.rotation.x = .07 * Math.sin(t * 1.65 + i * 2.1) - .12 * behavior.exposure;
-        face.position.y = (i ? -.02 : .13) + .035 * Math.sin(t * 1.8 + i * 2);
-      });
-      fringe.rotation.y = .16 * Math.sin(t * 1.5);
-      fringe.scale.y = 1 + behavior.exposure * .18;
-    } else {
-      const open = behavior.phase === 'listening' ? 1 : behavior.phase === 'warning' ? .5 : 0;
-      const spread = 0.75 + open * .55 + .04 * Math.sin(t * (open ? 12 : 2));
-      fringe.scale.set(spread, 1 - .12 * open, spread);
-      body.rotation.z = Math.sin(t * (open ? 9 : 1.7)) * (.04 + open * .18);
+      if (behavior.phase === 'warning') name = 'VeilFixate';
+    } else if (behavior.phase === 'warning') name = 'BellKnock';
+    else if (behavior.phase === 'listening') name = 'BellListen';
+    else if (behavior.phase === 'quiet' && behavior.time < actions.get('BellToll')!.getClip().duration)
+      name = 'BellToll';
+    const next = actions.get(name)!;
+    if (active !== next) {
+      active.fadeOut(.075);
+      active = next.reset().fadeIn(.075).play();
     }
+    if (name === 'VeilFixate') {
+      // Averting your gaze unwinds the same keyed pose as exposure falls.
+      active.paused = true;
+      active.time = active.getClip().duration * Math.min(1, Math.max(0, (behavior.exposure - .25) / 1.65));
+    }
+    mixer.update(dt);
   }
-  return { site, mesh, behavior, animate };
+  function dispose() {
+    mixer.stopAllAction();
+    mixer.uncacheRoot(mesh);
+    mesh.traverse(child => { if (child instanceof SkinnedMesh) child.skeleton.dispose(); });
+  }
+  return { site, mesh, behavior, animate, dispose };
 }

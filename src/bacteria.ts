@@ -1,11 +1,17 @@
-import { AnimationMixer, Group, LoopOnce, SkinnedMesh } from 'three';
+import { AnimationMixer, AnimationUtils, Group, LoopOnce, SkinnedMesh } from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { bacteriaChargeSeconds } from './game-entity';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 
 let asset: GLTF | undefined;
 export async function loadBacteria() {
-  asset ??= await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'models/bacteria.glb');
+  if (asset) return;
+  const model = await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'models/bacteria.glb');
+  // glTF clips can share accessor buffers. Convert a private copy of the overlay.
+  model.animations = model.animations.map(clip =>
+    clip.name === 'SoundTurn' ? AnimationUtils.makeClipAdditive(clip.clone()) : clip,
+  );
+  asset = model;
 }
 
 export function makeBacteria() {
@@ -20,13 +26,16 @@ export function makeBacteria() {
     action.setLoop(LoopOnce, 1);
     action.clampWhenFinished = true;
   }
+  const soundTurn = actions.get('SoundTurn')!.setLoop(LoopOnce, 1);
+  let wasHearing = false;
+  let nextReaction = 0;
   let state = 'Listen';
   let current = actions.get(state)!;
   let pace = 0;
   current.play();
   mixer.update(0);
   const locomotion = (name: string) => name === 'Chase' || name === 'Stalk';
-  root.userData.pose = (_time: number, dt: number, speed: number, winding: boolean, lunging: boolean) => {
+  root.userData.pose = (time: number, dt: number, speed: number, winding: boolean, lunging: boolean, heardVoice = false) => {
     pace += (speed - pace) * (1 - Math.exp(-dt * 14));
     let nextState: string;
     if (lunging) nextState = 'Strike';
@@ -53,6 +62,13 @@ export function makeBacteria() {
       const stride = state === 'Chase' ? 2.24 : 1.26;
       current.timeScale = speed * current.getClip().duration / stride;
     } else current.timeScale = state === 'Strike' ? current.getClip().duration / bacteriaChargeSeconds : 1;
+    if (winding || lunging) {
+      if (soundTurn.isRunning()) soundTurn.stop();
+    } else if (heardVoice && !wasHearing && time >= nextReaction && state !== 'Recover') {
+      soundTurn.reset().play();
+      nextReaction = time + soundTurn.getClip().duration + .45;
+    }
+    wasHearing = heardVoice;
     mixer.update(dt);
   };
   root.userData.release = () => {

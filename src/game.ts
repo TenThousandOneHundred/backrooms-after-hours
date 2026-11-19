@@ -990,7 +990,7 @@ export class Game {
         mesh.position.z = this.encounter.z * TILE;
         mesh.rotation.y = this.encounter.angle;
         const speed = Math.hypot(this.encounter.x - previousX, this.encounter.z - previousZ) * TILE / Math.max(dt, 0.001);
-        mesh.userData.pose?.(this.time, dt, speed, this.encounter.winding, this.encounter.lunging);
+        mesh.userData.pose?.(this.time, dt, speed, this.encounter.winding, this.encounter.lunging, this.encounter.heardVoice);
       }
       if (this.encounter.contact && this.stage.threat?.kind === 'camera') {
         if (!this.has('office-camera')) {
@@ -1082,7 +1082,7 @@ export class Game {
       const audible = this.voice >= .1 && range <= 2 + this.voice * 7;
       if (!veil && near && audible && behavior.phase === 'listening') this.heardTime = .65;
       const event = behavior.update(dt, near, watching, audible || (moved > .001 && !crouched) || !this.grounded);
-      animate(this.time, Math.atan2(dx, dz));
+      animate(dt, Math.atan2(dx, dz));
       const pan = (dx * -Math.cos(this.yaw) - dz * Math.sin(this.yaw)) / Math.max(1, range);
       if (event === 'warn') this.sound.residentCue(veil ? 'harmony' : 'knock', pan);
       if (event === 'listen') this.sound.residentCue('listen', pan);

@@ -360,6 +360,13 @@ export async function runRoute({ lobbyOnly = false } = {}) {
     if (!game) throw Error('Game did not start');
     advance(0.02);
     if (lobbyOnly) {
+      const hunter = game.world.entity;
+      hunter.userData.pose(1, .035, 0, false, false, true);
+      const skull = hunter.getObjectByName('Skull');
+      const pelvis = hunter.getObjectByName('Pelvis');
+      const headHeight = skull.getWorldPosition(game.vector).y;
+      const hipHeight = pelvis.getWorldPosition(game.vector).y;
+      if (headHeight - hipHeight < .55) throw Error('Bacteria skeleton collapsed during the sound reaction');
       const lobby = game.stage;
       const nearest = (objects) =>
         objects.sort(

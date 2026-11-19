@@ -1063,6 +1063,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     },
     dispose() {
       scene.remove(root);
+      for (const resident of residents) resident.dispose();
       apparition.userData.release();
       entity?.userData.release?.();
       for (const m of instances) m.dispose();
