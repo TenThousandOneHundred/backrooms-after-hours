@@ -2,7 +2,8 @@ import { makeResident } from './residents';
 import * as THREE from 'three';
 import type { Stage } from './campaign';
 import { hash, styleFor, texture, type Finish } from './world-materials';
-import { makeEntity, makeModel, ModelKit } from './world-models';
+import { makeLevelCreature } from './level-creatures';
+import { makeModel, ModelKit } from './world-models';
 
 export const TILE = 3.2;
 // The staircase folds back at each landing. Interpolation keeps movement smooth around the turns.
@@ -913,14 +914,13 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
   }
   const residents = (stage.residents ?? []).map(site => makeResident(site, TILE, h));
   for (const resident of residents) root.add(resident.mesh);
-  const entity = stage.threat ? makeEntity(kit, stage.threat.kind) : null;
+  const entity = stage.threat ? makeLevelCreature(stage.threat.kind) : null;
   const additionalEntities = (stage.additionalThreats ?? []).map(site => {
-    const mesh = makeEntity(kit, site.kind);
+    const mesh = makeLevelCreature(site.kind);
     mesh.position.set(site.x * TILE, 0, site.z * TILE);
     root.add(mesh);
     return { site, mesh };
   });
-  const entityHeightScale = entity?.scale.y ?? 1;
   if (entity && stage.threat) {
     entity.position.set(stage.threat.x * TILE, 0, stage.threat.z * TILE);
     root.add(entity);
@@ -984,7 +984,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
         );
     };
   }
-  const apparition = stage.threat?.kind === 'bacteria' ? makeEntity(kit, 'bacteria') : null;
+  const apparition = stage.threat?.kind === 'bacteria' ? makeLevelCreature('bacteria') : null;
   if (apparition) {
     apparition.visible = false;
     root.add(apparition);
@@ -1081,8 +1081,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
       }
       if (entity) {
         const threat = stage.threat?.kind.toLowerCase() ?? '';
-        if (/smil|moth|angler/.test(threat)) entity.position.y = 0.07 * Math.sin(t * 3);
-        else entity.scale.y = entityHeightScale * (1 + 0.012 * Math.sin(t * 3.7));
+        if (threat === 'smiler' || threat === 'moth') entity.position.y = 0.07 * Math.sin(t * 3);
       }
     },
     dispose() {

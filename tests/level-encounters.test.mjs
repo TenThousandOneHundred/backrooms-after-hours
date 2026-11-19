@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Encounter } from '../src/game-entity.ts';
+import { creatureLibraries } from '../src/creature-roster.ts';
 import { stages } from '../src/campaign.ts';
 
 const street = ['###########', '#....=....#', '#.........#', '###########'];
@@ -72,23 +73,44 @@ test('the Party Host returns to the blue wing when a player leaves its territory
   assert.ok(Math.abs(e.x - 2) < .1 && !e.heardVoice && !e.contact);
 });
 
-test('each Blender creature has an animation targeting only its own model', () => {
-  const file = readFileSync(new URL('../public/models/level-creatures.glb', import.meta.url));
-  const gltf = JSON.parse(file.toString('utf8', 20, 20 + file.readUInt32LE(12)));
-  const roots = gltf.scenes[gltf.scene].nodes;
-  assert.equal(roots.length, 6);
-  for (const root of roots) {
-    const tree = new Set();
-    function visit(i) {
-      tree.add(i);
-      for (const child of gltf.nodes[i].children ?? []) visit(child);
-    }
-    visit(root);
-    const clip = gltf.animations.find(a => a.name === gltf.nodes[root].name + 'Motion');
-    assert.ok(clip?.channels.length > 0);
-    for (const {target, sampler} of clip.channels) {
-      assert.ok(tree.has(target.node));
-      assert.ok(gltf.accessors[clip.samplers[sampler].input].count > 1);
+test('every roaming campaign species and the mod Watcher resolve to an authored model', () => {
+  const kinds = new Set(Object.values(creatureLibraries).flatMap(entries => Object.keys(entries)));
+  for (const stage of Object.values(stages)) {
+    for (const threat of [stage.threat, ...stage.additionalThreats].filter(Boolean)) {
+      assert.ok(threat.kind === 'bacteria' || kinds.has(threat.kind), stage.id + ': ' + threat.kind);
     }
   }
+  assert.ok(kinds.has('watcher'));
 });
+
+for (const [fileName, entries] of Object.entries(creatureLibraries)) {
+  test(fileName + ' exports a drawable body, close-up target and independent motion for each species', () => {
+    const file = readFileSync(new URL('../public/models/' + fileName + '.glb', import.meta.url));
+    const gltf = JSON.parse(file.toString('utf8', 20, 20 + file.readUInt32LE(12)));
+    const roots = gltf.scenes[gltf.scene].nodes;
+    assert.deepEqual(roots.map(i => gltf.nodes[i].name).sort(), Object.values(entries).sort());
+    for (const root of roots) {
+      const tree = new Set();
+      function visit(i) {
+        tree.add(i);
+        for (const child of gltf.nodes[i].children ?? []) visit(child);
+      }
+      visit(root);
+      const name = gltf.nodes[root].name;
+      const nodes = [...tree].map(i => gltf.nodes[i]);
+      const surfaces = nodes.filter(n => n.mesh !== undefined).flatMap(n => gltf.meshes[n.mesh].primitives);
+      assert.ok(surfaces.length, name + ' body');
+      for (const {attributes} of surfaces) {
+        assert.ok(attributes.COLOR_0 !== undefined, name + ' missing painted vertex colours');
+        assert.equal(attributes.COLOR_1, undefined, name + ' paint exported to the secondary layer');
+      }
+      assert.ok(nodes.some(n => n.name === name + '_Focus'), name + ' focus');
+      const clip = gltf.animations.find(a => a.name === name + 'Motion');
+      assert.ok(clip?.channels.length > 0, name + ' action');
+      for (const {target, sampler} of clip.channels) {
+        assert.ok(tree.has(target.node), name + ' cross-rig animation');
+        assert.ok(gltf.accessors[clip.samplers[sampler].input].count > 1);
+      }
+    }
+  });
+}

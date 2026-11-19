@@ -1171,12 +1171,13 @@ export class Game {
     this.callbacks.haunt?.(event);
   }
   private contactFrame(kind: string, mesh: THREE.Object3D | null | undefined = this.world?.entity): string | undefined {
-    if (!mesh || ['smiler', 'hound'].includes(kind)) return;
+    if (!mesh) return;
     const camera = new THREE.PerspectiveCamera(66, this.camera.aspect, 0.06, 100),
       bounds = new THREE.Box3().setFromObject(mesh);
     const size = bounds.getSize(new THREE.Vector3()),
       head = bounds.getCenter(new THREE.Vector3());
     head.y = bounds.min.y + size.y * (kind === 'bellwether' ? .36 : .73);
+    mesh.userData.focus?.getWorldPosition(head);
     const skull = kind === 'bacteria' ? mesh.getObjectByName('Skull') : undefined;
     if (skull) {
       skull.getWorldPosition(head);
@@ -1185,11 +1186,13 @@ export class Game {
     const facing = mesh.getWorldDirection(new THREE.Vector3());
     facing.y = 0;
     facing.normalize();
-    const distance = kind === 'bacteria' ? 0.95 : clamp(size.y * 0.69, 1.1, 2.8);
-    let eye = head.clone().addScaledVector(facing, distance);
-    if (tileAt(this.stage, eye.x / TILE, eye.z / TILE) === '#') {
-      const towardPlayer = new THREE.Vector3(this.x - head.x, 0, this.z - head.z).normalize();
-      eye = head.clone().addScaledVector(towardPlayer, distance);
+    const distance = kind === 'bacteria' ? 0.95 : mesh.userData.focus
+      ? clamp(size.x * 0.28 + size.y * 0.22, 0.54, 1.6)
+      : clamp(size.y * 0.69, 1.1, 2.8);
+    const eye = head.clone().addScaledVector(facing, distance);
+    if (mesh.userData.focus) {
+      eye.x += facing.z * distance * 0.35;
+      eye.z -= facing.x * distance * 0.35;
     }
     eye.y = head.y + 0.05;
     camera.position.copy(eye);
@@ -1204,12 +1207,28 @@ export class Game {
       rim.position.z -= facing.x * 0.44;
     }
     this.scene.add(rim);
+    const isolated: THREE.Object3D[] = [];
     try {
+      // Long jaws can reach the next tile. Keep the actual pose visible if a wall intersects the portrait.
+      const behindWall = tileAt(this.stage, eye.x / TILE, eye.z / TILE) === '#' ||
+        tileAt(this.stage, head.x / TILE, head.z / TILE) === '#' ||
+        !clearSight(this.stage, eye.x / TILE, eye.z / TILE, head.x / TILE, head.z / TILE);
+      if (behindWall) {
+        camera.layers.set(1);
+        const include = (part: THREE.Object3D) => {
+          if (part.layers.isEnabled(1)) return;
+          part.layers.enable(1);
+          isolated.push(part);
+        };
+        mesh.traverse(include);
+        this.scene.traverse(part => { if (part instanceof THREE.Light) include(part); });
+      }
       this.renderer.render(this.scene, camera);
       return this.canvas.toDataURL('image/jpeg', 0.78);
     } catch {
       return undefined;
     } finally {
+      for (const part of isolated) part.layers.disable(1);
       this.scene.remove(rim);
       rim.dispose();
       this.renderer.render(this.scene, this.camera);
