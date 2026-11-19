@@ -62,31 +62,31 @@ type Profile = {
   chase?: boolean;
 };
 const profiles: Record<string, Profile> = {
-  bacteria: { sight: 8, hearing: 4.2, speed: 3.96, memory: 4.5 },
-  skinstealer: { sight: 7, hearing: 2.5, speed: 3.71, memory: 4 },
-  smiler: { sight: 13, hearing: 5.6, speed: 4.62, memory: 5 },
-  hound: { sight: 6, hearing: 4.8, speed: 4.55, memory: 3, gaze: 'retreat' },
-  partygoer: { sight: 6, hearing: 3.15, speed: 4.23, memory: 2.6 },
-  crawler: { sight: 0, hearing: 7.2, speed: 4.23, memory: 3.5, blind: true },
-  animation: { sight: 8, hearing: 2, speed: 4.88, memory: 4, gaze: 'freeze' },
-  king: { sight: 7, hearing: 3.5, speed: 4.03, memory: 4, gaze: 'retreat' },
+  bacteria: { sight: 8, hearing: 4.2, speed: 12.85, memory: 4.5 },
+  skinstealer: { sight: 7, hearing: 2.5, speed: 12.8, memory: 4 },
+  smiler: { sight: 13, hearing: 5.6, speed: 13.1, memory: 5 },
+  hound: { sight: 6, hearing: 4.8, speed: 13.05, memory: 3, gaze: 'retreat' },
+  partygoer: { sight: 6, hearing: 3.15, speed: 13, memory: 2.6 },
+  crawler: { sight: 0, hearing: 7.2, speed: 13, memory: 3.5, blind: true },
+  animation: { sight: 8, hearing: 2, speed: 13.2, memory: 4, gaze: 'freeze' },
+  king: { sight: 7, hearing: 3.5, speed: 12.9, memory: 4, gaze: 'retreat' },
   camera: { sight: 7, hearing: 0, speed: 0, memory: 1 },
-  membri: { sight: 7, hearing: 1.8, speed: 5.5, memory: 0.8 },
-  neighborhoodwatch: { sight: 12, hearing: 0, speed: 4.75, memory: 2.4 },
-  farmer: { sight: 8, hearing: 5, speed: 4.55, memory: 5, chase: true },
-  scratcher: { sight: 0, hearing: 7.2, speed: 4.23, memory: 3.5, blind: true },
+  membri: { sight: 7, hearing: 1.8, speed: 13.35, memory: 0.8 },
+  neighborhoodwatch: { sight: 12, hearing: 0, speed: 13.15, memory: 2.4 },
+  farmer: { sight: 8, hearing: 5, speed: 13.05, memory: 5, chase: true },
+  scratcher: { sight: 0, hearing: 7.2, speed: 13, memory: 3.5, blind: true },
   bonethief: { sight: 1, hearing: 0, speed: 0, memory: 0 },
-  partyhost: { sight: 5, hearing: 4.1, speed: 4.6, memory: 3 },
-  leviathan: { sight: 2.3, hearing: 2.3, speed: 4.03, memory: 4 },
-  shark: { sight: 7, hearing: 3.8, speed: 4.55, memory: 4.2 },
-  wretch: { sight: 0, hearing: 4.5, speed: 4.16, memory: 3.1, blind: true },
-  moth: { sight: 2.3, hearing: 1.1, speed: 3.64, memory: 2 },
-  watcher: { sight: 9, hearing: 1.4, speed: 5.14, memory: 4, gaze: 'freeze' },
-  kitty: { sight: 8, hearing: 2, speed: 5, memory: 3, gaze: 'freeze' },
-  clump: { sight: 4.4, hearing: 4.3, speed: 3.51, memory: 4.5 },
-  faceling: { sight: 6, hearing: 2.2, speed: 3.51, memory: 2.6 },
+  partyhost: { sight: 5, hearing: 4.1, speed: 13.1, memory: 3 },
+  leviathan: { sight: 2.3, hearing: 2.3, speed: 12.9, memory: 4 },
+  shark: { sight: 7, hearing: 3.8, speed: 13.05, memory: 4.2 },
+  wretch: { sight: 0, hearing: 4.5, speed: 12.95, memory: 3.1, blind: true },
+  moth: { sight: 2.3, hearing: 1.1, speed: 12.75, memory: 2 },
+  watcher: { sight: 9, hearing: 1.4, speed: 13.3, memory: 4, gaze: 'freeze' },
+  kitty: { sight: 8, hearing: 2, speed: 13.25, memory: 3, gaze: 'freeze' },
+  clump: { sight: 4.4, hearing: 4.3, speed: 12.7, memory: 4.5 },
+  faceling: { sight: 6, hearing: 2.2, speed: 12.7, memory: 2.6 },
 };
-// A charge covers roughly 7.5 metres before the hunter has to recover.
+export const playerSpeed = { walk: 4, sprint: 12, crouch: 1.75 } as const;
 export const bacteriaChargeSeconds = 0.85;
 
 export class Encounter {
@@ -128,7 +128,7 @@ export class Encounter {
     this.profile = { ...(profiles[this.kind] ?? profiles.bacteria) };
     if (['run', 'hotelchase', 'pipes', 'pipesreturn'].includes(stage.id)) {
       this.profile.chase = true;
-      this.profile.speed = 4.75;
+      this.profile.speed = 13.15;
     }
     if (this.kind === 'smiler' && stage.id === 'slides') this.profile.gaze = 'retreat';
     if (threat.speed) this.profile.speed = threat.speed;
@@ -193,13 +193,11 @@ export class Encounter {
       p.sight *
       (crouched ? 0.64 : 1) *
       (this.kind === 'leviathan' && flashlight ? 4.6 : this.kind === 'moth' && flashlight ? 3.8 : 1);
-    const sense =
-      grace <= 0 &&
-      !hidden &&
-      ((line && !p.blind && inView && distance < visual && (!sweepingCamera || !crouched)) ||
-        (moving && distance < hearing) ||
-        p.chase === true);
-    const exposed = this.kind === 'bacteria' && !distraction && sense && line && inView && distance < 6;
+    const detectsPlayer =
+      (line && !p.blind && inView && distance < visual && (!sweepingCamera || !crouched)) ||
+      (moving && distance < hearing);
+    const sense = grace <= 0 && !hidden && (detectsPlayer || p.chase === true);
+    const exposed = this.kind === 'bacteria' && !distraction && sense && line && inView && distance < 2.2;
     this.recovery = Math.max(0, this.recovery - dt);
     if (this.lunging && !exposed) this.recovery = 3;
     this.pursuitSeconds = exposed && this.recovery === 0 ? this.pursuitSeconds + dt : 0;
@@ -209,7 +207,9 @@ export class Encounter {
     }
     if (sense || this.heardVoice) {
       this.memory = p.memory;
-      this.lastSeen = [Math.round(px), Math.round(pz)];
+      const nextX = Math.round(px), nextZ = Math.round(pz);
+      if (!this.path.length && (this.lastSeen[0] !== nextX || this.lastSeen[1] !== nextZ)) this.repath = 0;
+      this.lastSeen = [nextX, nextZ];
     } else this.memory = Math.max(0, this.memory - dt);
     if (hidden && !this.heardVoice) this.memory = 0;
     if (distraction) {
@@ -266,35 +266,44 @@ export class Encounter {
         this.pause = 2 + Math.random() * 2.2;
       }
     }
-    const ax = Math.round(this.x),
-      az = Math.round(this.z);
-    const direct =
-      !distraction && !hidden && (sense || this.heardVoice) && !retreat && line && Math.round(px) === ax && Math.round(pz) === az;
-    // Reach the cell centre before making a new turn after re-routing mid-tile.
-    let next = direct ? [px, pz] : this.path[0];
-    let centering = false;
-    if (!direct && next) {
-      if (next[0] !== ax && Math.abs(this.z - az) > 0.035) {
-        next = [this.x, az];
-        centering = true;
-      } else if (next[1] !== az && Math.abs(this.x - ax) > 0.035) {
-        next = [ax, this.z];
-        centering = true;
+    const tracking = !distraction && !hidden && (sense || this.heardVoice) && !retreat && line;
+    const patrolSpeed = Math.min(2.4, p.speed * 0.32);
+    // A lost target or a ringing phone draws a searching gait. Confirmed prey triggers the chase.
+    const hunting = (sense && detectsPlayer) || this.heardVoice;
+    let speed = this.memory > 0 ? Math.min(4.2, p.speed) : patrolSpeed;
+    if (hunting) speed = p.speed;
+    if (this.winding) speed = Math.min(0.8, p.speed);
+    if (this.lunging) speed = Math.max(13.8, p.speed);
+    let remaining = dt * speed / this.tileSize;
+    // Spend the whole movement budget across cell centres, including frames that cross a corner.
+    while (remaining > 0) {
+      const ax = Math.round(this.x), az = Math.round(this.z);
+      const direct = tracking && Math.round(px) === ax && Math.round(pz) === az;
+      let next = direct ? [px, pz] : this.path[0];
+      if (!next) break;
+      let centering = false;
+      if (!direct) {
+        if (next[0] !== ax && Math.abs(this.z - az) > 0.035) {
+          next = [this.x, az];
+          centering = true;
+        } else if (next[1] !== az && Math.abs(this.x - ax) > 0.035) {
+          next = [ax, this.z];
+          centering = true;
+        }
       }
-    }
-    if (next) {
-      const tx = next[0] - this.x,
-        tz = next[1] - this.z,
-        len = Math.hypot(tx, tz);
-      // A long uninterrupted sighting turns the slow stalk into a charge.
-      const speed = this.lunging ? 8.85 : this.winding ? 0.8 : this.memory > 0 ? p.speed : p.speed * 0.32;
-      const dist = (dt * speed) / this.tileSize;
-      if (len > 0.01) {
-        this.angle = Math.atan2(tx, tz);
-        this.x += tx * Math.min(1, dist / len);
-        this.z += tz * Math.min(1, dist / len);
+      const tx = next[0] - this.x, tz = next[1] - this.z;
+      const len = Math.hypot(tx, tz);
+      if (len > 0.00001) this.angle = Math.atan2(tx, tz);
+      if (len > remaining) {
+        this.x += tx * remaining / len;
+        this.z += tz * remaining / len;
+        break;
       }
-      if (len <= dist + 0.012 && !centering && !direct) this.path.shift();
+      this.x = next[0];
+      this.z = next[1];
+      remaining -= len;
+      if (direct) break;
+      if (!centering) this.path.shift();
     }
     const canStrike = !distraction && !hidden && !retreat && this.memory > 0 && line;
     const reach = this.lunging ? 0.52 : 0.4;

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Encounter } from '../src/game-entity.ts';
+import { Encounter, playerSpeed } from '../src/game-entity.ts';
 import { creatureLibraries } from '../src/creature-roster.ts';
 import { stages } from '../src/campaign.ts';
 
@@ -12,6 +12,28 @@ function hunter(kind, x = 2, z = 1) {
 function tick(e, x, z, grace = 0, voice = 0) {
   e.tick(.05, x, z, true, true, true, true, false, false, true, grace, undefined, voice);
 }
+
+test('roaming hunters gain slightly on a sprinter across cell boundaries at different frame rates', () => {
+  const row = '#' + '.'.repeat(40) + '#';
+  const map = ['#'.repeat(row.length), row, '#'.repeat(row.length)];
+  const kinds = new Set(Object.values(stages).flatMap(s => [s.threat, ...s.additionalThreats].flatMap(t => t ? [t.kind] : [])));
+  kinds.add('watcher');
+  for (const kind of kinds) {
+    if (kind === 'bonethief' || kind === 'camera') continue;
+    for (const hz of [30, 60, 120]) {
+      const e = new Encounter({ map, threat: { kind, x: 6, z: 1 } }, 3.2);
+      e.x = 2; // Run across the Party Host’s territory so it stays in pursuit.
+      e.angle = Math.PI / 2;
+      let runner = e.x + 2;
+      for (let frame = 0; frame < hz; frame++) {
+        runner += playerSpeed.sprint / (hz * 3.2);
+        e.tick(1 / hz, runner, 1, false, false, true, true, false, false, true, 0);
+      }
+      const travelled = (e.x - 2) * 3.2;
+      assert.ok(travelled > playerSpeed.sprint && travelled < playerSpeed.sprint * 1.12, kind + ' at ' + hz + ' Hz: ' + travelled);
+    }
+  }
+});
 
 test('the campaign roster keeps each mixed encounter and the annex floor sequence', () => {
   assert.deepEqual(['slides', 'slides2', 'slides3'].map(id => stages[id].threat.kind), ['smiler', 'bacteria', 'skinstealer']);

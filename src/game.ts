@@ -4,7 +4,7 @@ export { loadResidents } from './residents';
 export { loadBacteria } from './bacteria';
 import { ENDINGS, START, stages as campaignStages, type GameObject, type Stage } from './campaign';
 import { buildWorld, terrainHeight, TILE } from './world';
-import { Encounter, clearSight, tileAt } from './game-entity';
+import { Encounter, clearSight, playerSpeed, tileAt } from './game-entity';
 import { Soundscape } from './game-sound';
 import { FieldChallenge } from './campaign-challenges';
 import type { ModPack } from './mods';
@@ -76,7 +76,7 @@ const controls = new Set([
   'Digit1',
   'Digit2',
 ]);
-export const playerSpeed = { walk: 4, sprint: 6.8, crouch: 1.75 } as const;
+export { playerSpeed };
 const defaultSettings: GameSettings = { sensitivity: 1, volume: 0.65, headBob: true, quality: 'high' };
 
 export class Game {
@@ -940,9 +940,9 @@ export class Game {
       }
     }
     const distance = Math.hypot(this.x - beforeX, this.z - beforeZ);
-    this.cycle += distance * (crouched ? 5.8 : 5);
+    this.cycle += distance * (crouched ? 5.8 : sprint ? 3 : 5);
     this.footDist += this.grounded ? distance : 0;
-    if (this.footDist > (sprint ? 1.65 : crouched ? 1 : 1.46)) {
+    if (this.footDist > (sprint ? 2.8 : crouched ? 1 : 1.46)) {
       this.footDist = 0;
       this.sound.step(sprint, crouched, /pool|water|ocean|cave|depth/.test(this.stage.theme));
     }

@@ -42,7 +42,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     geometries: THREE.BufferGeometry[] = [],
     textures: THREE.Texture[] = [];
   const color = (s: string) => new THREE.Color(s);
-  const fog = color(style.fog).multiplyScalar(style.open ? 1 : 0.68),
+  const fog = color(style.fog).multiplyScalar(style.open ? 0.84 : 0.57),
     nightFog = color('#263642'),
     nightSky = color('#141e30');
   let domeHorizon: THREE.Color | undefined, domeTop: THREE.Color | undefined;
@@ -50,16 +50,16 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
   scene.fog = new THREE.FogExp2(fog, style.open ? 0.018 : style.family === 'blackout' ? 0.063 : 0.033);
   const ambience = new THREE.AmbientLight(
     style.family === 'alarm' ? '#ffc7b5' : '#fff8e9',
-    familyLight(stage) * (style.open ? 1 : 0.78),
+    familyLight(stage) * (style.open ? 0.84 : 0.61),
   );
   const sky = new THREE.HemisphereLight(
     style.open ? '#e2ebe7' : '#fff9df',
     style.open ? '#b2a888' : '#b4ac93',
-    style.open ? 1.72 : 1.04,
+    style.open ? 1.46 : 0.83,
   );
   const directional = new THREE.DirectionalLight(
     style.open ? '#d8dfcb' : '#e9dabe',
-    style.open ? 0.71 : 0.51,
+    style.open ? 0.65 : 0.47,
   );
   directional.position.set(-7, 8, 4);
   root.add(ambience, sky, directional);
@@ -143,9 +143,9 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     const pool = kind === 'ceil' ? 1.7 : kind === 'floor' ? 4.5 : 4.0;
     const direct = 1 / (1 + nearest / pool),
       bounce = 1 / (1 + second / 8);
-    let value = 0.106 + 0.95 * direct + 0.21 * bounce;
-    if (kind === 'floor') value = 0.13 + 0.89 * direct + 0.20 * bounce;
-    if (kind === 'ceil') value = 0.15 + 0.89 * direct + 0.15 * bounce;
+    let value = 0.091 + 0.95 * direct + 0.18 * bounce;
+    if (kind === 'floor') value = 0.112 + 0.89 * direct + 0.17 * bounce;
+    if (kind === 'ceil') value = 0.134 + 0.89 * direct + 0.13 * bounce;
     if (kind === 'wall' || kind === 'trim') {
       value *= 0.83 + 0.21 * (y / h) + 0.07 * Math.sin((Math.PI * y) / h);
       value *= 1 + normal[0] * 0.17 + normal[2] * 0.09;
@@ -1033,7 +1033,9 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     }
   }
   const base = sky.intensity,
-    dayFog = color(style.fog),
+    dayFog = fog.clone(),
+    dayAmbience = ambience.intensity,
+    dayDirectional = directional.intensity,
     daySky = color('#8bafb3');
   return {
     objects,
@@ -1066,8 +1068,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
         const phase = t % 80,
           darkness = phase < 24 ? 0 : phase < 32 ? (phase - 24) / 8 : phase < 69 ? 1 : 1 - (phase - 69) / 11;
         sky.intensity = base * (1 - 0.87 * darkness);
-        ambience.intensity = 1.55 * (1 - 0.82 * darkness);
-        directional.intensity = 0.71 * (1 - 0.91 * darkness);
+        ambience.intensity = dayAmbience * (1 - 0.82 * darkness);
+        directional.intensity = dayDirectional * (1 - 0.91 * darkness);
         if (scene.fog instanceof THREE.FogExp2) {
           scene.fog.color.copy(dayFog).lerp(nightFog, darkness);
           scene.fog.density = 0.018 + 0.009 * darkness;

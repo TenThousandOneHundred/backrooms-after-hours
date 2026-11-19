@@ -132,8 +132,8 @@ export function parseMod(source: string): ModPack {
     if (hunters !== (monster ? 1 : 0)) fail(path + '.map', 'pair one ! tile with one monster, or omit both');
     const room = stage(internal, name, title, theme, objective, objective, rows.join('\n'), markers, monster);
     if (level.speed !== undefined) {
-      if (!room.threat || typeof level.speed !== 'number' || level.speed < 0.5 || level.speed > 6)
-        fail(path + '.speed', 'use 0.5–6 with a roaming monster');
+      if (!room.threat || typeof level.speed !== 'number' || level.speed < 0.5 || level.speed > 16)
+        fail(path + '.speed', 'use 0.5–16 with a roaming monster');
       room.threat.speed = level.speed;
     }
     checkRoomAccess(room, path);
