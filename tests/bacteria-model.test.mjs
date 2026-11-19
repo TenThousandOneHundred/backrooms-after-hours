@@ -25,6 +25,6 @@ test('shipping Bacteria mesh has skin weights, an embedded hide texture and the 
   const image = model.images[model.textures[material.normalTexture.index].source];
   assert.ok(model.bufferViews[image.bufferView]);
   assert.ok(model.skins.some(skin => skin.joints.some(index => model.nodes[index].name === 'Skull')));
-  assert.deepEqual(model.animations.map(clip => clip.name).sort(), ['BankLeft', 'BankRight', 'Chase', 'Listen', 'Recover', 'SoundTurn', 'Stalk', 'Strike', 'Windup']);
+  assert.deepEqual(model.animations.map(clip => clip.name).sort(), ['BankLeft', 'BankRight', 'Chase', 'Listen', 'Recover', 'Seize', 'SoundTurn', 'Stalk', 'Strike', 'Windup']);
   assert.ok(model.animations.every(clip => clip.channels.some(channel => channel.target.path === 'rotation')));
 });

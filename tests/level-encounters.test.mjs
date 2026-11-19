@@ -54,6 +54,26 @@ test('the Bone Thief warns, releases a retreating player, and kills only inside 
   assert.deepEqual([e.x, e.z], [2, 1]);
 });
 
+test('contact poses anticipate a nearby hunter, peak on capture and cancel when the player escapes', () => {
+  const e = hunter('skinstealer');
+  tick(e, 3.05, 1);
+  assert.ok(e.contactPose > 0 && e.contactPose < 1 / 3);
+  tick(e, 2.1, 1);
+  assert.ok(e.contactPose > 1 / 3 && !e.contact);
+  tick(e, 6.5, 1);
+  assert.equal(e.contactPose, 0);
+  for (let i = 0; i < 10; i++) tick(e, e.x, e.z);
+  assert.ok(e.contact);
+  assert.equal(e.contactPose, 1);
+  tick(e, e.x, e.z, 1);
+  assert.equal(e.contactPose, 0);
+  for (const kind of ['hound', 'animation']) {
+    const guarded = hunter(kind);
+    tick(guarded, guarded.x, guarded.z);
+    assert.equal(guarded.contactPose, 0, kind);
+  }
+});
+
 test('the Neighborhood Watch loses a lit porch even at contact distance', () => {
   const e = hunter('neighborhoodwatch', 5, 1);
   for (let i = 0; i < 45; i++) {
@@ -105,8 +125,8 @@ for (const [fileName, entries] of Object.entries(creatureLibraries)) {
         assert.equal(attributes.COLOR_1, undefined, name + ' paint exported to the secondary layer');
       }
       assert.ok(nodes.some(n => n.name === name + '_Focus'), name + ' focus');
-      const suffixes = name === 'BoneThief' ? ['Reach'] : name === 'SecurityCamera' ? ['Scan'] : ['Idle', 'Stalk', 'Chase'];
-      if (suffixes.length === 3) {
+      const suffixes = name === 'BoneThief' ? ['Reach'] : name === 'SecurityCamera' ? ['Scan'] : ['Idle', 'Stalk', 'Chase', 'Contact'];
+      if (suffixes.includes('Stalk')) {
         const { walkStride, chaseStride } = gltf.nodes[root].extras;
         assert.ok(walkStride > 0 && chaseStride > 0, name + ' stride lengths');
       }

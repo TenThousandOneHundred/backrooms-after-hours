@@ -1,5 +1,6 @@
 import { AnimationMixer, AnimationUtils, Group, LoopOnce, SkinnedMesh } from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
+import { createContactPose } from './contact-animation';
 import { bacteriaChargeSeconds } from './game-entity';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 
@@ -9,7 +10,7 @@ export async function loadBacteria() {
   const model = await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'models/bacteria.glb');
   // glTF clips can share accessor buffers. Convert a private copy of the overlay.
   model.animations = model.animations.map(clip =>
-    ['SoundTurn', 'BankLeft', 'BankRight'].includes(clip.name) ? AnimationUtils.makeClipAdditive(clip.clone()) : clip,
+    ['SoundTurn', 'BankLeft', 'BankRight', 'Seize'].includes(clip.name) ? AnimationUtils.makeClipAdditive(clip.clone()) : clip,
   );
   asset = model;
 }
@@ -29,6 +30,7 @@ export function makeBacteria() {
   const soundTurn = actions.get('SoundTurn')!.setLoop(LoopOnce, 1);
   const left = actions.get('BankLeft')!.setLoop(LoopOnce, 1);
   const right = actions.get('BankRight')!.setLoop(LoopOnce, 1);
+  root.userData.setContactPose = createContactPose(mixer, actions.get('Seize')!.getClip());
   let wasHearing = false;
   let nextReaction = 0;
   let nextBank = 0;

@@ -1092,6 +1092,7 @@ export class Game {
       if (encounter.kind === 'camera') mesh.rotation.y = encounter.angle;
       else if (!encounter.heldByGaze) mesh.rotation.y += turn * (1 - Math.exp(-dt * 15));
       const speed = Math.hypot(encounter.x - previousX, encounter.z - previousZ) * TILE / Math.max(dt, 0.001);
+      if (!encounter.heldByGaze) mesh.userData.setContactPose?.(dt, encounter.contactPose);
       mesh.userData.pose?.(this.time, dt, speed, encounter.winding, encounter.lunging, encounter.heardVoice, encounter.reach, encounter.heldByGaze, turn);
     }
     if (previousReach <= 0 && encounter.reach > 0) {

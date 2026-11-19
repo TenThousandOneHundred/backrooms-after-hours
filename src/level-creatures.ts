@@ -1,11 +1,12 @@
-import { AnimationMixer, Group, MathUtils, SkinnedMesh, type AnimationClip, type Object3D } from 'three';
+import { AnimationMixer, AnimationUtils, Group, MathUtils, SkinnedMesh, type AnimationClip, type Object3D } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
+import { createContactPose } from './contact-animation';
 import { makeBacteria } from './bacteria';
 import { creatureLibraries } from './creature-roster';
 
 type Motion =
-  | { type: 'gait'; idle: AnimationClip; stalk: AnimationClip; chase: AnimationClip }
+  | { type: 'gait'; idle: AnimationClip; stalk: AnimationClip; chase: AnimationClip; contact: AnimationClip }
   | { type: 'reach' | 'scan'; clip: AnimationClip };
 const templates = new Map<string, { model: Object3D; motion: Motion }>();
 
@@ -27,7 +28,13 @@ export async function loadLevelCreatures() {
       else {
         if (!(model.userData.walkStride > 0 && model.userData.chaseStride > 0))
           throw new Error('Missing stride lengths for ' + name);
-        motion = { type: 'gait', idle: action('Idle'), stalk: action('Stalk'), chase: action('Chase') };
+        motion = {
+          type: 'gait',
+          idle: action('Idle'),
+          stalk: action('Stalk'),
+          chase: action('Chase'),
+          contact: AnimationUtils.makeClipAdditive(action('Contact').clone()),
+        };
       }
       templates.set(kind, { model, motion });
     }
@@ -46,6 +53,7 @@ export function makeLevelCreature(kind: string) {
   const mixer = new AnimationMixer(model);
   const motion = template.motion;
   if (motion.type === 'gait') {
+    root.userData.setContactPose = createContactPose(mixer, motion.contact);
     const idle = mixer.clipAction(motion.idle).play();
     const walk = mixer.clipAction(motion.stalk).setEffectiveWeight(0).play();
     const run = mixer.clipAction(motion.chase).setEffectiveWeight(0).play();

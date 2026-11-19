@@ -95,6 +95,7 @@ export class Encounter {
   angle = 0;
   danger = 0;
   contact = false;
+  contactPose = 0;
   heardVoice = false;
   heldByGaze = false;
   private stalkClock = 10;
@@ -160,6 +161,7 @@ export class Encounter {
     voice = 0,
   ) {
     this.contact = false;
+    this.contactPose = 0;
     const dx = this.x - px,
       dz = this.z - pz,
       distance = Math.hypot(dx, dz);
@@ -294,9 +296,16 @@ export class Encounter {
       }
       if (len <= dist + 0.012 && !centering && !direct) this.path.shift();
     }
-    if (distance < (this.lunging ? 0.52 : 0.4) && !distraction && !hidden && !retreat && this.memory > 0 && line) {
+    const canStrike = !distraction && !hidden && !retreat && this.memory > 0 && line;
+    const reach = this.lunging ? 0.52 : 0.4;
+    const hold = this.lunging ? 0.12 : 0.38;
+    if (canStrike && distance < reach) {
       this.attack += dt;
-      if (this.attack > (this.lunging ? 0.12 : 0.38)) this.contact = true;
+      if (this.attack > hold) this.contact = true;
     } else this.attack = 0;
+    if (canStrike) {
+      const approach = Math.max(0, Math.min(1, (1.25 - distance) / (1.25 - reach)));
+      this.contactPose = approach / 3 + (2 / 3) * Math.min(1, this.attack / hold);
+    }
   }
 }
