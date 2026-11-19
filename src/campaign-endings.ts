@@ -249,18 +249,19 @@ export const endingStages = [
     'Research / Overgrowth',
     'Overgrowth',
     'overgrowth',
-    'Vines knot around the slide entrances. Two injured wanderers wait beside the broken lab intercom.',
+    'Vines knot around the slide entrances. Black wire snags on the slide controls. Something pale reaches from a hole near the orange chute.',
     'Restore the slide controls and send each stranded wanderer through an evacuation chute.',
     `
 ########################
 #..V.#.....A...#.....E.#
-#....#..p......#...X...#
+#....#..p......#...X..*#
 #..###.###.###...##....#
-#..p.....#...p........##
+#..p.....#...p.....!..##
 ###..###.#.#####.###...#
 #@...P...#.....B...Y...#
 ########################`,
     {
+      '*': { monster: 'bonethief' },
       p: prop('plant'),
       P: note(
         'Evacuation tags',
@@ -287,7 +288,7 @@ export const endingStages = [
       ]),
       E: exit('Enter the evacuation slide', 'grass', ['evac-a', 'evac-b'], 'slide'),
     },
-    undefined,
+    'bacteria',
     Math.PI / 2,
   ),
   stage(

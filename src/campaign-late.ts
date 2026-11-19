@@ -37,7 +37,7 @@ export const late = [
     'Level 188 / East wing',
     'Windows to the Soul',
     'courtyard',
-    'Rows of hotel windows overlook the elevator. Three empty outlines in the reception carpet are labeled A, B and C.',
+    'Eight hands tap the glass in the east wing. Break the Aranea Membri’s line of sight at a corner before it closes the distance.',
     'Recover the three CRT carts, connect them at reception, and descend to the pools.',
     `
 #########################
@@ -113,7 +113,7 @@ export const late = [
         'pool-inlet-e',
         'pool-inlet-s',
       ]),
-      P: note('Reservoir notice', 'Dark water carries filament bacteria. Keep to the pale perimeter tiles.'),
+      P: note('Reservoir notice', 'Hydrolitis Plague darkens the water. Keep to the pale perimeter tiles.'),
       E: exit('Paddle into the lock channel', 'stagnant', ['raft'], 'boat'),
     },
   ),
@@ -122,7 +122,7 @@ export const late = [
     'Level 37.2 / Pump house',
     'Stagnant Pools',
     'pool',
-    'The float gauge sticks halfway up. In the tiled pump halls the pipes thump like a second heartbeat.',
+    'The float gauge sticks halfway up. Black filaments move beneath the dark water. Follow the pale tiles around them.',
     'Turn four pump valves, then drain the lock and take the flume.',
     `
 #######################
@@ -130,9 +130,9 @@ export const late = [
 #.#.#.#~~.#.####.#.#..#
 #.#...#...#..H.#...#..#
 #.#####.######.#.###..#
-#2...~.....!...#.3....#
+#2...~...~~~...#.3....#
 ###..~.#####..#######.#
-#@...~...P..........E.#
+#@.......P..........E.#
 #######################`,
     {
       ...Object.fromEntries(
@@ -153,25 +153,24 @@ export const late = [
       ),
       E: exit('Enter the tiled flume', 'funplus', ['lock-drained'], 'slide'),
     },
-    'clump',
   ),
   stage(
     'funplus',
     'Level Fun+',
     'The Party Continues',
     'party',
-    'Four strings of lights meet above a mechanical claw. A colored key is missing from each corner.',
+    'Four strings of lights meet above a mechanical claw. A blue host guards the firework table. In the red wing, a yellow guest listens beneath the balloons.',
     'Clear the pink, blue, red and cloud wings. Fit their keys into the mechanical arm.',
     `
 #########################
-#..V....P..#..F.....B...#
+#..V....P..#..F....!B...#
 #..##......#....##......#
 #...##..##.#.##..##.....#
 #####...##...##...#######
 #.........A........E....#
 #.####...#...#...####...#
-#..G..R..#...#..L...C...#
-#........#.@.#....H..!..#
+#..G..R.*#...#..L...C...#
+#........#.@.#....H.....#
 #########################`,
     {
       V: note(
@@ -185,12 +184,13 @@ export const late = [
         'fun-pink',
         'The pink key drops into the return slot.',
       ),
+      '*': { monster: 'partygoer' },
       F: item('Party popper', 'firework', 'bar', 'A compressed-paper popper from the blue table.'),
       B: act(
         'Startle the blue hall host',
         'fun-blue',
         'panel',
-        'Confetti bursts and the blue key rolls free.',
+        'The firework cracks. The Host collapses behind the table and the blue key rolls free.',
         ['firework'],
       ),
       G: note(
@@ -222,7 +222,7 @@ export const late = [
       ),
       E: exit('Pull the stage curtain', 'school', ['fun-arm']),
     },
-    'partygoer',
+    'partyhost',
   ),
   stage(
     'school',
@@ -253,11 +253,11 @@ export const late = [
     'Level 55.1 / Floor I',
     'The Photographic Annex',
     'slides',
-    'Two still frames are taped to the elevator panel. Shutter clicks echo across an empty loading floor.',
+    'Two still frames are taped to the elevator panel. A smile lights up the far end of the loading floor. Hold your beam on it to make it retreat.',
     'Take the survey camera and photograph the graffiti and the opening to Level 0.',
     `
 #####################
-#....G..#...........#
+#....G..#.........!.#
 #.###...#...##......#
 #...#.......##.L....#
 #...#..###..........#
@@ -283,7 +283,7 @@ export const late = [
       ),
       E: exit('Ride the survey lift to floor II', 'slides2', ['photo1', 'photo2'], 'elevator'),
     },
-    undefined,
+    'smiler',
     Math.PI / 2,
   ),
   stage(

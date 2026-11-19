@@ -500,17 +500,17 @@ export const opening = [
     'Level 37',
     'Poolrooms',
     'pool',
-    'A room full of daylight, with no sky beyond the windows. The water barely moves.',
+    'A room full of daylight, with no sky beyond the windows. Black filaments drift in a few pools. The pale water is still.',
     'Follow the white tiles and the sunken columns toward the red exit lamp.',
     `
 #######################
 #........#......L...E.#
-#..##....#..##.....#..#
-#..##.......##..##.#..#
+#..##.~~.#..##.....#..#
+#..##.~.....##..##.#..#
 #.....####......##....#
 #..#...L....#.......#.#
 #..#..##....#.###...#.#
-#.....##....#......L..#
+#.....##....#..~~..L..#
 #..@......#...........#
 #######################`,
     { L: prop('light', 0xbceef3), E: exit('Open the red-lit fire door', 'run') },

@@ -20,7 +20,9 @@ export type GameObject = {
   challenge?: Challenge;
 };
 export type Prop = { x: number; z: number; model: string; color?: number; label?: string; rotation?: number };
+export type Threat = { kind: string; x: number; z: number; speed?: number };
 export type Stage = {
+  additionalThreats?: Threat[];
   residents?: ResidentSite[];
   id: string;
   name: string;
@@ -32,13 +34,13 @@ export type Stage = {
   facing?: number;
   objects: GameObject[];
   props: Prop[];
-  threat?: { kind: string; x: number; z: number; speed?: number };
+  threat?: Threat;
   objective?: string;
 };
 
 type Action = Omit<GameObject, 'x' | 'z' | 'id'> & { token?: string };
 type Decoration = Omit<Prop, 'x' | 'z'>;
-type Marker = Action | Decoration;
+type Marker = Action | Decoration | { monster: string };
 type Markers = Record<string, Marker>;
 
 // Each marker occupies one tile. Repeated scenery markers create individual props.
@@ -63,13 +65,14 @@ export function stage(
     objects: GameObject[] = [],
     props: Prop[] = [];
   const residents: ResidentSite[] = [];
+  const additionalThreats: Threat[] = [];
   let spawn: [number, number] | undefined;
   let threat: Stage['threat'];
   const counts = new Map<string, number>();
   for (let z = 0; z < rows.length; z++) {
     const row = [...rows[z].padEnd(width, '#')]
       .map((tile, x) => {
-        if (tile === '#' || tile === '.' || tile === '|') return tile;
+        if (tile === '#' || tile === '.' || tile === '|' || tile === '=') return tile;
         if (tile === '&' || tile === '%') {
           residents.push({ x, z, kind: tile === '&' ? 'bellwether' : 'veil' });
           return '.';
@@ -87,6 +90,10 @@ export function stage(
         }
         const marker = markers[tile];
         if (!marker) throw new Error(id + ': unmapped tile ' + tile);
+        if ('monster' in marker) {
+          additionalThreats.push({ kind: marker.monster, x, z });
+          return '.';
+        }
         const count = (counts.get(tile) ?? 0) + 1;
         counts.set(tile, count);
         if ('kind' in marker) {
@@ -112,7 +119,7 @@ export function stage(
   };
   if (!sightLength(facing))
     facing = [0, Math.PI / 2, Math.PI, -Math.PI / 2].sort((a, b) => sightLength(b) - sightLength(a))[0];
-  return { id, label, name, theme, description, objective, map, spawn, facing, objects, props, threat, residents };
+  return { id, label, name, theme, description, objective, map, spawn, facing, objects, props, threat, residents, additionalThreats };
 }
 
 export const item = (

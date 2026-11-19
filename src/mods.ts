@@ -2,7 +2,7 @@ import { stage, type Stage, type GameObject } from './campaign-format.ts';
 
 export const MOD_LIMIT = 128 * 1024;
 const themes = ['lobby', 'hotel', 'pool', 'pipes', 'archive', 'office', 'garage', 'arcade', 'blackout'];
-const monsters = ['bacteria', 'hound', 'smiler', 'crawler', 'watcher', 'partygoer'];
+const monsters = ['bacteria', 'hound', 'smiler', 'crawler', 'watcher', 'partygoer', 'neighborhoodwatch', 'farmer', 'membri', 'scratcher', 'bonethief', 'partyhost'];
 const models = ['key', 'flashlight', 'note', 'door', 'elevator', 'terminal', 'breaker', 'locker',
   'shelf', 'desk', 'chair', 'crate', 'barrel', 'plant', 'valve', 'sign'];
 const defaults = { pickup: 'key', switch: 'breaker', code: 'terminal', hide: 'locker',
@@ -123,7 +123,7 @@ export function parseMod(source: string): ModPack {
         else if (tile === '!') hunters++;
         else if (tile === '%' || tile === '&') residents++;
         else if (Object.hasOwn(markers, tile)) objects++;
-        else if (!'#.'.includes(tile)) fail(loc + ', column ' + (x + 1), 'undefined tile ' + tile);
+        else if (!'#.='.includes(tile)) fail(loc + ', column ' + (x + 1), 'undefined tile ' + tile);
       }
     }
     if (spawns !== 1) fail(path + '.map', 'place exactly one @ spawn');

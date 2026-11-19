@@ -297,7 +297,7 @@ export async function runRoute({ lobbyOnly = false } = {}) {
       }
       const dx = tx - game.x,
         dz = tz - game.z;
-      const crouch = ['wretch', 'crawler', 'camera'].includes(game.stage.threat?.kind) ||
+      const crouch = ['wretch', 'crawler', 'scratcher', 'camera'].includes(game.stage.threat?.kind) ||
         /Two knocks|Bellwether listening/.test(game.residentHint);
       let heading = Math.atan2(dx, -dz);
       if (game.encounter && game.grace <= 0 && !crouch) {
@@ -321,7 +321,7 @@ export async function runRoute({ lobbyOnly = false } = {}) {
       }
       const gaze =
         game.encounter &&
-        ['watcher', 'hound', 'king', 'kitty', 'animation', 'membri'].includes(game.stage.threat?.kind);
+        ['watcher', 'hound', 'king', 'kitty', 'animation'].includes(game.stage.threat?.kind);
       let offset = 0;
       if (gaze) {
         const e = game.encounter;

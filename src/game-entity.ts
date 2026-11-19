@@ -71,7 +71,12 @@ const profiles: Record<string, Profile> = {
   animation: { sight: 8, hearing: 2, speed: 4.88, memory: 4, gaze: 'freeze' },
   king: { sight: 7, hearing: 3.5, speed: 4.03, memory: 4, gaze: 'retreat' },
   camera: { sight: 7, hearing: 0, speed: 0, memory: 1 },
-  membri: { sight: 6, hearing: 2.4, speed: 4.23, memory: 3.6, gaze: 'freeze' },
+  membri: { sight: 7, hearing: 1.8, speed: 5.5, memory: 0.8 },
+  neighborhoodwatch: { sight: 12, hearing: 0, speed: 4.75, memory: 2.4 },
+  farmer: { sight: 8, hearing: 5, speed: 4.55, memory: 5, chase: true },
+  scratcher: { sight: 0, hearing: 7.2, speed: 4.23, memory: 3.5, blind: true },
+  bonethief: { sight: 1, hearing: 0, speed: 0, memory: 0 },
+  partyhost: { sight: 5, hearing: 4.1, speed: 4.6, memory: 3 },
   leviathan: { sight: 2.3, hearing: 2.3, speed: 4.03, memory: 4 },
   shark: { sight: 7, hearing: 3.8, speed: 4.55, memory: 4.2 },
   wretch: { sight: 0, hearing: 4.5, speed: 4.16, memory: 3.1, blind: true },
@@ -100,17 +105,19 @@ export class Encounter {
   private repath = 0;
   private pause = 1.6;
   private attack = 0;
+  reach = 0;
   private tiles: Cell[];
   private path: Cell[] = [];
   private lastSeen: Cell;
   private profile: Profile;
   private kind: string;
+  private home: NonNullable<Stage['threat']>;
   private stage: Stage;
   private tileSize: number;
-  constructor(stage: Stage, tileSize: number) {
+  constructor(stage: Stage, tileSize: number, threat = stage.threat!) {
     this.stage = stage;
     this.tileSize = tileSize;
-    const threat = stage.threat!;
+    this.home = threat;
     this.x = threat.x;
     this.z = threat.z;
     this.lastSeen = [this.x, this.z];
@@ -121,6 +128,7 @@ export class Encounter {
       this.profile.chase = true;
       this.profile.speed = 4.75;
     }
+    if (this.kind === 'smiler' && stage.id === 'slides') this.profile.gaze = 'retreat';
     if (threat.speed) this.profile.speed = threat.speed;
   }
   canHearVoice(volume: number, px: number, pz: number, hidden: boolean) {
@@ -151,17 +159,30 @@ export class Encounter {
     voice = 0,
   ) {
     this.contact = false;
-    const wasHearingVoice = this.heardVoice;
-    this.heardVoice = grace <= 0 && !distraction && this.canHearVoice(voice, px, pz, hidden);
-    if (this.heardVoice && !wasHearingVoice) this.repath = 0;
     const dx = this.x - px,
       dz = this.z - pz,
       distance = Math.hypot(dx, dz);
     const line = distance < 16 && clearSight(this.stage, this.x, this.z, px, pz);
+    const home = this.home;
+    if (this.kind === 'bonethief') {
+      const withinReach = grace <= 0 && !hidden && distance < 0.77 && line;
+      if (withinReach) this.angle = Math.atan2(-dx, -dz);
+      this.reach = Math.max(0, Math.min(1, this.reach + dt * (withinReach ? 1.35 : -3)));
+      this.contact = withinReach && this.reach >= 1;
+      this.danger = this.reach;
+      return;
+    }
+    const onPorch = this.kind === 'neighborhoodwatch' && tileAt(this.stage, px, pz) === '=';
+    const beyondPartyWing = this.kind === 'partyhost' && Math.hypot(px - home.x, pz - home.z) > 4.7;
+    const sheltered = onPorch || beyondPartyWing;
+    const wasHearingVoice = this.heardVoice;
+    this.heardVoice = !sheltered && grace <= 0 && !distraction && this.canHearVoice(voice, px, pz, hidden);
+    if (this.heardVoice && !wasHearingVoice) this.repath = 0;
+    hidden ||= sheltered;
     const looking = visible && line && !hidden;
     const enemyFacing = (-dx * Math.sin(this.angle) - dz * Math.cos(this.angle)) / Math.max(0.001, distance);
     const sweepingCamera = this.kind === 'camera';
-    const inView = distance < 1.0 || enemyFacing > (sweepingCamera ? 0.68 : crouched ? 0.52 : -0.32);
+    const inView = distance < 1.0 || enemyFacing > (sweepingCamera ? 0.68 : this.kind === 'neighborhoodwatch' ? 0.48 : crouched ? 0.52 : -0.32);
     if (sweepingCamera) this.angle += dt * 0.43;
     const p = this.profile,
       hearing = (sprinting ? 1.0 : crouched ? 0.1 : 0.56) * p.hearing;
@@ -217,6 +238,10 @@ export class Encounter {
         this.path = spot ? search(this.stage, this.x, this.z, spot) : [];
       } else if (this.memory > 0) {
         this.path = search(this.stage, this.x, this.z, this.lastSeen);
+      } else if (this.kind === 'partyhost' || this.kind === 'membri') {
+        const post: Cell = [home.x, home.z];
+        this.path = Math.round(this.x) === home.x && Math.round(this.z) === home.z
+          ? [post] : search(this.stage, this.x, this.z, post);
       } else if (this.kind === 'bacteria' && !hidden && this.stalkClock <= 0) {
         const unseen = this.tiles.filter(([x, z]) => {
           const d = Math.hypot(px - x, pz - z);

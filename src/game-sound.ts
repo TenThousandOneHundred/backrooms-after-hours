@@ -154,9 +154,13 @@ export class Soundscape {
     this.sound(wet ? 290 : 125, wet ? 88 : 53, wet ? 0.24 : 0.14, level, this.stepSide * 0.16);
     this.sound(wet ? 2300 : 780, wet ? 510 : 270, 0.115, level * 0.7, this.stepSide * 0.18, 'noise');
   }
-  tick(dt: number, danger: number, pan: number) {
+  tick(dt: number, danger: number, pan: number, farmerActive = false) {
     this.nextDetail -= dt;
     if (this.nextDetail > 0) return;
+    if (farmerActive) {
+      this.sound(59, 116 + 38 * danger, 0.65, 0.025 + 0.13 * danger, pan, 'sawtooth');
+      this.sound(129, 58, 0.5, 0.015 + 0.08 * danger, pan, 'sawtooth', 0.42);
+    }
     if (danger > 0.28) {
       this.sound(71, 38, 0.22, 0.06 + danger * 0.18, pan * 0.3);
       this.sound(62, 32, 0.2, 0.045 + danger * 0.1, pan * 0.3, 'sine', 0.18);

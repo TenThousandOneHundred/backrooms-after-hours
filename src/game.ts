@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+export { loadLevelCreatures } from './level-creatures';
 export { loadResidents } from './residents';
 export { loadBacteria } from './bacteria';
 import { ENDINGS, START, stages as campaignStages, type GameObject, type Stage } from './campaign';
@@ -50,6 +51,11 @@ const pitFloor = (stage: Stage, x: number, z: number) => {
   return tile === 'X' || (tile === '|' && Math.abs(x / TILE - Math.round(x / TILE)) * TILE > 0.56);
 };
 const labelOf = (id: string) => id.replace(/[-_:]/g, ' ');
+const creatureNames: Record<string, string> = {
+  neighborhoodwatch: 'the Neighborhood Watch', farmer: 'the Farmer Faceling',
+  bonethief: 'the Bone Thief', partyhost: 'the Party Host', membri: 'the Aranea Membri',
+  scratcher: 'the Scratcher',
+};
 const controls = new Set([
   'KeyW',
   'KeyA',
@@ -81,6 +87,7 @@ export class Game {
   private lampTarget = new THREE.Object3D();
   private world?: ReturnType<typeof buildWorld>;
   private encounter?: Encounter;
+  private additionalHunters: { encounter: Encounter; mesh: THREE.Group; kind: string; height: number }[] = [];
   private stage!: Stage;
   private state: Progress = freshProgress(START);
   private mode: Screen | 'idle' = 'idle';
@@ -240,6 +247,10 @@ export class Game {
     if (this.world.entity) this.entityCenterHeight = new THREE.Box3().setFromObject(this.world.entity).getCenter(this.vector).y;
     this.scene.add(this.camera);
     this.encounter = stage.threat ? new Encounter(stage, TILE) : undefined;
+    this.additionalHunters = this.world.additionalEntities.map(({site, mesh}) => ({
+      encounter: new Encounter(stage, TILE, site), mesh, kind: site.kind,
+      height: new THREE.Box3().setFromObject(mesh).getCenter(this.vector).y,
+    }));
     this.state.stage = id;
     this.time = 0;
     this.alarmTime = 0;
@@ -570,22 +581,20 @@ export class Game {
     this.challenge.clear();
     if (obj) this.complete(obj);
   }
-  private entityPoint() {
-    const e = this.encounter!;
-    return this.vector.set(e.x * TILE, this.entityCenterHeight, e.z * TILE);
+  private entityPoint(e: Encounter, height: number) {
+    return this.vector.set(e.x * TILE, height, e.z * TILE);
   }
-  private entityVisible(frame = 1) {
-    const e = this.encounter;
+  private entityVisible(frame = 1, e = this.encounter, height = this.entityCenterHeight) {
     if (!e || Math.hypot(e.x - this.x / TILE, e.z - this.z / TILE) >= 14) return false;
-    const point = this.projected.copy(this.entityPoint()).project(this.camera);
+    const point = this.projected.copy(this.entityPoint(e, height)).project(this.camera);
     return point.z >= -1 && point.z <= 1 && Math.abs(point.x) <= frame && Math.abs(point.y) <= frame &&
       clearSight(this.stage, this.x / TILE, this.z / TILE, e.x, e.z);
   }
-  private entityLit() {
-    if (!this.lamp.intensity || !this.encounter) return false;
+  private entityLit(e = this.encounter, height = this.entityCenterHeight) {
+    if (!this.lamp.intensity || !e) return false;
     this.lamp.getWorldPosition(this.lightOrigin);
     this.lampTarget.getWorldPosition(this.lightAxis).sub(this.lightOrigin).normalize();
-    const offset = this.entityPoint().sub(this.lightOrigin);
+    const offset = this.entityPoint(e, height).sub(this.lightOrigin);
     return offset.length() <= this.lamp.distance && offset.normalize().dot(this.lightAxis) >= Math.cos(this.lamp.angle);
   }
   private updateChallenge(dt: number) {
@@ -661,7 +670,8 @@ export class Game {
       this.alarmTime = 18;
       this.sound.alarm();
     }
-    if (!this.encounter || this.encounter.danger < 0.42) this.markCheckpoint();
+    if ((this.encounter?.danger ?? 0) < 0.42 && this.additionalHunters.every(h => h.encounter.danger < 0.42))
+      this.markCheckpoint();
     if (notify) this.callbacks.message(obj.description ?? obj.name);
     this.refreshHUD();
     this.persist();
@@ -958,40 +968,14 @@ export class Game {
       const offDuty =
         lurking ||
         day ||
+        (this.stage.id === 'field' && !this.has('wind-east')) ||
+        (this.stage.id === 'funplus' && this.has('fun-blue')) ||
         (this.stage.threat?.kind === 'camera' && this.has('office-camera')) ||
         (this.stage.id === 'outpost' && this.has('cured-agent'));
       this.alarmTime = Math.max(0, this.alarmTime - dt);
-      const previousX = this.encounter.x, previousZ = this.encounter.z;
-      const wasWinding = this.encounter.winding;
-      this.encounter.tick(
-        dt,
-        this.x / TILE,
-        this.z / TILE,
-        this.entityVisible(),
-        this.entityLit(),
-        distance > 0.001,
-        sprint,
-        crouched,
-        this.hidden,
-        this.state.flashlight,
-        offDuty ? 1 : this.grace,
-        this.alarmTime > 0 ? this.stage.objects.find((o) => o.gives?.includes('archive-alarm')) : undefined,
-        this.voice,
-      );
-      if (this.encounter.heardVoice) this.heardTime = 0.65;
-      if (this.encounter.winding && !wasWinding) {
-        this.sound.inhale();
-        this.world?.haunt('flicker', this.camera);
-      }
       const mesh = this.world?.entity;
-      if (mesh) {
-        if (this.stage.id === 'village' || this.stage.id === 'lobby') mesh.visible = !offDuty;
-        mesh.position.x = this.encounter.x * TILE;
-        mesh.position.z = this.encounter.z * TILE;
-        mesh.rotation.y = this.encounter.angle;
-        const speed = Math.hypot(this.encounter.x - previousX, this.encounter.z - previousZ) * TILE / Math.max(dt, 0.001);
-        mesh.userData.pose?.(this.time, dt, speed, this.encounter.winding, this.encounter.lunging, this.encounter.heardVoice);
-      }
+      if (mesh && ['village', 'lobby', 'field', 'funplus'].includes(this.stage.id)) mesh.visible = !offDuty;
+      this.tickHunter(this.encounter, mesh, this.entityCenterHeight, dt, distance > 0.001, sprint, crouched, offDuty);
       if (this.encounter.contact && this.stage.threat?.kind === 'camera') {
         if (!this.has('office-camera')) {
           this.enter(this.stage.id);
@@ -999,24 +983,28 @@ export class Game {
           return;
         }
       } else if (this.encounter.contact) {
-        this.callbacks.scare?.({
-          kind: this.stage.threat!.kind,
-          lethal: true,
-          frame: this.contactFrame(this.stage.threat!.kind),
-        });
-        this.lastScare = this.activeClock;
-        this.die(`Caught by ${labelOf(this.stage.threat!.kind)}.`);
+        this.caught(this.stage.threat!.kind, mesh);
         return;
       }
       this.closeEncounter(offDuty);
     }
+    let otherDanger = 0;
+    for (const { encounter, mesh, kind, height } of this.additionalHunters) {
+      this.tickHunter(encounter, mesh, height, dt, distance > 0.001, sprint, crouched, false);
+      otherDanger = Math.max(otherDanger, encounter.danger);
+      if (encounter.contact) {
+        this.caught(kind, mesh);
+        return;
+      }
+    }
     const residentDanger = this.updateResidents(dt, distance, crouched);
     if (this.mode === 'death') return;
-    const danger = Math.max(residentDanger, this.encounter?.danger ?? 0);
-    const sanityDelta = this.hidden ? 0.75 : tile === '!' ? -11 : danger > 0.56 ? -2.2 * danger : -0.016;
+    const danger = Math.max(otherDanger, residentDanger, this.encounter?.danger ?? 0);
+    const infectedWater = tile === '!' && this.stage.theme === 'pool';
+    const sanityDelta = this.hidden ? 0.75 : infectedWater ? -28 : tile === '!' ? -11 : danger > 0.56 ? -2.2 * danger : -0.016;
     this.state.sanity = clamp(this.state.sanity + sanityDelta * dt, 0, 100);
     if (this.state.sanity === 0) {
-      this.die('You lost your bearings in the dark.');
+      this.die(infectedWater ? 'The Hydrolitis Plague took hold. Stay in the pale water.' : 'You lost your bearings in the dark.');
       return;
     }
     let pan = 0;
@@ -1025,7 +1013,7 @@ export class Game {
         dz = this.encounter.z - this.z / TILE;
       pan = (dx * Math.cos(this.yaw) + dz * Math.sin(this.yaw)) / Math.max(1, Math.hypot(dx, dz));
     }
-    this.sound.tick(dt, danger, pan);
+    this.sound.tick(dt, danger, pan, this.stage.threat?.kind === 'farmer' && this.has('wind-east'));
     this.world?.update(this.time, dt);
     this.tension = THREE.MathUtils.damp(
       this.tension,
@@ -1064,6 +1052,48 @@ export class Game {
     if (this.saveTimer > 2) {
       this.saveTimer = 0;
       if (distance > 0.001 || this.keys.size || danger > 0.1) this.persist();
+    }
+  }
+  private caught(kind: string, mesh: THREE.Object3D | null | undefined) {
+    this.callbacks.scare?.({ kind, lethal: true, frame: this.contactFrame(kind, mesh) });
+    this.lastScare = this.activeClock;
+    this.die(`Caught by ${creatureNames[kind] ?? labelOf(kind)}.`);
+  }
+  private tickHunter(encounter: Encounter, mesh: THREE.Group | null | undefined, height: number,
+    dt: number, moving: boolean, sprint: boolean, crouched: boolean, offDuty: boolean) {
+    const previousX = encounter.x, previousZ = encounter.z;
+    const wasWinding = encounter.winding;
+    const previousReach = encounter.reach;
+    encounter.tick(
+      dt,
+      this.x / TILE,
+      this.z / TILE,
+      this.entityVisible(1, encounter, height),
+      this.entityLit(encounter, height),
+      moving,
+      sprint,
+      crouched,
+      this.hidden,
+      this.state.flashlight,
+      offDuty ? 1 : this.grace,
+      this.alarmTime > 0 ? this.stage.objects.find((o) => o.gives?.includes('archive-alarm')) : undefined,
+      this.voice,
+    );
+    if (encounter.heardVoice) this.heardTime = 0.65;
+    if (encounter.winding && !wasWinding) {
+      this.sound.inhale();
+      this.world?.haunt('flicker', this.camera);
+    }
+    if (mesh) {
+      mesh.position.x = encounter.x * TILE;
+      mesh.position.z = encounter.z * TILE;
+      mesh.rotation.y = encounter.angle;
+      const speed = Math.hypot(encounter.x - previousX, encounter.z - previousZ) * TILE / Math.max(dt, 0.001);
+      mesh.userData.pose?.(this.time, dt, speed, encounter.winding, encounter.lunging, encounter.heardVoice, encounter.reach);
+    }
+    if (previousReach <= 0 && encounter.reach > 0) {
+      this.sound.scrape(0);
+      this.callbacks.message('Fingernails scrape the rim. Step back.');
     }
   }
   private updateResidents(dt: number, moved: number, crouched: boolean) {
@@ -1205,7 +1235,7 @@ export class Game {
       this.activeClock - this.lastScare > 62 &&
       !this.scareStages.has(this.stage.id)
     ) {
-      this.callbacks.scare?.({ kind: this.stage.threat.kind, lethal: false });
+      this.callbacks.scare?.({ kind: this.stage.threat.kind, lethal: false, frame: this.contactFrame(this.stage.threat.kind) });
       this.scareStages.add(this.stage.id);
       this.lastScare = this.activeClock;
     }

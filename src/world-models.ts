@@ -1,3 +1,4 @@
+import { makeLevelCreature } from './level-creatures';
 import { makeBacteria } from './bacteria';
 import * as T from 'three';
 import type { GameObject } from './campaign';
@@ -515,6 +516,8 @@ export function makeEntity(k: ModelKit, kind: string) {
   const b = (c: string, x: number, y: number, z: number, w: number, h: number, d: number, lit = true) =>
     k.ball(g, c, x, y, z, w, h, d, lit);
   const rod = (c: string, a: number[], u: number[], r: number) => k.rod(g, c, a, u, r);
+  const localCreature = makeLevelCreature(n);
+  if (localCreature) return localCreature;
   if (/bact|wire|howler/.test(n)) return makeBacteria();
   if (/smil/.test(n)) {
     b('#151b19', 0, 1.63, 0, 0.48, 0.58, 0.28);

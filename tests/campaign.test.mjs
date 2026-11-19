@@ -41,9 +41,10 @@ test('every scene has a bounded floor, reachable interactions and valid destinat
       }
       if (!walkable.has(key(obj.x, obj.z))) problems.push(obj.id + ' is unreachable');
     }
-    const entity = stage.threat;
-    if (entity && !walkable.has(key(entity.x, entity.z)))
-      problems.push(stage.id + ' threat cannot enter the player area');
+    for (const entity of [stage.threat, ...stage.additionalThreats]) {
+      if (entity && !walkable.has(key(entity.x, entity.z)))
+        problems.push(stage.id + ' ' + entity.kind + ' cannot enter the player area');
+    }
   }
   assert.deepEqual(problems, []);
 });

@@ -65,7 +65,7 @@ export const middle = [
       ),
       E: exit('Step through the projection', 'village', ['archive-done'], 'door'),
     },
-    'crawler',
+    'scratcher',
   ),
   stage(
     'village',
@@ -260,14 +260,15 @@ export const middle = [
     'Read the projected shapes, open the tool locker and trip all four shutter releases.',
     `
 #######################
-#..P.....#...3....#..E#
+#..P.....#...3.......E#
 #.###..#.#.#####..#...#
-#1....K#...#..L#..#...#
+#1....K#...#..L#...H..#
 ####..####.#...#..##..#
 #..2.......#...4......#
 #.@...#..##.....#..!..#
 #######################`,
     {
+      H: hide('Shelter inside the projection booth', 'locker'),
       P: note(
         'Turn the projector',
         'The first shadow is a triangle, the second a square, the third a pentagon. Count edges.',
@@ -325,16 +326,16 @@ export const middle = [
     'Level 9',
     'Darkened Suburbs',
     'suburbs',
-    'The neighborhood map marks three houses with the same red circle. Something taller than the rooflines patrols the road.',
+    'The neighborhood map marks three houses with the same red circle. The Neighborhood Watch sees down the street. Stop beneath a lit porch until the eye passes.',
     'Activate the three home terminals. The outpost holds the administrator card for the field gate.',
     `
 #########################
 #1...#....2..#...#.H....#
 #....#.......#...#......#
-###.#####.######.###.####
+###=#####=######=###=####
 #...................!...#
 #@......T.........E.....#
-###.#####.#####.#####.###
+###=#####=#####=#####=###
 #...#.......#...#.......#
 #3..#...O...#...#.......#
 #########################`,
@@ -353,7 +354,7 @@ export const middle = [
       O: exit('Enter the abandoned outpost', 'outpost', rangeFlags('home', 3)),
       E: exit('Use administrator card at field gate', 'field', ['admin-card']),
     },
-    'watcher',
+    'neighborhoodwatch',
     Math.PI / 2,
   ),
   stage(
@@ -398,7 +399,7 @@ export const middle = [
     'Level 10',
     'Bountiful Harvest',
     'field',
-    'Rows of wheat disappear into the dusk. The crop has grown around the turbine controls.',
+    'Rows of wheat disappear into the dusk. The first windmill is silent. So is the engine somewhere in the wheat.',
     'Follow the fence breaks and wake the three wind turbines in sequence.',
     `
 #########################
@@ -411,7 +412,7 @@ export const middle = [
 #C..##..............#.E.#
 #########################`,
     {
-      A: act('Start the east turbine', 'wind-east', 'turbine', 'The blades swing toward the central tower.'),
+      A: act('Start the east turbine', 'wind-east', 'turbine', 'The blades swing toward the central tower. A chainsaw starts in the wheat.'),
       B: act('Start the central turbine', 'wind-center', 'turbine', 'A beacon appears at the south fence.', [
         'wind-east',
       ]),
@@ -420,7 +421,7 @@ export const middle = [
       ]),
       E: exit('Enter the deserted arcade', 'arcade', ['wind-south']),
     },
-    'faceling',
+    'farmer',
     Math.PI / 2,
   ),
   stage(
@@ -507,8 +508,8 @@ export const middle = [
     'Level 0.2 / Negative',
     'Through the Wall',
     'chase',
-    'The service doors are open on this side. The walls seem to breathe when you run.',
-    'Throw the remote lock release, then return through the broken wall.',
+    'A ring of finger marks surrounds a black hole in the plaster floor. A knuckle shifts inside it.',
+    'Give the Bone Thief’s hole a wide berth. Release the locks and return through the broken wall.',
     `
 #####################
 #@....#...#........K#
@@ -527,7 +528,7 @@ export const middle = [
       E: exit('Clip back through the plaster', 'residential', ['red-locks'], 'vent'),
       H: hide('Hide behind the service trolley', 'trolley'),
     },
-    'smiler',
+    'bonethief',
     Math.PI / 2,
   ),
   stage(

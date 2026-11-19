@@ -128,7 +128,7 @@ function loadRuntime() {
   if (!pendingLoad)
     pendingLoad = Promise.all([import('./game'), import('./campaign')])
       .then(async ([g, c]) => {
-        await Promise.all([g.loadBacteria(), g.loadResidents()]);
+        await Promise.all([g.loadBacteria(), g.loadResidents(), g.loadLevelCreatures()]);
         runtime = g;
         campaign = c;
         refreshHome();

@@ -71,9 +71,11 @@
 <tr><td><code>A</code>–<code>Z</code></td><td>An object from this level’s <code>markers</code>. You choose the letters. Repeat a letter to place another copy. Copies share any flag they grant.</td></tr>
 <tr><td><code>!</code></td><td>Roaming monster spawn. Add the level’s <code>monster</code> field and exactly one <code>!</code> together.</td></tr>
 <tr><td><code>%</code></td><td>Veil. Looking at its masks for too long is fatal.</td></tr>
+<tr><td><code>=</code></td><td>Lit porch. The Neighborhood Watch loses sight of players here.</td></tr>
 <tr><td><code>&amp;</code></td><td>Bellwether. Move quietly or stay still after its warning knocks.</td></tr>
 </tbody></table>
-<p>Choose a roaming <code>monster</code> from <code>bacteria</code>, <code>hound</code>, <code>smiler</code>, <code>crawler</code>, <code>watcher</code>, and <code>partygoer</code>. A Crawler hunts by sound. A Watcher freezes under observation. To tune pursuit, add a numeric <code>speed</code> from 0.5 to 6 alongside <code>monster</code>. A level supports up to six resident creatures in addition to its roaming monster.</p>
+<p>Choose a roaming <code>monster</code> from <code>bacteria</code>, <code>hound</code>, <code>smiler</code>, <code>crawler</code>, <code>watcher</code>, and <code>partygoer</code>. A Crawler hunts by sound. A Watcher freezes under observation. To tune pursuit, add a numeric <code>speed</code> from 0.5 to 6 alongside <code>monster</code>. A level supports up to six resident creatures in addition to its primary monster.</p>
+<p>Campaign creatures also work in custom maps. Use <code>scratcher</code> for a blind sound hunter, <code>bonethief</code> for a fixed floor ambush, <code>membri</code> for a fast hunter that returns to its post, <code>neighborhoodwatch</code> for a sight-only street patrol, <code>farmer</code> for a persistent chase, or <code>partyhost</code> to guard an area within five tiles of its spawn. The Bone Thief stays at its marker.</p>
 
 <h2>Marker language</h2>
 <p>Each marker takes a <code>kind</code> and an optional <code>model</code>. All interactive markers require a <code>name</code> up to 72 characters for the interaction prompt. A prop uses only <code>kind</code> and an optional <code>model</code>.</p>

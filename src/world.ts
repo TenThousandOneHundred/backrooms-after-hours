@@ -623,13 +623,28 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
       }
       if (!isOutdoor)
         quad(ceilings, [ox, h, oz], [TILE, 0, 0], [0, 0, TILE], [0, -1, 0], 3, 3, TILE, 'ceil', x, z);
+      if (tileType === '=') {
+        b('#78664e', cx, 0.025, cz, TILE, 0.05, TILE);
+        for (let j = -2; j <= 2; j++)
+          b('#483e32', cx + j * TILE / 5, 0.057, cz, 0.013, 0.007, TILE);
+        b('#3d3833', cx, 2.76, cz, TILE, 0.14, TILE);
+        b('#ffe4ae', cx, 2.66, cz, 0.32, 0.07, 0.32, true);
+      }
       if (tileType === '!') {
         for (const [dx, dz] of DIRS) {
           if (tile(x + dx, z + dz) !== '!')
             b('#94a985', cx + dx * (TILE / 2 - 0.04), 0.02, cz + dz * (TILE / 2 - 0.04), dx ? 0.08 : TILE, 0.012, dz ? 0.08 : TILE);
         }
       }
-      if (family === 'pool' && !pit) {
+      if (family === 'pool' && tileType === '!') {
+        b('#1b2825', cx, 0.015, cz, TILE - 0.07, 0.013, TILE - 0.07);
+        for (let j = 0; j < 5; j++) {
+          const grain = hash(x, z, j + 31);
+          const filament = b('#566153', cx + (grain - .5) * 2.3, .029,
+            cz + (j - 2) * .4, .018, .008, .46 + grain * .5);
+          filament.rotation.y = grain * 3.7;
+        }
+      } else if (family === 'pool' && !pit) {
         if ((x + z) % 4 < 2) {
           const w = 0.12 + rand * 0.35,
             gx = cx + (rand - 0.5) * 1.8,
@@ -899,6 +914,12 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
   const residents = (stage.residents ?? []).map(site => makeResident(site, TILE, h));
   for (const resident of residents) root.add(resident.mesh);
   const entity = stage.threat ? makeEntity(kit, stage.threat.kind) : null;
+  const additionalEntities = (stage.additionalThreats ?? []).map(site => {
+    const mesh = makeEntity(kit, site.kind);
+    mesh.position.set(site.x * TILE, 0, site.z * TILE);
+    root.add(mesh);
+    return { site, mesh };
+  });
   const entityHeightScale = entity?.scale.y ?? 1;
   if (entity && stage.threat) {
     entity.position.set(stage.threat.x * TILE, 0, stage.threat.z * TILE);
@@ -963,9 +984,11 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
         );
     };
   }
-  const apparition = makeEntity(kit, 'bacteria');
-  apparition.visible = false;
-  root.add(apparition);
+  const apparition = stage.threat?.kind === 'bacteria' ? makeEntity(kit, 'bacteria') : null;
+  if (apparition) {
+    apparition.visible = false;
+    root.add(apparition);
+  }
   function haunt(event: 'flicker' | 'steps' | 'breath' | 'silhouette', camera?: THREE.Camera) {
     if (camera) {
       camera.getWorldPosition(eye);
@@ -983,7 +1006,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
       }
       if (!isOutdoor) circuitAge = 0;
     }
-    if (event !== 'silhouette') return;
+    if (!apparition || event !== 'silhouette') return;
     // Place the shape only at a visible, distant point inside the current passage.
     let spot: THREE.Vector3 | undefined;
     for (const yaw of [-0.15, 0.15, -0.3, 0.3, 0]) {
@@ -1016,12 +1039,13 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     objects,
     residents,
     entity,
+    additionalEntities,
     haunt,
     update(t: number, dt: number) {
       clock.value = t;
       circuitAge += dt;
       apparitionAge += dt;
-      if (apparition.visible) apparition.userData.pose(t, dt, 0, false, false);
+      if (apparition?.visible) apparition.userData.pose(t, dt, 0, false, false);
       if (circuitAge < 2.2) {
         const a = circuitAge;
         circuit.value =
@@ -1037,7 +1061,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
                     ? 1
                     : Math.max(0, 1 - (a - 1.52) / 0.68);
       } else circuit.value = 0;
-      if (apparitionAge > 1.65) apparition.visible = false;
+      if (apparition && apparitionAge > 1.65) apparition.visible = false;
       if (stage.id === 'village') {
         const phase = t % 80,
           darkness = phase < 24 ? 0 : phase < 32 ? (phase - 24) / 8 : phase < 69 ? 1 : 1 - (phase - 69) / 11;
@@ -1064,8 +1088,9 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     dispose() {
       scene.remove(root);
       for (const resident of residents) resident.dispose();
-      apparition.userData.release();
+      apparition?.userData.release();
       entity?.userData.release?.();
+      for (const { mesh } of additionalEntities) mesh.userData.release?.();
       for (const m of instances) m.dispose();
       for (const g of geometries) g.dispose();
       for (const m of materials) m.dispose();
