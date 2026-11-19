@@ -29,12 +29,19 @@ export function makeResident(site: ResidentSite, tile: number, height: number) {
   function animate(dt: number, yaw: number) {
     let name = idle;
     if (veil) {
-      mesh.rotation.y = yaw;
+      const delta = yaw - mesh.rotation.y;
+      mesh.rotation.y += Math.atan2(Math.sin(delta), Math.cos(delta)) * (1 - Math.exp(-dt * 9));
       if (behavior.phase === 'warning') name = 'VeilFixate';
+      else if (active.getClip().name === 'VeilFixate' ||
+        (active.getClip().name === 'VeilRelease' && active.time < active.getClip().duration))
+        name = 'VeilRelease';
     } else if (behavior.phase === 'warning') name = 'BellKnock';
     else if (behavior.phase === 'listening') name = 'BellListen';
-    else if (behavior.phase === 'quiet' && behavior.time < actions.get('BellToll')!.getClip().duration)
-      name = 'BellToll';
+    else if (behavior.phase === 'quiet') {
+      const toll = actions.get('BellToll')!.getClip().duration;
+      if (behavior.time < toll) name = 'BellToll';
+      else if (behavior.time < toll + actions.get('BellSettle')!.getClip().duration) name = 'BellSettle';
+    }
     const next = actions.get(name)!;
     if (active !== next) {
       active.fadeOut(.075);

@@ -43,7 +43,7 @@ test('the exported resident actions animate only joints of their own rig', async
   const data = await readFile(new URL('../public/models/residents.glb', import.meta.url));
   const model = JSON.parse(data.toString('utf8', 20, 20 + data.readUInt32LE(12)));
   const names = model.animations.map(a => a.name).sort();
-  assert.deepEqual(names, ['BellKnock', 'BellListen', 'BellRoost', 'BellToll', 'VeilDrift', 'VeilFixate']);
+  assert.deepEqual(names, ['BellKnock', 'BellListen', 'BellRoost', 'BellSettle', 'BellToll', 'VeilDrift', 'VeilFixate', 'VeilRelease']);
   for (const clip of model.animations) {
     const veil = clip.name.startsWith('Veil');
     const skin = model.skins.find(s => s.joints.some(i => model.nodes[i].name === (veil ? 'Mask0' : 'Tongue')));

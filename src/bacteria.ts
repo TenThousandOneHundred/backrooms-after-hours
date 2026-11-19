@@ -9,7 +9,7 @@ export async function loadBacteria() {
   const model = await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'models/bacteria.glb');
   // glTF clips can share accessor buffers. Convert a private copy of the overlay.
   model.animations = model.animations.map(clip =>
-    clip.name === 'SoundTurn' ? AnimationUtils.makeClipAdditive(clip.clone()) : clip,
+    ['SoundTurn', 'BankLeft', 'BankRight'].includes(clip.name) ? AnimationUtils.makeClipAdditive(clip.clone()) : clip,
   );
   asset = model;
 }
@@ -27,15 +27,19 @@ export function makeBacteria() {
     action.clampWhenFinished = true;
   }
   const soundTurn = actions.get('SoundTurn')!.setLoop(LoopOnce, 1);
+  const left = actions.get('BankLeft')!.setLoop(LoopOnce, 1);
+  const right = actions.get('BankRight')!.setLoop(LoopOnce, 1);
   let wasHearing = false;
   let nextReaction = 0;
+  let nextBank = 0;
   let state = 'Listen';
   let current = actions.get(state)!;
   let pace = 0;
   current.play();
   mixer.update(0);
   const locomotion = (name: string) => name === 'Chase' || name === 'Stalk';
-  root.userData.pose = (time: number, dt: number, speed: number, winding: boolean, lunging: boolean, heardVoice = false) => {
+  root.userData.pose = (time: number, dt: number, speed: number, winding: boolean, lunging: boolean, heardVoice = false,
+    _reach = 0, _heldByGaze = false, turn = 0) => {
     pace += (speed - pace) * (1 - Math.exp(-dt * 14));
     let nextState: string;
     if (lunging) nextState = 'Strike';
@@ -63,10 +67,16 @@ export function makeBacteria() {
       current.timeScale = speed * current.getClip().duration / stride;
     } else current.timeScale = state === 'Strike' ? current.getClip().duration / bacteriaChargeSeconds : 1;
     if (winding || lunging) {
-      if (soundTurn.isRunning()) soundTurn.stop();
+      for (const overlay of [soundTurn, left, right]) if (overlay.isRunning()) overlay.stop();
     } else if (heardVoice && !wasHearing && time >= nextReaction && state !== 'Recover') {
+      left.stop();
+      right.stop();
       soundTurn.reset().play();
       nextReaction = time + soundTurn.getClip().duration + .45;
+    } else if (locomotion(state) && speed > 1 && Math.abs(turn) > .60 && !soundTurn.isRunning() && time >= nextBank) {
+      const bank = turn > 0 ? left : right;
+      bank.reset().play();
+      nextBank = time + bank.getClip().duration;
     }
     wasHearing = heardVoice;
     mixer.update(dt);

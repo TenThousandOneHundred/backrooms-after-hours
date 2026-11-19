@@ -105,11 +105,27 @@ for (const [fileName, entries] of Object.entries(creatureLibraries)) {
         assert.equal(attributes.COLOR_1, undefined, name + ' paint exported to the secondary layer');
       }
       assert.ok(nodes.some(n => n.name === name + '_Focus'), name + ' focus');
-      const clip = gltf.animations.find(a => a.name === name + 'Motion');
-      assert.ok(clip?.channels.length > 0, name + ' action');
-      for (const {target, sampler} of clip.channels) {
-        assert.ok(tree.has(target.node), name + ' cross-rig animation');
-        assert.ok(gltf.accessors[clip.samplers[sampler].input].count > 1);
+      const suffixes = name === 'BoneThief' ? ['Reach'] : name === 'SecurityCamera' ? ['Scan'] : ['Idle', 'Stalk', 'Chase'];
+      if (suffixes.length === 3) {
+        const { walkStride, chaseStride } = gltf.nodes[root].extras;
+        assert.ok(walkStride > 0 && chaseStride > 0, name + ' stride lengths');
+      }
+      for (const suffix of suffixes) {
+        const clip = gltf.animations.find(a => a.name === name + suffix);
+        assert.ok(clip?.channels.length > 0, name + suffix);
+        for (const {target, sampler} of clip.channels) {
+          assert.ok(tree.has(target.node), name + ' cross-rig animation');
+          const timeline = gltf.accessors[clip.samplers[sampler].input];
+          assert.equal(timeline.min[0], 0, clip.name + ' starts late');
+          assert.ok(timeline.count > 1 && timeline.max[0] > 0);
+        }
+      }
+      if (['Hound', 'AraneaMembri', 'FarmerFaceling', 'SkinStealer', 'Clump'].includes(name)) {
+        assert.ok(surfaces.some(p => p.attributes.WEIGHTS_0 !== undefined && p.attributes.JOINTS_0 !== undefined));
+        const skinned = nodes.find(n => n.skin !== undefined);
+        const joints = gltf.skins[skinned.skin].joints;
+        assert.ok(joints.every(i => tree.has(i)));
+        assert.ok(joints.some(i => gltf.nodes[i].name.endsWith('Plant')));
       }
     }
   });

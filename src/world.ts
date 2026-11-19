@@ -1079,10 +1079,6 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
         const fluctuation = Math.sin(t * 15.3) * Math.sin(t * 8.6);
         sky.intensity = base * (1 + 0.012 * fluctuation);
       }
-      if (entity) {
-        const threat = stage.threat?.kind.toLowerCase() ?? '';
-        if (threat === 'smiler' || threat === 'moth') entity.position.y = 0.07 * Math.sin(t * 3);
-      }
     },
     dispose() {
       scene.remove(root);

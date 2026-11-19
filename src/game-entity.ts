@@ -96,6 +96,7 @@ export class Encounter {
   danger = 0;
   contact = false;
   heardVoice = false;
+  heldByGaze = false;
   private stalkClock = 10;
   private pursuitSeconds = 0;
   private recovery = 0;
@@ -110,7 +111,7 @@ export class Encounter {
   private path: Cell[] = [];
   private lastSeen: Cell;
   private profile: Profile;
-  private kind: string;
+  readonly kind: string;
   private home: NonNullable<Stage['threat']>;
   private stage: Stage;
   private tileSize: number;
@@ -220,7 +221,8 @@ export class Encounter {
       this.contact = this.attack > 1.25;
       return;
     }
-    if (grace > 0 || (looking && p.gaze === 'freeze')) {
+    this.heldByGaze = looking && p.gaze === 'freeze';
+    if (grace > 0 || this.heldByGaze) {
       this.attack = 0;
       return;
     }
