@@ -167,6 +167,7 @@ function hidePanel() {
   panel.replaceChildren();
 }
 function titleScreen() {
+  rooms?.disconnect();
   horror.clear();
   game?.dispose();
   game = null;
@@ -210,7 +211,7 @@ function manual() {
     city: 'Empty City',
     final: 'Final Escape',
   };
-  const endings = (activeMod ? loadProgress(activeMod.slot) : runtime?.readSummary())?.endings ?? [];
+  const endings = game?.roomEndings ?? (activeMod ? loadProgress(activeMod.slot) : runtime?.readSummary())?.endings ?? [];
   const contents =
     manualTab === 'controls'
       ? controls
@@ -392,6 +393,12 @@ const callbacks: GameCallbacks = {
       hidePanel();
       return;
     }
+    if(screen==='spectating'){
+      mode='spectating';hidePanel();hud.hidden=false;
+      el('hud-objective').textContent=(detail??'You were caught.')+' Watching a teammate. You rejoin at the next level.';
+      el('interact').hidden=true;
+      return;
+    }
     if (screen === 'pause') {
       pauseMenu();
       return;
@@ -439,11 +446,11 @@ const callbacks: GameCallbacks = {
         '<p class="panel-text">' +
           safe(endingText[id] || 'Your discovery has been recorded.') +
           '</p><div class="panel-buttons">' +
-          actions('ending-continue', id === 'final' ? 'Continue exploring' : 'Continue', 'arrow', true) +
+          (game?.guest ? '<p class="panel-text">Waiting for the host to continue.</p>' : actions('ending-continue', id === 'final' ? 'Continue exploring' : 'Continue', 'arrow', true)) +
           actions('title', 'Title screen', 'exit') +
           '</div>',
       );
-      wire('ending-continue', () => game?.continueEnding());
+      if(!game?.guest) wire('ending-continue', () => game?.continueEnding());
       wire('title', titleScreen);
       return;
     }
@@ -515,14 +522,21 @@ async function multiplayer() {
   try {
     const {RoomMenu}=await import('./multiplayer/menu');
     if(mode!==requestedMode)return;
-    rooms ??= new RoomMenu({panel:showPanel,button:actions,exit:titleScreen,enter:()=>{
-      home.hidden=true;hud.hidden=true;hidePanel();mode='coop-playing';
-    }},settings);
+    rooms ??= new RoomMenu({
+      panel:showPanel,button:actions,exit:titleScreen,
+      prepare:async()=>{await Promise.all([loadRuntime(), (await import('./multiplayer/explorers')).loadExplorer()]);},
+      enter:room=>{
+        activeMod=undefined; horror.unlock(); horror.preload(); horror.clear();
+        game=new runtime!.Game(el<HTMLCanvasElement>('world'), callbacks, undefined, room);
+        game.applySettings(settings); game.start(false);
+      },
+      stop:()=>{game?.dispose();game=null;mic.stop();horror.clear();hud.hidden=true;},
+    });
     rooms.menu();
   }catch{notify('Could not load multiplayer. Check your connection and try again.');}
 }
 wire('multiplayer',()=>void multiplayer());
-window.addEventListener('pagehide',()=>{if(mode.startsWith('coop-'))rooms?.leave();});
+window.addEventListener('pagehide',()=>{rooms?.disconnect();});
 wire('new-game', () => {
   showPanel(
     'new',

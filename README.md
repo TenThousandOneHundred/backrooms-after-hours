@@ -2,7 +2,7 @@
 
 **[Play in your desktop browser](https://tenthousandonehundred.github.io/backrooms-after-hours/)**
 
-A first-person, single-player browser game inspired by *Escape the Backrooms*. Find four broken ladder pieces in the yellow lobby, make your way through the Habitable Zone, and follow the campaign into the Poolrooms, Terror Hotel, Plastic Mariana, and the arcade. The Bunker connects the ending routes. Four discoveries unlock the fifth ending on the same save.
+A first-person solo and co-op browser game inspired by *Escape the Backrooms*. Find four broken ladder pieces in the yellow lobby, make your way through the Habitable Zone, and follow the campaign into the Poolrooms, Terror Hotel, Plastic Mariana, and the arcade. The Bunker connects the ending routes. Four discoveries unlock the fifth ending on the same save.
 
 The east telephone exchange links Records, Dispatch, and the old switchboard to the original Level 0 corridors. Two ladder pieces went missing there. Ringing phones draw the Bacteria, and staying in its sight can turn a stalk into a charge. From inside a locker you can hear its claws dragging past. Footsteps in the next aisle can give it away before you see it. Sprinting makes noise, hiding breaks pursuit, and getting caught kills you and sends you back to your checkpoint.
 
@@ -31,9 +31,11 @@ The field manual on the title screen lists controls and ending discoveries. Cont
 
 Choose **Multiplayer → Create room** and share the six-character code. Friends choose **Multiplayer**, enter that code, and select **Join room**. The host selects **Start expedition**. Eight explorers can play, including the host. A full room turns additional players away until someone leaves.
 
-Co-op takes place in Level 0. Find four ladder pieces as a team and use the service door. Press E near a piece or the door. The Bacteria can hunt any explorer, including someone making noise with their microphone enabled. Captured players watch a survivor. The host can start another round after the team escapes or everyone is caught. Co-op progress lasts for the room session. Single player has the full campaign and its own checkpoint.
+The whole campaign supports co-op. Split up to collect supplies, operate equipment, solve keypads and carry objects. Any explorer who opens an eligible exit takes the team to the next area. Everyone sees the ending together, and the host chooses when to continue. All five endings count toward the room’s shared record.
 
-The host's browser runs the room. Keep that tab active while playing. Closing it ends the room. Each device renders its own view. Only controls, microphone loudness and game state travel over the WebRTC data channels. [PeerJS Cloud](https://peerjs.com/server/getting-started) provides room discovery and connection signaling. Some networks restrict peer connections. No installation or account is required. Standard graphics caps multiplayer rendering at 30 FPS to reduce battery use. [Networking library licenses](public/licenses/Multiplayer.txt).
+If you die, you watch a surviving teammate and rejoin at the next level. If everyone dies, the host can retry the current level with completed objectives intact. The host’s browser saves the co-op campaign separately from single player. Create a room on the same browser and choose **Continue saved campaign** to pick up at your last area. Friends can join a campaign in progress using its current room code.
+
+The host's browser runs the room. Keep that tab active while playing. Closing it ends the room. Each device renders its own view. Explorer poses, microphone loudness and game state travel over the WebRTC data channels. [PeerJS Cloud](https://peerjs.com/server/getting-started) provides room discovery and connection signaling. Some networks restrict peer connections. No installation or account is required. Standard graphics caps multiplayer rendering at 30 FPS to reduce battery use. [Networking library licenses](public/licenses/Multiplayer.txt).
 
 ## Microphone hearing
 

@@ -828,3 +828,6 @@ select,
 .coop-top button { pointer-events: auto; }
 .coop-bottom { bottom: 12px; width: fit-content; max-width: calc(100% - 32px); }
 .coop-bottom small { display: block; color: #c1c3b2; margin-top: 5px; }
+
+#coop-hud .coop-top { top: 68px; left: auto; right: 18px; width: fit-content; gap: 12px; padding: 4px 8px; border-radius: 3px; font-size: 11px; }
+#coop-leave { min-height: 25px; padding: 2px 6px; font-size: 11px; }

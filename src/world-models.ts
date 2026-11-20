@@ -318,6 +318,39 @@ export function makeModel(k: ModelKit, s: Spec) {
       b(i === 1 ? '#b3593c' : '#8d9b86', x, 1.49, 0.38, 0.065, 0.078, 0.062);
     }
     label('SERVICE', 0, 1.09, 0.23, 0.39, 0.11, '#bba259', '#262c25');
+  } else if (['records-rack', 'parts-rack', 'linen-rack'].includes(model)) {
+    const linen = model === 'linen-rack', parts = model === 'parts-rack';
+    const paint = linen ? '#85705d' : parts ? '#596961' : '#716956';
+    for (const x of [-.91, .91]) for (const z of [-.32, .32])
+      b(paint, x, 1.07, z, .055, 2.14, .065);
+    rod(steel, [-.9, .18, -.32], [.9, 2.04, -.32], .018);
+    rod(steel, [.9, .18, -.32], [-.9, 2.04, -.32], .018);
+    for (let row = 0; row < 3; row++) {
+      const y = .18 + row * .71;
+      b(paint, 0, y, 0, 1.91, .065, .76);
+      for (let col = 0; col < 3; col++) {
+        if (row === 1 && col === 2) continue;
+        const x = (col - 1) * .58;
+        if (linen) {
+          for (let fold = 0; fold < 2 + (col + row) % 3; fold++) {
+            const towel = b(fold % 2 ? '#acafa2' : '#cdccba', x, y + .09 + fold * .105, .025, .51, .10, .60);
+            towel.rotation.y = Math.sin(row + col + fold) * .06;
+            b('#929c8e', x - .14, y + .09 + fold * .105, .329, .045, .095, .009);
+          }
+        } else if (parts) {
+          const drum = cy(col % 2 ? '#866b4e' : '#697774', x, y + .23, 0, .38, .39);
+          cy('#404a48', x, y + .435, 0, .39, .024);
+          b('#b1a78e', x, drum.position.y, .184, .16, .105, .018);
+        } else {
+          b('#a08662', x, y + .22, 0, .51, .37, .62);
+          b('#bcab83', x, y + .413, 0, .53, .045, .65);
+          b('#4e4b40', x, y + .27, .317, .15, .04, .012);
+          b('#d0c5a6', x, y + .16, .318, .22, .078, .012);
+        }
+      }
+    }
+    label(linen ? 'CLEAN LINEN' : parts ? 'SERVICE PARTS' : 'RECORDS  /  B',
+      0, 2.08, .36, 1.15, .18, paint, '#e2d7b8');
   } else if (/shelf|bookcase|cart|trolley|spool/.test(model)) {
     for (const x of [-0.54, 0.54]) for (const z of [-0.2, 0.2]) b(steel, x, 0.91, z, 0.04, 1.83, 0.05);
     for (let i = 0; i < 4; i++) {
@@ -334,10 +367,30 @@ export function makeModel(k: ModelKit, s: Spec) {
         );
     }
   } else if (/locker|closet|cabinet/.test(model)) {
-    b('#55635c', 0, 0.98, 0, 0.74, 1.96, 0.57);
-    b('#738074', 0, 0.985, 0.296, 0.65, 1.85, 0.03);
-    for (let i = 0; i < 6; i++) b('#36483e', 0, 1.54 + i * 0.044, 0.317, 0.36, 0.014, 0.012);
-    b(dark, 0.22, 1, 0.33, 0.039, 0.25, 0.046);
+    const enamel = model === 'linen-cabinet' ? '#9e9986' : model === 'bay-locker' ? '#7a6853' : '#738074';
+    for (const side of [-1, 1]) b('#414c47', side * .405, 1.02, 0, .04, 2.02, .70);
+    b('#414c47', 0, 1.02, -.33, .82, 2.02, .04);
+    for (const y of [.045, 2]) b('#414c47', 0, y, 0, .83, .07, .70);
+    g.userData.lockerEye = new T.Vector3(0, 1.597, -.16);
+    const door = new T.Group();
+    door.position.set(-.385, 0, .36);
+    door.rotation.y = -.16;
+    g.add(door);
+    const panelPart = (c: string, x: number, y: number, z: number, w: number, h: number, d: number) =>
+      k.cube(door, c, x, y, z, w, h, d);
+    panelPart(enamel, .38, .775, 0, .76, 1.43, .04);
+    panelPart(enamel, .38, 1.87, 0, .76, .18, .04);
+    for (const x of [.075, .685]) panelPart(enamel, x, 1.635, 0, .15, .29, .04);
+    for (let i = 0; i < 5; i++) {
+      const lip = panelPart(enamel, .38, 1.50 + i * .064, .017, .47, .022, .048);
+      lip.rotation.x = -.22;
+      panelPart('#38463f', .38, .24 + i * .05, .026, .45, .025, .018);
+    }
+    panelPart(dark, .62, 1, .04, .10, .25, .025);
+    panelPart('#aba997', .62, 1.02, .074, .04, .15, .055);
+    for (const y of [.35, 1.53]) panelPart('#939380', .025, y, .03, .035, .13, .03);
+    k.label(door, model === 'linen-cabinet' ? 'LINEN' : model === 'bay-locker' ? 'DECK B' : 'STAFF',
+      .38, 1.35, .032, .33, .1, '#48534a', '#d9d1b9');
   } else if (/table|desk|bench|bed|cot/.test(model)) {
     const bed = /bed|cot/.test(model),
       height = bed ? 0.52 : 0.82,

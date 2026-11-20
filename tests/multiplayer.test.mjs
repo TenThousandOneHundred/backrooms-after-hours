@@ -1,91 +1,89 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { Expedition, level, rails, still, tileSize } from '../src/multiplayer/expedition.ts';
+import { readFileSync } from 'node:fs';
+import { Expedition, capacity } from '../src/multiplayer/expedition.ts';
+import { stages, ENDINGS } from '../src/campaign.ts';
+import { TILE } from '../src/game-entity.ts';
+import { stages as itinerary, endByStage } from './campaign-itinerary.mjs';
 
-test('ten arrivals get eight unique seats, including the host, and a departing seat can be reused', () => {
-  const room = new Expedition();
-  assert.deepEqual(
-    Array.from({ length: 10 }, () => room.add()),
-    [1, 2, 3, 4, 5, 6, 7, 8, 0, 0],
-  );
-  room.remove(4);
-  assert.equal(room.add(), 4);
-  assert.equal(room.snapshot().players.length, 8);
-  assert.equal(room.phase, 'waiting');
+function room(){
+  const r=new Expedition();
+  for(let i=0;i<capacity;i++)r.add();
+  r.start();return r;
+}
+function use(r,slot,obj,code=obj.code){
+  const s=stages[r.journal.stage], task=obj.challenge;
+  const pos=task?.kind==='haul'?s.objects.find(o=>o.id===task.destination||o.gives?.includes(task.destination)):obj;
+  r.command(slot,r.epoch,{type:'pose',pose:{...r.players.get(slot),x:pos.x*TILE,z:pos.z*TILE}});
+  r.command(slot,r.epoch,{type:'use',id:obj.id,code});
+}
+
+test('ten arrivals get eight seats; late joiners enter the current campaign',()=>{
+  const r=room();assert.deepEqual([r.add(),r.add()],[0,0]);
+  r.remove(4);assert.equal(r.add(),4);
+  assert.equal(r.snapshot().players.length,capacity);
 });
 
-test('host simulates each explorer independently and stale or invalid inputs cannot keep moving a player', () => {
-  const room = new Expedition();
-  room.add();
-  room.add();
-  room.start();
-  const host = room.players.get(1),
-    guest = room.players.get(2);
-  const hostX = host.x,
-    start = guest.x;
-  room.input(2, { ...still, forward: 1, yaw: Math.PI / 2 });
-  room.step(0.05);
-  assert.equal(host.x, hostX);
-  assert.ok(guest.x > start);
-  room.input(2, { ...still, side: 999, yaw: NaN });
-  for (let n = 0; n < 14; n++) room.step(0.05);
-  const stopped = guest.x;
-  room.step(0.05);
-  assert.equal(guest.x, stopped);
-  assert.ok(Number.isFinite(guest.z));
-  room.remove(2);
-  assert.equal(room.add(), 2);
-  assert.notEqual(room.players.get(2).x, stopped);
-});
-
-test('shared pickup is collected once, resolves concurrent use and opens the same exit for everyone', () => {
-  const room = new Expedition();
-  room.add();
-  room.add();
-  room.start();
-  const door = level.objects.find((o) => o.kind === 'exit');
-  const use = (slot, o) => {
-    const p = room.players.get(slot);
-    p.x = o.x * tileSize;
-    p.z = o.z * tileSize;
-    room.input(slot, { ...still, use: true });
-  };
-  use(2, door);
-  room.step(0.05);
-  assert.equal(room.phase, 'playing');
-  for (const rail of rails) {
-    use(1, rail);
-    use(2, rail);
-    room.step(0.05);
-    assert.equal(room.collected.filter((id) => id === rail.id).length, 1);
-  }
-  use(2, door);
-  room.step(0.05);
-  assert.equal(room.snapshot().phase, 'escaped');
-  room.start();
-  assert.equal(room.round, 2);
-  assert.equal(room.phase, 'playing');
-  assert.deepEqual(room.collected, []);
-});
-
-test('the shared hunter can capture a guest, and the last explorer falling ends the round', () => {
-  const room = new Expedition();
-  room.add();
-  room.add();
-  room.start();
-  for (let i = 0; i < 162; i++) room.step(0.05);
-  function expose(slot) {
-    for (let i = 0; i < 100 && room.players.get(slot).alive; i++) {
-      const m = room.snapshot().monster;
-      room.players.get(slot).x = m.x;
-      room.players.get(slot).z = m.z;
-      room.input(slot, { ...still, voice: 1 });
-      room.step(0.05);
+test('team finishes every campaign scene and all five endings, alternating explorers and resolving concurrent uses once',()=>{
+  const r=room(), visited=new Set(),challenges=new Set();let seat=0;
+  const next=()=>1+seat++%capacity;
+  for(const [i,id] of itinerary.entries()){
+    assert.equal(r.journal.stage,id);
+    visited.add(id);
+    const s=stages[id];
+    assert.equal(r.snapshot().monsters.length,(s.threat?1:0)+s.additionalThreats.length);
+    for(let pass=0;pass<s.objects.length;pass++){
+      const before=r.revision;
+      for(const obj of s.objects){
+        if(obj.target||obj.kind==='hide'||(obj.kind==='note'&&!obj.gives?.length)||obj.need?.some(f=>!r.journal.flags.includes(f))||r.journal.completed.includes(id+'/'+obj.id))continue;
+        if(obj.kind==='code'){
+          use(r,next(),obj,'incorrect');
+          assert.ok(!r.journal.completed.includes(id+'/'+obj.id));
+        }
+        use(r,next(),obj);
+        const rev=r.revision;use(r,next(),obj);
+        assert.equal(r.revision,rev);assert.ok(r.journal.completed.includes(id+'/'+obj.id),obj.id);
+        if(obj.challenge)challenges.add(obj.challenge.kind);
+      }
+      if(r.revision===before)break;
     }
+    const dest=itinerary[i+1];
+    const exit=s.objects.find(o=>(dest?o.target===dest:o.ending==='final')&&
+      (o.need??[]).every(f=>r.journal.flags.includes(f)));
+    assert.ok(exit,id+' to '+dest);
+    const oldEpoch=r.epoch;
+    use(r,next(),exit);
+    if(exit.ending){
+      assert.equal(r.journal.pending.ending,endByStage[id]);
+      r.command(3,r.epoch,{type:'continue'});assert.ok(r.journal.pending);
+      r.command(1,r.epoch,{type:'continue'});assert.equal(r.journal.pending,null);
+    }
+    assert.ok(r.epoch>oldEpoch,id);
+    const previous={...r.players.get(2)};
+    r.command(2,oldEpoch,{type:'down',cause:'stale'});assert.deepEqual(r.players.get(2),previous);
   }
-  expose(2);
-  assert.equal(room.players.get(2).alive, false);
-  assert.equal(room.phase, 'playing');
-  expose(1);
-  assert.equal(room.phase, 'lost');
+  assert.deepEqual(visited,new Set(Object.keys(stages)));
+  assert.deepEqual(new Set(r.journal.endings),new Set(Object.keys(ENDINGS)));
+  assert.equal(challenges.size,7);
+});
+
+test('range and state validation, team capture, retry and save restoration',()=>{
+  const r=room(), rail=stages.lobby.objects.find(o=>o.gives?.includes('rail1'));
+  r.command(1,r.epoch,{type:'use',id:rail.id});assert.equal(r.journal.flags.length,0);
+  const pos=r.players.get(2).x;
+  r.command(2,r.epoch,{type:'pose',pose:{...r.players.get(2),x:Infinity}});assert.equal(r.players.get(2).x,pos);
+  use(r,2,rail);
+  for(const p of r.players.values())r.command(p.slot,r.epoch,{type:'down',cause:'The Veil caught your gaze.'});
+  assert.equal(r.phase,'lost');
+  r.start();assert.equal(r.phase,'playing');assert.ok([...r.players.values()].every(p=>p.alive));
+  const restored=new Expedition();restored.add();restored.start(structuredClone(r.journal));
+  assert.deepEqual(restored.journal.flags,['rail1']);
+});
+
+test('remote explorer ships with a skinned suit and four independently playable animations',()=>{
+  const b=readFileSync(new URL('../public/models/explorer.glb',import.meta.url));
+  const g=JSON.parse(b.toString('utf8',20,20+b.readUInt32LE(12)));
+  assert.deepEqual(new Set(g.animations.map(a=>a.name)),new Set(['Walk','Run','Idle','Crouch']));
+  assert.ok(g.skins[0].joints.length>=12);
+  assert.ok(g.meshes[0].primitives.every(p=>p.attributes.WEIGHTS_0!==undefined));
 });

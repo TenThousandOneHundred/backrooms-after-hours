@@ -2,6 +2,7 @@ import { makeResident } from './residents';
 import * as THREE from 'three';
 import type { Stage } from './campaign';
 import { hash, styleFor, texture, type Finish } from './world-materials';
+import { buildRoofMonitor, roofHalfDepth, roofHalfWidth, roofRise } from './roof-monitor';
 import { makeLevelCreature } from './level-creatures';
 import { makeModel, ModelKit } from './world-models';
 
@@ -42,6 +43,11 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     materials: THREE.Material[] = [],
     geometries: THREE.BufferGeometry[] = [],
     textures: THREE.Texture[] = [];
+  const monitor = stage.props?.find(p => p.model === 'roof-monitor');
+  const underMonitor = (x: number, z: number) => !!monitor &&
+    Math.abs(x - monitor.x) < roofHalfWidth + .5 && Math.abs(z - monitor.z) < roofHalfDepth + .5;
+  const roof = monitor && buildRoofMonitor(kit, statics, root, monitor.x, monitor.z, h,
+    style.family === 'garage' ? '#abcdd1' : style.family === 'hotel' ? '#efd1ae' : '#d7e4c8');
   const color = (s: string) => new THREE.Color(s);
   const fog = color(style.fog).multiplyScalar(style.open ? 0.84 : 0.57),
     nightFog = color('#263642'),
@@ -238,11 +244,16 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     geo.computeBoundingSphere();
     const tex = kind ? texture(kind, col) : null;
     if (tex) textures.push(tex);
-    const mat = new THREE.MeshLambertMaterial({
+    const surface = {
       color: kind ? '#ffffff' : col,
       vertexColors: true,
       map: tex,
-    });
+    };
+    const gloss = kind === 'metal' || kind === 'tile' || kind === 'wood';
+    const mat = kind && kind !== 'water' && !isOutdoor
+      ? new THREE.MeshPhongMaterial({ ...surface, bumpMap: tex, bumpScale: gloss ? .022 : .035,
+          shininess: gloss ? 38 : 9, specular: gloss ? '#474c46' : '#171815' })
+      : new THREE.MeshLambertMaterial(surface);
     if (kind === 'water')
       mat.onBeforeCompile = (shader) => {
         shader.uniforms.uWaterTime = clock;
@@ -624,7 +635,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
             );
       }
       if (!isOutdoor)
-        quad(ceilings, [ox, h, oz], [TILE, 0, 0], [0, 0, TILE], [0, -1, 0], 3, 3, TILE, 'ceil', x, z);
+        quad(ceilings, [ox, h + (underMonitor(x, z) ? roofRise : 0), oz], [TILE, 0, 0], [0, 0, TILE], [0, -1, 0], 3, 3, TILE, 'ceil', x, z);
       if (tileType === '=') {
         b('#78664e', cx, 0.025, cz, TILE, 0.05, TILE);
         for (let j = -2; j <= 2; j++)
@@ -720,8 +731,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
           side: Vec = [-dx, 0, -dz],
           U: Vec = dx ? [0, 0, TILE] : [TILE, 0, 0],
           orig: Vec = dx ? [wx, 0, oz] : [ox, 0, wz];
-        let height = h;
-        if (family === 'garden') height = h;
+        let height = h + (underMonitor(x, z) ? roofRise : 0);
         if (family === 'field') height = 0.22;
         if (family === 'sea') height = 0.16;
         quad(walls, orig, U, [0, height, 0], side, 4, 5, style.wall === 'paper' ? 2.35 : TILE, 'wall', x, z);
@@ -794,7 +804,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     const w = family === 'alarm' ? 1.06 : compact ? 0.23 : 0.75,
       l = family === 'alarm' ? 1.91 : compact ? 0.88 : 1.46,
       side = compact ? 0.045 : 0.025,
-      hh = h - 0.041;
+      hh = h + (underMonitor(x / TILE, z / TILE) ? roofRise : 0) - 0.041;
     const glow = off ? '#75776a' : style.lamp;
     b('#716f60', x, hh, z, w + 0.069, 0.052, l + 0.063);
     b(glow, x, hh - 0.035, z, w, 0.024, l, !off);
@@ -886,7 +896,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     return { angle: Math.atan2(vx, vz), dx: 0, dz: 0 };
   }
   for (const spec of stage.props ?? []) {
-    if (spec.model === 'pit') continue;
+    if (spec.model === 'pit' || spec.model === 'roof-monitor') continue;
     const group = makeModel(kit, spec);
     const pos = alignment(spec.x, spec.z);
     group.position.set(spec.x * TILE + pos.dx * 0.2, 0, spec.z * TILE + pos.dz * 0.2);
@@ -952,7 +962,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
   }
   // A failing ballast affects only its circuit, including the lit panels themselves.
   for (const mat of [...materials, ...kit.materials.values()]) {
-    if (!(mat instanceof THREE.MeshLambertMaterial || mat instanceof THREE.MeshBasicMaterial)) continue;
+    if (!(mat instanceof THREE.MeshLambertMaterial || mat instanceof THREE.MeshPhongMaterial || mat instanceof THREE.MeshBasicMaterial)) continue;
     const original = mat.onBeforeCompile.bind(mat);
     const originalKey = mat.customProgramCacheKey();
     mat.customProgramCacheKey = () => originalKey + '|local-circuit';
@@ -1043,9 +1053,11 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     residents,
     entity,
     additionalEntities,
+    underMonitor,
     haunt,
     update(t: number, dt: number) {
       clock.value = t;
+      roof?.update(t);
       circuitAge += dt;
       apparitionAge += dt;
       if (apparition?.visible) apparition.userData.pose(t, dt, 0, false, false);
@@ -1085,6 +1097,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     },
     dispose() {
       scene.remove(root);
+      roof?.dispose();
       for (const resident of residents) resident.dispose();
       apparition?.userData.release();
       entity?.userData.release?.();

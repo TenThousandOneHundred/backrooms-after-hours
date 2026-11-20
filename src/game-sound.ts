@@ -9,6 +9,7 @@ export class Soundscape {
   private theme = '';
   private volume = 0.65;
   private nextDetail = 3;
+  private nextRoomSound = 2;
   private stepSide = -1;
   private closed = false;
   private paused = false;
@@ -147,14 +148,36 @@ export class Soundscape {
     wind.start();
     this.bg.push(wind);
     this.nextDetail = 3.5;
+    this.nextRoomSound = 2;
   }
-  step(fast: boolean, crouch: boolean, wet: boolean) {
+  step(fast: boolean, crouch: boolean, wet: boolean, highCeiling = false) {
     this.stepSide *= -1;
     const level = crouch ? 0.055 : fast ? 0.19 : 0.13;
     this.sound(wet ? 290 : 125, wet ? 88 : 53, wet ? 0.24 : 0.14, level, this.stepSide * 0.16);
     this.sound(wet ? 2300 : 780, wet ? 510 : 270, 0.115, level * 0.7, this.stepSide * 0.18, 'noise');
+    if (highCeiling) {
+      this.sound(290, 83, .22, level * .32, -this.stepSide * .66, 'noise', .105);
+      this.sound(180, 68, .27, level * .14, this.stepSide * .51, 'noise', .235);
+    }
   }
-  tick(dt: number, danger: number, pan: number, farmerActive = false) {
+  tick(dt: number, danger: number, pan: number, farmerActive = false, highCeiling = false) {
+    if (highCeiling && danger < .28) {
+      this.nextRoomSound -= dt;
+      if (this.nextRoomSound <= 0) {
+        const side = Math.random() < .5 ? -.72 : .72;
+        if (this.theme.includes('garage')) {
+          for (const delay of [0, .16, .55])
+            this.sound(610, 92, .36, .049, side, 'triangle', delay);
+        } else if (this.theme.includes('hotel')) {
+          this.sound(380, 77, 1.9, .047, side, 'noise');
+          this.sound(112, 91, 1.15, .03, side, 'sine', .36);
+        } else {
+          this.sound(1290, 360, .82, .055, side, 'noise');
+          this.sound(192, 83, .26, .048, side, 'triangle', .77);
+        }
+        this.nextRoomSound = 7 + Math.random() * 8;
+      }
+    }
     this.nextDetail -= dt;
     if (this.nextDetail > 0) return;
     if (farmerActive) {

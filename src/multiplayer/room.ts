@@ -1,8 +1,10 @@
 import Peer, { type DataConnection } from 'peerjs';
-import { capacity, Expedition, validControls, type Controls, type Snapshot } from './expedition';
+import { capacity, Expedition, roomSave, type Command, type Snapshot } from './expedition';
+
+import { loadProgress, storeProgress } from '../game-state';
 
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const namespace = 'backrooms-afterhours-v1-';
+const namespace = 'backrooms-afterhours-v2-';
 export function newCode() {
   return Array.from(
     crypto.getRandomValues(new Uint8Array(6)),
@@ -14,6 +16,8 @@ export class Room {
   private peer: Peer;
   private hostGame?: Expedition;
   private guests = new Map<DataConnection, number>();
+  private sentRevision = new WeakMap<DataConnection, number>();
+  private savedRevision = 0;
   private upstream?: DataConnection;
   private timer = 0;
   private deadline = 0;
@@ -54,7 +58,7 @@ export class Room {
         const conn = this.peer.connect(namespace + code, {
           serialization: 'json',
           reliable: true,
-          label: 'expedition-v1',
+          label: 'campaign-v2',
         });
         this.upstream = conn;
         conn.on('data', (value) => this.receive(value));
@@ -63,7 +67,7 @@ export class Room {
       }
     });
     this.peer.on('connection', (conn) => {
-      if (!hosting || conn.label !== 'expedition-v1') {
+      if (!hosting || conn.label !== 'campaign-v2') {
         conn.close();
         return;
       }
@@ -84,7 +88,8 @@ export class Room {
       });
       conn.on('data', (value) => {
         const slot = this.guests.get(conn);
-        if (slot && validControls(value)) this.hostGame?.input(slot, value);
+        if (slot && value && typeof value === 'object' && 'epoch' in value && 'action' in value)
+          this.hostGame?.command(slot, Number(value.epoch), value.action as Command);
       });
       const leave = () => {
         const slot = this.guests.get(conn);
@@ -125,14 +130,14 @@ export class Room {
       const state = value.state as Snapshot;
       if (
         !state ||
-        !['waiting', 'playing', 'escaped', 'lost'].includes(state.phase) ||
+        !['waiting', 'playing', 'lost'].includes(state.phase) ||
         !Array.isArray(state.players) ||
         state.players.length > capacity ||
-        !Array.isArray(state.collected) ||
-        !state.monster ||
+        !Array.isArray(state.monsters) ||
         !state.players.some((p) => p?.slot === this.slot)
       )
         return;
+      state.journal ??= this.state!.journal;
       this.accept(state);
     }
   }
@@ -145,14 +150,25 @@ export class Room {
     if (this.closed || !this.hostGame) return;
     const state = this.hostGame.snapshot();
     const phaseChanged = state.phase !== this.state?.phase;
-    for (const conn of this.guests.keys())
-      if (conn.open && (phaseChanged || conn.dataChannel.bufferedAmount < 32768))
-        conn.send({ type: 'state', state });
+    const { journal, ...frame } = state;
+    if (this.savedRevision !== state.revision) {
+      this.savedRevision = state.revision;
+      void storeProgress(journal, roomSave);
+    }
+    for (const conn of this.guests.keys()) {
+      if (!conn.open) continue;
+      const changed = this.sentRevision.get(conn) !== state.revision;
+      if (phaseChanged || changed || conn.dataChannel.bufferedAmount < 32768) {
+        conn.send({ type: 'state', state: changed ? state : frame });
+        this.sentRevision.set(conn, state.revision);
+      }
+    }
     this.accept(state);
   }
-  start() {
+  start(resume = false) {
     if (!this.hostGame || this.hostGame.phase === 'playing') return;
-    this.hostGame.start();
+    clearInterval(this.timer);
+    this.hostGame.start(resume ? loadProgress(roomSave) : null);
     this.publish();
     this.timer = window.setInterval(() => {
       this.hostGame!.step(0.05);
@@ -160,10 +176,10 @@ export class Room {
       if (this.hostGame!.phase !== 'playing') clearInterval(this.timer);
     }, 50);
   }
-  input(control: Controls) {
-    if (this.hostGame) this.hostGame.input(this.slot, control);
-    else if (this.upstream?.open && this.upstream.dataChannel.bufferedAmount < 8192)
-      this.upstream.send(control);
+  command(epoch: number, action: Command) {
+    if (this.hostGame) this.hostGame.command(this.slot, epoch, action);
+    else if (this.upstream?.open && (action.type !== 'pose' || this.upstream.dataChannel.bufferedAmount < 8192))
+      this.upstream.send({epoch, action});
   }
   private fail(message: string) {
     if (this.closed) return;

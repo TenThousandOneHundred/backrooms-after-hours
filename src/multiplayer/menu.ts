@@ -1,24 +1,26 @@
-import type { GameSettings } from '../game';
+import { loadProgress } from '../game-state';
 import { Room, newCode } from './room';
-import { capacity, type Snapshot } from './expedition';
-import type { RoomView } from './view';
+import { capacity, roomSave, type Snapshot } from './expedition';
+import { stages } from '../campaign';
 
 type UI = {
   panel: (mode: string, section: string, title: string, html: string, back?: () => void) => void;
   button: (id: string, text: string, symbol?: string, primary?: boolean) => string;
-  enter: () => void;
+  enter: (room:Room) => void;
+  prepare: () => Promise<void>;
+  stop: () => void;
   exit: () => void;
 };
 const get = (id: string) => document.getElementById(id)!;
 export class RoomMenu {
   private room?: Room;
-  private view?: RoomView;
+  private inGame = false;
   private rendering = false;
   private generation = 0;
   private phase = '';
   constructor(
     private ui: UI,
-    private settings: GameSettings,
+
   ) {}
   menu() {
     this.disconnect();
@@ -27,7 +29,7 @@ export class RoomMenu {
       'coop-menu',
       'Co-op expedition',
       'Multiplayer',
-      '<p class="panel-text">Explore the Lobby together. One computer hosts up to eight explorers.</p>' +
+      '<p class="panel-text">Play the full campaign together. One computer hosts up to eight explorers.</p>' +
         button('host-room', 'Create room', 'play', true) +
         '<form id="join-form" class="join-room"><label for="join-code">Join with a room code</label>' +
         '<div><input class="code-input" id="join-code" maxlength="6" autocomplete="off" spellcheck="false" required pattern="[A-Za-z2-9]{6}" placeholder="ABC234">' +
@@ -65,27 +67,28 @@ export class RoomMenu {
     if (state.phase === 'playing') {
       if (this.phase !== 'playing') {
         this.phase = 'playing';
-        this.ui.panel('coop-loading', 'Co-op expedition', 'Entering the Lobby', '', () => this.leave());
+        this.ui.panel('coop-loading', 'Co-op expedition', 'Entering the campaign', '', () => this.leave());
         void this.play(r);
       }
       get('coop-count').textContent = state.players.length + ' / ' + capacity;
+      get('coop-status').textContent = stages[state.journal.stage]?.name ?? '';
       return;
     }
     if (this.phase !== state.phase) {
       this.phase = state.phase;
       this.generation++;
-      this.view?.dispose();
-      this.view = undefined;
+      if(this.inGame) this.ui.stop();
+      this.inGame = false;
       this.rendering = false;
       get('coop-hud').hidden = true;
       const waiting = state.phase === 'waiting';
       const text = waiting
-        ? 'Find four ladder pieces, then open the service door.'
-        : 'The expedition has ended.';
+        ? 'Any explorer can solve puzzles and lead the team through an exit. Your host saves the campaign.'
+        : 'Everyone was caught. Retry this level with your shared objectives intact.';
       this.ui.panel(
         'coop-room',
-        'Level 0 · Co-op',
-        waiting ? 'Room lobby' : state.phase === 'escaped' ? 'Team escaped' : 'Team lost',
+        'Campaign · Co-op',
+        waiting ? 'Room lobby' : 'Team lost',
         '<p class="panel-text">' +
           text +
           '</p><div class="room-ticket"><label>Room code<strong id="room-code"></strong></label>' +
@@ -98,8 +101,9 @@ export class RoomMenu {
           '</p>' +
           '<div class="panel-buttons">' +
           (r.hosting
-            ? this.ui.button('start-room', waiting ? 'Start expedition' : 'Play again', 'play', true)
+            ? this.ui.button('start-room', waiting ? 'Start expedition' : 'Retry level', 'play', true)
             : '') +
+          (r.hosting && waiting && loadProgress(roomSave) ? this.ui.button('resume-room','Continue saved campaign') : '') +
           this.ui.button('leave-room', r.hosting ? 'Close room' : 'Leave room') +
           '</div>',
       );
@@ -113,6 +117,7 @@ export class RoomMenu {
         }
       };
       if (r.hosting) get('start-room').onclick = () => r.start();
+      if (get('resume-room')) get('resume-room').onclick = () => r.start(true);
       get('leave-room').onclick = () => this.leave();
     }
     get('room-roster').textContent =
@@ -123,19 +128,15 @@ export class RoomMenu {
     this.rendering = true;
     const generation = ++this.generation;
     try {
-      const { prepareView, RoomView } = await import('./view');
-      await prepareView();
+      await this.ui.prepare();
       if (generation !== this.generation || this.room !== r || r.state?.phase !== 'playing') return;
-      this.ui.enter();
+      this.inGame = true;
+      this.ui.enter(r);
       get('coop-hud').hidden = false;
       get('coop-code').textContent = r.code;
       get('coop-count').textContent = r.state.players.length + ' / ' + capacity;
       get('coop-leave').textContent = r.hosting ? 'Close room' : 'Leave room';
       get('coop-leave').onclick = () => this.leave();
-      const text = get('coop-status');
-      this.view = new RoomView(get('world') as HTMLCanvasElement, r, this.settings, (s) => {
-        if (text.textContent !== s) text.textContent = s;
-      });
       (get('world') as HTMLCanvasElement).focus();
     } catch {
       if (generation === this.generation)
@@ -159,8 +160,8 @@ export class RoomMenu {
     this.generation++;
     this.phase = '';
     this.rendering = false;
-    this.view?.dispose();
-    this.view = undefined;
+    if(this.inGame) this.ui.stop();
+    this.inGame = false;
     this.room?.close();
     this.room = undefined;
     get('coop-hud').hidden = true;

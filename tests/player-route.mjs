@@ -1,3 +1,4 @@
+import { stages, endByStage } from './campaign-itinerary.mjs';
 // Browser regression probe. With `npm run dev` serving a fresh browser profile,
 // run `await (await import('/tests/player-route.mjs')).runRoute()` in its console.
 // All progression uses DOM movement, interaction, keypad, retry and ending controls.
@@ -8,11 +9,6 @@
 export async function runRoute({ lobbyOnly = false } = {}) {
   const { Game, playerSpeed } = await import('/src/game.ts');
   const { TILE } = await import('/src/world.ts');
-  const stages =
-    'lobby pitwalk lower garage garagekeys darkdeck hub blackgarage pipes station office hotel hotelrooms pipesreturn fun pool run library village castle dark ocean depths cave projection courtyard1 suburbs outpost suburbs field arcade residential redrooms residential snack hotelchase courtyard2 deepool stagnant funplus school slides slides2 slides3 bunker blackgarage stair bunker dark pink bunker lowstation plastic gym overgrowth grass bunker arcade'.split(
-      ' ',
-    );
-  const endByStage = { slides3: 'wrong', stair: 'suburbs', pink: 'pink', grass: 'city', arcade: 'final' };
   const results = {
     stages: [],
     endings: [],

@@ -7,7 +7,7 @@ export const opening = [
     'The Lobby',
     'lobby',
     'The humming started before you opened your eyes. The carpet is still damp.',
-    'Find four ladder pieces. Two were carried into the east telephone exchange.',
+    'Recover the four ladder pieces. Check the south records hall and the east telephone exchange.',
     `
 ##################################################
 #......#...............#.##....A....#.......1....#
@@ -21,12 +21,25 @@ export const opening = [
 #..##..#.....#....#...##.##......D...#.&F..#...#.#
 #..##....###......#......##..#####...#..3.%....#.#
 #.....#H.###.#....#...#.###..#...#...########..#.#
-#..4.&#......##.......#..##......#....D.D......#.#
+#....&#......##.......#..##......#....D.D......#.#
 ###.###.##....#..##...#..##..#...####......###...#
 #...#...#...W.#..##..........#..........#....#...#
 #.......#..@.....#...N...##..G...#####..#........#
+###########.###########.##########################
+#########....S.....D...S..########################
+########.U..###.......#....#######################
+########.....##..S.......P.#######################
+########...S........#S.....#######################
+########........#.Q.S......#######################
+########........S......#...#######################
+########..##..........##.4.#######################
+########.U#..D......S..#...#######################
 ##################################################`,
     {
+      Q: prop('roof-monitor'),
+      S: prop('records-rack'),
+      U: hide('Slip inside the archive locker', 'archive-locker'),
+      P: note('Night filing roster', 'All the names in the returns ledger are yours. The last box is marked for collection tonight.', 'sign'),
       ...noteKeys(
         ['Left ladder rail', 'Lower rung assembly', 'Upper rung assembly', 'Right ladder rail'],
         'rail',
@@ -59,10 +72,11 @@ export const opening = [
       ),
       N: note(
         'Maintenance slip',
-        'Left the service key above the broken ladder. Two pieces went east to the telephone exchange. Look in Records and beside the red phone.',
+        'Left the service key above the broken ladder. The right rail went to Returns in the south records hall. Two pieces went east: one by the red phone and one in the exchange stacks.',
       ),
     },
     'bacteria',
+    Math.PI,
   ),
   stage(
     'pitwalk',
@@ -151,7 +165,7 @@ export const opening = [
     'The Four Locks',
     'garage',
     'Footprints lead out of an empty hazard suit. A moment later they lead back into it.',
-    'Collect the four service keys and unlock the security passage.',
+    'Collect the four service keys. The night mechanic signed one out to the repair bay.',
     `
 #####################
 #1...#....2....#...3#
@@ -161,10 +175,22 @@ export const opening = [
 #..H............!..E#
 #......########.....#
 #.####.#......#..#..#
-#4...#......A....#..#
+#....#......A....#..#
 #....#.@.........#..#
+###.##########.######
+##....v...........###
+#..##..........#.U..#
+#...#...v......##...#
+#.....#....v....v...#
+#.....v..Q.#........#
+#.v........v........#
+#..###........###...#
+#..U#....v.....#..4.#
 #####################`,
     {
+      Q: prop('roof-monitor'),
+      v: prop('parts-rack'),
+      U: hide('Duck into the mechanics’ locker', 'bay-locker'),
       ...noteKeys(
         [
           'Red-thread service key',
@@ -426,16 +452,28 @@ export const opening = [
     'The Boiler Rooms',
     'hotel',
     'A name is missing from every mailbox. The hallway is hot enough to blister the wallpaper.',
-    'Find the three numbered guest slips, open the service keypad, and slip past the Deathmoth.',
+    'Find the three guest slips. The last one went down with the laundry. Open the service keypad and slip past the Deathmoth.',
     `
 ######################
-#1...#2...#...3.#...E#
+#1...#2...#.....#...E#
 #....#....#.....#.##.#
 #.......%...........!#
 ####.####.###.###.##.#
 #@....K....H....#....#
+###.##########.#######
+##....t.........t..###
+#.U.#..........#....##
+#...#..........##....#
+#......t...#.......t.#
+#.....#..Q.t.........#
+#.t...t.....t........#
+#...##.........##....#
+#..3.#..t.......#.U..#
 ######################`,
     {
+      Q: prop('roof-monitor'),
+      t: prop('linen-rack'),
+      U: hide('Pull the linen cupboard shut', 'linen-cabinet'),
       '1': item('Guest slip • I / 17', 'mail1', 'note', 'The first slip reads 17.'),
       '2': item('Guest slip • II / 56', 'mail2', 'note', 'The second slip reads 56.'),
       '3': item('Guest slip • III / 4', 'mail3', 'note', 'The third slip reads 4.'),
