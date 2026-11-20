@@ -51,7 +51,7 @@ export const opening = [
       ),
     },
     'bacteria',
-    Math.PI / 2,
+    Math.PI / 2 + 0.13,
   ),
   stage(
     'pitwalk',

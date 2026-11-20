@@ -3,7 +3,7 @@ import { fixtureBank, fluorescentRig } from './fluorescents';
 import { markWet, surfaceMaterial, poolLevel } from './wet-finish';
 import {buildConcourseCover} from './concourse-cover-models';
 import { buildConcourseShell } from './concourse-shell';
-import { concourseFloor, concourseRoof, officeTile, waterline } from './concourse-plan';
+import { concourseFloor, concourseRoof, officeTile } from './concourse-plan';
 import { buildOfficeDecay } from './office-decay';
 import { LooseWallpaper } from './loose-wallpaper';
 import { waterReflection } from './water-reflection';
@@ -135,7 +135,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   scene.fog = new THREE.FogExp2(fog, stage.id === 'lobby' ? 0.013 : style.open ? 0.018 : style.family === 'blackout' ? 0.063 : 0.033);
   const ambience = new THREE.AmbientLight(
     profile?.fill ?? (style.family === 'alarm' ? '#ffc7b5' : '#fff8e9'),
-    familyLight(stage) * (style.open ? 0.84 : stage.id === 'lobby' ? 0.38 : 0.18),
+    familyLight(stage) * (style.open ? 0.84 : stage.id === 'lobby' ? 0.88 : 0.18),
   );
   const sky = new THREE.HemisphereLight(
     profile?.lamp ?? (style.open ? '#e2ebe7' : '#fff9df'),
@@ -186,6 +186,12 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   for (let z = 0; z < stage.map.length; z++)
     for (let x = 0; x < stage.map[z].length; x++) {
       if (!open(x, z) || isOutdoor || (stage.id === 'lobby' && !officeTile(x,z))) continue;
+      if (stage.id === 'lobby') {
+        // Recessed troffers form continuous rows across Level 0's office ceilings.
+        const entryRow = z === stage.spawn[1] && x > stage.spawn[0] && x < stage.spawn[0] + 7;
+        if (entryRow || (x % 2 === 1 && z % 3 === 0)) lamps.push({ x: x * TILE, z: z * TILE });
+        continue;
+      }
       // Consecutive unpowered banks leave a pocket of darkness visible across a room.
       const brownout = family === 'lobby' && hash(Math.floor(x / 3), Math.floor(z / 3), 98) < 0.41;
       if (brownout && (x !== stage.spawn[0] || z !== stage.spawn[1])) continue;
@@ -196,7 +202,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     }
   const lampGrid = new Map<string, { x: number; z: number }[]>();
   for (const p of lamps) {
-    if (family === 'blackout' || fixtureBank(p.x,p.z) || hash(Math.round(p.x/TILE),Math.round(p.z/TILE),71) > .978) continue;
+    if (family === 'blackout' || (stage.id !== 'lobby' && fixtureBank(p.x,p.z)) || hash(Math.round(p.x/TILE),Math.round(p.z/TILE),71) > .978) continue;
     const xi = Math.round(p.x / TILE),
       zi = Math.round(p.z / TILE);
     for (let dz = -2; dz <= 2; dz++)
@@ -286,7 +292,14 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       const k = Math.max(0, Math.min(1, (field - 0.32) * 2.1));
       value *= 0.25 + 0.9 * k;
       // Low acoustic ceilings bounce warm light back onto the wallpaper.
-      if (stage.id === 'lobby' && officeTile(tx, tz)) value += kind === 'wall' ? 0.27 : 0.14;
+      if (stage.id === 'lobby' && officeTile(tx, tz)) {
+        const fill = kind === 'wall' ? 0.86 : kind === 'ceil' ? 0.54 : 0.41;
+        value += fill * (0.74 + 0.26 * direct);
+        // Spill from the continuous run of panels lights the far side of the opening.
+        const rowX = (x / TILE - stage.spawn[0] - 5.5) / 2.8;
+        const rowZ = (z / TILE - stage.spawn[1]) / 1.8;
+        value += (kind === 'wall' ? 1.45 : 0.65) * Math.exp(-rowX * rowX - rowZ * rowZ);
+      }
     }
     if (family === 'alarm') value *= 0.73;
     if (family === 'pipes') value *= 0.7;
@@ -340,7 +353,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   }
   function finish(chunks: SurfaceChunks, kind: Finish | undefined, col: string) {
     if (!chunks.size) return;
-    const tex = kind ? texture(kind, col) : null;
+    const officeFinish = stage.id === 'lobby' && (kind === 'paper' || kind === 'carpet' || kind === 'ceiling');
+    const tex = kind ? texture(kind, col, officeFinish) : null;
     if (tex) textures.push(tex);
     const surface = {
       color: kind ? '#ffffff' : col,
@@ -349,9 +363,9 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     };
     const gloss = kind === 'metal' || kind === 'tile' || kind === 'wood';
     const mat = kind
-      ? surfaceMaterial(kind, { ...surface, bumpMap: tex, bumpScale: gloss ? .022 : .035 })
+      ? surfaceMaterial(kind, { ...surface, bumpMap: tex, bumpScale: officeFinish ? .002 : gloss ? .022 : .035 })
       : new THREE.MeshLambertMaterial(surface);
-    if (kind && mat instanceof THREE.MeshStandardMaterial) scans.apply(mat, kind, chunks === floors, col);
+    if (kind && !officeFinish && mat instanceof THREE.MeshStandardMaterial) scans.apply(mat, kind, chunks === floors, col);
     if (kind === 'water')
       mat.onBeforeCompile = (shader) => {
         shader.uniforms.uWaterTime = clock;
@@ -724,7 +738,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         tileType = tile(x, z),
         beam = tileType === '|',
         pit = tileType === 'X' || beam;
-      if (stage.id === 'lobby' && tileType === '.' && !underMonitor(x, z)) officeCells.push([x, z]);
+      if (stage.id === 'lobby' && x >= 64 && z <= 23 && tileType === '.' && !underMonitor(x, z)) officeCells.push([x, z]);
       if (!pit)
         quad(
           floors,
@@ -857,14 +871,17 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         let height = h + (underMonitor(x, z) ? roofRise : 0);
         if (family === 'field') height = 0.22;
         if (family === 'sea') height = 0.16;
-        quad(walls, orig, U, [0, height, 0], side, 4, 5, style.wall === 'paper' ? 2.35 : TILE, 'wall', x, z);
+        quad(walls, orig, U, [0, height, 0], side, 4, 5, stage.id === 'lobby' ? 1.32 : style.wall === 'paper' ? 2.35 : TILE, 'wall', x, z);
         const fixtureRoll = hash(x + dx * 3, z + dz * 2, 3);
         if (fixtureRoll > .08 && fixtureRoll < .88)
           loosePaper?.add(wx, wz, dx, dz, x, z, height, shade(wx, h * .55, wz, side, 'wall', x, z));
         const bottom: Vec = [orig[0] - dx * 0.012, 0.002, orig[2] - dz * 0.012];
         if (!isOutdoor)
           quad(trim, bottom, U, [0, family === 'lobby' ? 0.105 : 0.13, 0], side, 4, 1, 1, 'trim', x, z);
-        makeArch(wx, wz, dx, dz, fixtureRoll);
+        if (stage.id === 'lobby') {
+          // A narrow ochre moulding runs just above the carpet in the reference rooms.
+          quad(trim, [bottom[0], 0.29, bottom[2]], U, [0, 0.045, 0], side, 4, 1, 1, 'trim', x, z);
+        } else makeArch(wx, wz, dx, dz, fixtureRoll);
         if (family === 'suburb') {
           b('#625e50', wx, 3.39, wz, dx ? 0.25 : TILE + 0.12, 0.18, dz ? 0.25 : TILE + 0.12);
           const roof = b(
@@ -935,6 +952,12 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     const floor = terrainHeight(stage,x,z);
     const bank = off ? 0 : rig?.add(x, floor+hh-.12, z, hh) ?? 0;
     if (!off) rig?.bulb(decals.glow(statics, x, hh + .033, z, w, l), bank);
+    if (stage.id === 'lobby') {
+      b('#a99f76', x, hh + .012, z, .68, .032, 1.56);
+      const diffuser = b(off ? '#a9a582' : '#ffffea', x, hh - .008, z, .62, .012, 1.50, !off);
+      rig?.bulb(diffuser, bank);
+      continue;
+    }
     b('#716f60', x, hh, z, w + 0.069, 0.052, l + 0.063);
     // The luminous tubes sit below a darker reflector and inside its folded rim.
     const tray = color(glow).multiplyScalar(.51).getHexString();
@@ -1106,11 +1129,11 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   // Repeated architectural details and loose furniture share a small number of draw calls.
   for (const node of statics.children)
     node.position.y += terrainHeight(stage, node.position.x, node.position.z);
-  const updateConcourse = stage.id === 'lobby' ? buildConcourseShell(stage, kit, root, statics, scans, strip => {
+  if (stage.id === 'lobby') buildConcourseShell(stage, kit, root, statics, scans, strip => {
     const {x,y,z} = strip.position;
     const bank = rig?.add(x,y-.12,z,Math.max(2,y-terrainHeight(stage,x,z))) ?? 0;
     rig?.bulb(strip,bank);
-  }) : undefined;
+  });
   const updateDoors = stage.id === 'lobby' ? buildConcourseCover(kit, statics, root) : undefined;
   const instances = batchStaticProps(statics, root, kit);
   // A failing ballast affects only its circuit, including the lit panels themselves.
@@ -1224,11 +1247,9 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       const tx = Math.round(x/TILE), tz = Math.round(z/TILE), cell = tile(tx,tz);
       if (cell === '=' || cell === '|') return 'wood';
       if (decay?.isWet(x,z)) return 'water';
-      let finish: Finish = style.floor;
-      if (stage.id === 'lobby' && !officeTile(tx,tz)) {
-        if (tz >= 24 && concourseFloor(x/TILE,z/TILE) < waterline) return 'water';
-        finish = tx >= 36 && tx <= 59 && tz >= 4 && tz <= 20 ? 'metal' : 'concrete';
-      }
+      const finish: Finish = style.floor;
+      if (stage.id === 'lobby' && !officeTile(tx,tz))
+        return tx >= 36 && tx <= 59 && tz >= 4 && tz <= 20 ? 'metal' : 'concrete';
       return finish === 'concrete' && poolLevel(x,z)>1.47 ? 'water' : finish;
     },
     updateDoors,
@@ -1239,7 +1260,6 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         air?.update(t,rig.spots);
       }
       clock.value = t;
-      updateConcourse?.(t);
       projection?.update(t);
       roof?.update(t);
       circuitAge += dt;

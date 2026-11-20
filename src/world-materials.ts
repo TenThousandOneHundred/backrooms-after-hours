@@ -463,10 +463,10 @@ export function styleFor(theme: string, id: string): Style {
     'lobby',
     'paper',
     'carpet',
-    id === 'lobby' ? '#e2c46d' : '#c6b372',
-    '#9f884f',
-    '#c4bc98',
-    '#554735',
+    id === 'lobby' ? '#d2d18a' : '#c6b372',
+    id === 'lobby' ? '#a18d64' : '#9f884f',
+    id === 'lobby' ? '#cec7a1' : '#c4bc98',
+    id === 'lobby' ? '#aa9c68' : '#554735',
     '#fff8d6',
     '#726444',
     1.01,
@@ -488,11 +488,11 @@ const SIZE = 256;
 // Keep a bounded set of deterministic source images for retries and repeated room finishes.
 const finishImages = new Map<string, HTMLCanvasElement>();
 
-export function texture(finish: Finish, hex: string): THREE.CanvasTexture {
-  const key = finish + '/' + hex;
+export function texture(finish: Finish, hex: string, office = false): THREE.CanvasTexture {
+  const key = finish + '/' + hex + (office ? '/office' : '');
   let canvas = finishImages.get(key);
   if (canvas) finishImages.delete(key);
-  else canvas = drawFinish(finish, hex);
+  else canvas = drawFinish(finish, hex, office);
   finishImages.set(key, canvas);
   if (finishImages.size > 8) finishImages.delete(finishImages.keys().next().value!);
   const t = new THREE.CanvasTexture(canvas);
@@ -502,7 +502,7 @@ export function texture(finish: Finish, hex: string): THREE.CanvasTexture {
   return t;
 }
 
-function drawFinish(finish: Finish, hex: string) {
+function drawFinish(finish: Finish, hex: string, office: boolean) {
   const c = document.createElement('canvas');
   c.width = c.height = SIZE;
   const g = c.getContext('2d')!;
@@ -547,6 +547,7 @@ function drawFinish(finish: Finish, hex: string) {
         off = a * 13 + b * 5 + Math.sin(x * 0.29 + Math.sin((y * Math.PI) / 64) * 0.35) * 5 + grain * 9;
       if (finish === 'ceiling') off = grain * 19 + b * 10 + a * 8 + (rng() < 0.031 ? -30 : 0);
       if (finish === 'road') off = grain * 30 + a * 13 + b * 9;
+      if (office) off *= finish === 'paper' ? 0.34 : 0.45;
       const p = (y * SIZE + x) * 4;
       for (let n = 0; n < 3; n++) img.data[p + n] = Math.max(0, Math.min(255, rgb[n] + off));
       img.data[p + 3] = 255;
@@ -566,7 +567,35 @@ function drawFinish(finish: Finish, hex: string) {
     }
     g.stroke();
   }
-  if (finish === 'paper' || finish === 'hotel') {
+  if (office && finish === 'paper') {
+    // A small two-color sprig repeats in staggered vertical lanes on the stock.
+    for (let row = -1; row < 9; row++) {
+      for (let col = -1; col < 9; col++) {
+        const x = col * 32 + (row & 1) * 16, y = row * 32;
+        for (const side of [-1, 1]) {
+          g.beginPath();
+          g.moveTo(x, y - 12);
+          g.bezierCurveTo(x + side * 2, y - 3, x + side * 12, y + 1, x + side * 15, y + 16);
+          g.strokeStyle = 'rgba(112,116,67,.18)';
+          g.lineWidth = 0.9;
+          g.stroke();
+        }
+        line([x, y - 13, x - 1, y - 3, x + 1, y + 7, x, y + 14], 'rgba(102,106,58,.42)', 1);
+        for (const side of [-1, 1]) {
+          for (let leaf = 0; leaf < 3; leaf++) {
+            const tip = y - 12 + leaf * 6;
+            g.beginPath();
+            g.moveTo(x, tip + 7);
+            g.quadraticCurveTo(x + side * 5, tip + 6, x + side * 7, tip);
+            g.quadraticCurveTo(x + side * 2, tip + 1, x, tip + 7);
+            g.fillStyle = 'rgba(106,109,61,.32)';
+            g.fill();
+          }
+        }
+      }
+    }
+    rect(0, 0, 1, SIZE, 'rgba(99,93,54,.13)');
+  } else if (finish === 'paper' || finish === 'hotel') {
     const spacing = 32;
     // Faded interlocking fronds give the paper a woven, vertical 1970s pattern.
     for (let j = -1; j < 9; j++)
@@ -599,6 +628,7 @@ function drawFinish(finish: Finish, hex: string) {
     rect(1.5, 0, 1, 256, 'rgba(251,236,183,.18)');
   }
   if (finish === 'ceiling') {
+    g.globalAlpha = office ? .24 : 1;
     for (let y = 0; y < 256; y += 128) {
       rect(0, y, 256, 2.4, 'rgba(50,48,43,.78)');
       rect(0, y + 3, 256, 1.4, 'rgba(250,248,232,.85)');
@@ -658,6 +688,7 @@ function drawFinish(finish: Finish, hex: string) {
     }
   }
   if (finish === 'grass' || finish === 'carpet') {
+    g.globalAlpha = office ? .35 : 1;
     for (let i = 0; i < 7600; i++) {
       const x = rng() * 256,
         y = rng() * 256;

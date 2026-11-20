@@ -1,6 +1,5 @@
 // Coordinates are tile centres. Elevations are metres above the main hall.
 export const basementBed = -4.8;
-export const waterline = basementBed + 0.52;
 export const officeStart = 64;
 export const atriumStart = 33;
 
@@ -20,14 +19,14 @@ export function concourseFloor(x: number, z: number) {
 }
 
 export function concourseRoof(x: number, z: number) {
-  if (z >= 24) return 4.5 + concourseFloor(x, z);
+  if (z >= 24) return 3.08 + concourseFloor(x, z);
   if (officeTile(x, z)) return 3.08;
   if (x === atriumStart - 1) return 6.8;
   return 21;
 }
 
 export function officeTile(x: number, z: number) {
-  return z <= 23 && (x < atriumStart - 1 || x >= officeStart || z <= 2);
+  return z >= 24 || x < atriumStart - 1 || x >= officeStart || z <= 2;
 }
 
 function buildPlan() {
@@ -42,13 +41,13 @@ function buildPlan() {
   for (const z of [4, 12, 20]) rect(32, z, 32, z + 1);
   for (const z of [4, 10, 16, 22]) for (const x of [6, 25]) rect(x, z, x, z, '#');
   const partitions = [
-    [5, 7, 5, 10], [5, 13, 5, 16], [5, 13, 9, 13],
+    [5, 7, 5, 11], [5, 13, 5, 16],
     [8, 4, 13, 4], [9, 7, 9, 11], [9, 11, 13, 11],
     [12, 6, 12, 8], [15, 4, 15, 10], [15, 10, 19, 10],
     [11, 15, 17, 15], [17, 14, 17, 18], [5, 20, 9, 20],
     [20, 4, 20, 7], [20, 7, 24, 7], [23, 10, 23, 14],
     [20, 17, 24, 17], [20, 17, 20, 21], [27, 4, 27, 9],
-    [27, 13, 30, 13], [27, 16, 27, 20], [7, 12, 7, 12],
+    [27, 13, 30, 13], [27, 16, 27, 20], [10, 11, 10, 12],
   ];
   for (const [x0, z0, x1, z1] of partitions) rect(x0, z0, x1, z1, '#');
 
@@ -80,9 +79,16 @@ function buildPlan() {
   rect(60, 37, 60, 40);
   for (const z of [36, 42]) for (const x of [8, 17, 25, 36, 47, 55, 67, 76, 84]) rect(x, z, x, z, '#');
 
+  // Repeated offset returns break the long archive floor into low, empty suites.
+  for (const x of [12, 22, 34, 51, 65, 80]) {
+    rect(x, 34, x, 38, '#');
+    rect(x, 38, x + 3, 38, '#');
+    rect(x + 3, 41, x + 3, 44, '#');
+  }
+
   const marks: [number, number, string][] = [
-    [3, 12, '@'],
-    [4, 11, 'W'],
+    [4, 12, '@'],
+    [2, 8, 'W'],
     [2, 13, 'N'],
     [3, 8, 'H'],
     [16, 3, '2'],

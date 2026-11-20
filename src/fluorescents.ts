@@ -102,7 +102,7 @@ export function fluorescentRig(root: T.Group, stage: Stage, tint: string) {
         light.position.set(f.x, f.y, f.z);
         light.target.position.set(f.x, f.y-f.height, f.z);
         light.distance = Math.max(9, f.height*2.2);
-        light.intensity = (2.6 * f.height*f.height) * states[f.bank].output;
+        light.intensity = ((stage.id === 'lobby' ? 0.95 : 2.6) * f.height*f.height) * states[f.bank].output;
         if (shadow || switched) light.shadow.needsUpdate = true;
       }
       lastTime = time;

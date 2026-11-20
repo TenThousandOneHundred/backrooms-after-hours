@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { stages } from '../src/campaign.ts';
-import { atriumWell, concourseFloor, concourseRoof, officeTile, waterline } from '../src/concourse-plan.ts';
+import { atriumWell, concourseFloor, concourseRoof, officeTile, basementBed } from '../src/concourse-plan.ts';
 import { TILE, canStandAt, clearSight } from '../src/game-entity.ts';
 
 const stage = stages.lobby;
@@ -40,11 +40,13 @@ test('the planted floors of all connected tiles meet continuously', () => {
     }
 });
 
-test('three independent ramps join the office, hall and atrium to knee-deep water', () => {
+test('three independent ramps lead down to the carpeted records rooms', () => {
   for (const x of [10, 55, 87]) {
     for (let z = 23; z <= 35; z += 0.25) assert.ok(walk(x, z));
     assert.equal(concourseFloor(x, 23), 0);
-    assert.ok(Math.abs(waterline - concourseFloor(x, 35) - 0.52) < 0.0001);
+    assert.equal(concourseFloor(x, 35), basementBed);
+    assert.ok(officeTile(x, 35));
+    assert.equal(concourseRoof(x, 35) - basementBed, 3.08);
   }
   assert.ok(clearSight(stage, 64, 8, 89, 8));
 });

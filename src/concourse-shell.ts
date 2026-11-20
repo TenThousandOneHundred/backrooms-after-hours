@@ -1,4 +1,4 @@
-import { surfaceMaterial, markWet } from './wet-finish';
+import { surfaceMaterial } from './wet-finish';
 import * as T from 'three';
 import type { Stage } from './campaign-format';
 import { TILE } from './game-entity';
@@ -8,7 +8,6 @@ import {
   concourseFloor,
   concourseRoof,
   officeTile,
-  waterline,
 } from './concourse-plan';
 import { texture, type Finish } from './world-materials';
 import type { roomSurfaceScans } from './scanned-surfaces';
@@ -31,8 +30,7 @@ export function buildConcourseShell(
   const slab = faces(),
     wall = faces(),
     roof = faces(),
-    deck = faces(),
-    water = faces();
+    deck = faces();
   const ground = (x: number, z: number) => concourseFloor(x / TILE, z / TILE);
   const box = (c: string, x: number, y: number, z: number, w: number, h: number, d: number, lit = true) =>
     kit.cube(statics, c, x, y, z, w, h, d, lit);
@@ -67,29 +65,13 @@ export function buildConcourseShell(
       [x1, z0],
     ];
     const bridge = x >= 36 && x <= 59 && z >= 4 && z <= 20 && !well;
-    const south = z >= 24;
-    const top = (u: number, v: number) => (south ? ground(u, v) + 4.5 : concourseRoof(x, z));
+    const top = concourseRoof(x, z);
     const floorPoints: Point[] = corners.map(([u, v]) => [u, well ? basementBed : ground(u, v), v]);
-    const roofPoints: Point[] = corners.map(([u, v]) => [u, top(u, v), v]);
+    const roofPoints: Point[] = corners.map(([u, v]) => [u, top, v]);
     // Broad shadows beneath each transverse roof beam give scale to the long perspective.
-    const shades = corners.map(([, v]) => (south ? 0.42 : 0.62) + 0.17 * Math.cos((v * Math.PI) / (3 * TILE)));
+    const shades = corners.map(([, v]) => 0.62 + 0.17 * Math.cos((v * Math.PI) / (3 * TILE)));
     face(bridge ? deck : slab, floorPoints, well ? [0.23, 0.23, 0.23, 0.23] : shades, 'xz');
     face(roof, roofPoints.reverse(), [0.67, 0.67, 0.67, 0.67], 'xz');
-    if (south && ground(x * TILE, z1) < waterline) {
-      const shore = (23.5 + (8 * waterline) / basementBed) * TILE;
-      const near = Math.max(z0, shore);
-      face(
-        water,
-        [
-          [x0, waterline, near],
-          [x0, waterline, z1],
-          [x1, waterline, z1],
-          [x1, waterline, near],
-        ],
-        [0.83, 0.83, 0.83, 0.83],
-        'xz',
-      );
-    }
     if (bridge) {
       face(
         slab,
@@ -150,28 +132,16 @@ export function buildConcourseShell(
         box(steel, mx, (ay + by) / 2 + 0.49, mz, 0.07, 0.98, 0.07);
         continue;
       }
-      if (solid && z >= 33) {
-        // A tide mark makes the depth visible against the columns and side walls.
-        box(
-          '#516960',
-          mx - dx * 0.015,
-          waterline + 0.045,
-          mz - dz * 0.015,
-          dx ? 0.035 : TILE,
-          0.09,
-          dz ? 0.035 : TILE,
-        );
-      }
-      const lowA = solid ? ay : nz >= 24 ? ground(ax, az) + 4.5 : concourseRoof(nx, nz);
-      const lowB = solid ? by : nz >= 24 ? ground(bx, bz) + 4.5 : concourseRoof(nx, nz);
-      if (lowA >= top(ax, az) - 0.001 && lowB >= top(bx, bz) - 0.001) continue;
+      const lowA = solid ? ay : concourseRoof(nx, nz);
+      const lowB = solid ? by : concourseRoof(nx, nz);
+      if (lowA >= top - 0.001 && lowB >= top - 0.001) continue;
       face(
         wall,
         [
           [ax, lowA, az],
           [bx, lowB, bz],
-          [bx, top(bx, bz), bz],
-          [ax, top(ax, az), az],
+          [bx, top, bz],
+          [ax, top, az],
         ],
         solid ? [0.4, 0.4, 0.93, 0.93] : [0.74, 0.74, 0.91, 0.91],
         axis,
@@ -203,12 +173,6 @@ export function buildConcourseShell(
       box(beam, x * TILE, y - 0.52, z * TILE, 1.2, 0.45, TILE);
     }
   }
-  for (const z of [36, 42]) {
-    box('#616c67', 45.5 * TILE, -0.68, z * TILE, 86 * TILE, 0.75, 1.0);
-    for (let x = 6; x < 88; x += 9) lightStrip(box('#b7c9c3', x * TILE, -1.09, z * TILE, 3.7, 0.06, 0.19, false));
-  }
-
-  const time = { value: 0 };
   function mesh(surface: Faces, name: string, finish: Finish, tint: string) {
     const geo = new T.BufferGeometry();
     geo.setAttribute('position', new T.Float32BufferAttribute(surface.position, 3));
@@ -217,47 +181,13 @@ export function buildConcourseShell(
     geo.setIndex(surface.indices);
     geo.computeVertexNormals();
     const map = texture(finish, tint);
-    const wet = finish === 'water';
-    const mat = surfaceMaterial(finish, {
-      map,
-      vertexColors: true,
-      side: T.DoubleSide,
-      transparent: wet,
-      opacity: wet ? 0.66 : 1,
-      depthWrite: !wet,
-    });
-    if (!wet) scans.apply(mat, finish, surface === slab, tint);
-    if (wet) {
-      mat.onBeforeCompile = (shader) => {
-        shader.uniforms.uBasinTime = time;
-        shader.vertexShader =
-          'varying vec3 vBasin;\n' +
-          shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvBasin=position;');
-        shader.fragmentShader =
-          'varying vec3 vBasin; uniform float uBasinTime;\n' +
-          shader.fragmentShader.replace(
-            '#include <opaque_fragment>',
-            `
-            vec2 p = vBasin.xz;
-            vec2 ripple = vec2(sin(p.y*3.2+p.x*.7+uBasinTime*.7), cos(p.x*2.1-p.y*.8+uBasinTime*.51));
-            vec3 basinRay = reflect(normalize(vBasin-cameraPosition), normalize(vec3(.032*ripple.x,1.,.048*ripple.y)));
-            vec2 ceiling = p + basinRay.xz * 3.2/max(.04,basinRay.y);
-            float row = abs(mod(ceiling.y-36.*3.2+9.6,19.2)-9.6);
-            float bay = abs(mod(ceiling.x-6.*3.2+14.4,28.8)-14.4);
-            float strip = (1.-smoothstep(.08,.38,row))*(1.-smoothstep(1.6,2.2,bay));
-            float fresnel = pow(1.-max(basinRay.y,0.),2.);
-            outgoingLight += vec3(.69,.83,.78)*strip*(.28+.62*fresnel);
-            outgoingLight += vec3(.035,.060,.058)*fresnel;
-            #include <opaque_fragment>`,
-          );
-      };
-    }
-    if (wet || surface === slab) markWet(mat, !wet);
+    const mat = surfaceMaterial(finish, { map, vertexColors: true, side: T.DoubleSide });
+    scans.apply(mat, finish, surface === slab, tint);
     const part = new T.Mesh(geo, mat);
     part.name = name;
     // Fill the depth buffer with the opaque hall walls before shading props behind them.
     if (surface === wall) part.renderOrder = -2;
-    part.castShadow = !wet;
+    part.castShadow = true;
     part.receiveShadow = true;
     root.add(part);
     kit.geometries.push(geo);
@@ -268,8 +198,4 @@ export function buildConcourseShell(
   mesh(wall, 'Concourse walls', 'concrete', '#9da39a');
   mesh(roof, 'Concourse soffits', 'concrete', '#7d837b');
   mesh(deck, 'Catwalk plates', 'metal', '#8d9891');
-  mesh(water, 'Basement waterline', 'water', '#526d68');
-  return (seconds: number) => {
-    time.value = seconds;
-  };
 }
