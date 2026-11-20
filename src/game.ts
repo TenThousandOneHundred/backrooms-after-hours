@@ -1450,6 +1450,7 @@ export class Game {
       z: this.z,
       y: this.y,
       yaw: this.yaw,
+      pitch: this.pitch, stamina: this.state.stamina, sanity: this.state.sanity,
       crouch: this.crouched(),
       hidden: this.hidden,
       moving: active && this.moving,
@@ -1507,6 +1508,14 @@ export class Game {
         this.yaw = self.yaw;
         this.x = self.x;
         this.z = self.z;
+        this.y = self.y;
+        this.grounded = self.y === 0;
+        this.hidden = self.hidden;
+        this.crouchBlend = self.crouch ? 1 : 0;
+        this.pitch = self.pitch ?? 0;
+        if (self.stamina !== undefined) this.state.stamina = self.stamina;
+        if (self.sanity !== undefined) this.state.sanity = self.sanity;
+        if (self.stamina !== undefined) this.state.flashlight = self.light;
         this.moving = this.sprinting = false;
         this.cameraPose(0, false);
         this.change('playing');

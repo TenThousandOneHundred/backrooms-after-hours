@@ -15,6 +15,9 @@ export type Pose = {
   z: number;
   y: number;
   yaw: number;
+  pitch?: number;
+  stamina?: number;
+  sanity?: number;
   crouch: boolean;
   hidden: boolean;
   moving: boolean;
@@ -161,6 +164,7 @@ export class Expedition {
     if (caught) this.loseLife(caught, 'Caught by bacteria.');
   }
 
+  private disconnected = new Map<string, { player: Explorer; epoch: number; holdUntil: number; respawnAt?: number }>();
   private identities = new Map<number, string>();
   private respawns = new Map<number, number>();
 
@@ -208,24 +212,51 @@ export class Expedition {
     }
   }
 
-  add(identity?: string) {
-    for (let i = 1; i <= capacity; i++)
-      if (!this.players.has(i)) {
-        const id = i === 1 ? 'host' : typeof identity === 'string' && /^[a-f0-9-]{36}$/i.test(identity)
-          && ![...this.identities.values()].includes(identity) ? identity : crypto.randomUUID();
-        this.identities.set(i, id);
-        this.spawnPlayer(i);
-        const player = this.players.get(i)!;
-        if (this.phase === 'playing' && player.alive) {
-          if (!this.hunt && !this.journal.pending) this.joinTeam(player);
-          // A slow world download must not consume a late arrival's spawn protection.
-          this.immunity.set(i, Infinity);
-        }
-        return i;
-      }
-    return 0;
+  private seatHeld(slot: number) {
+    for (const entry of this.disconnected.values())
+      if (entry.player.slot === slot && entry.holdUntil > Date.now()) return true;
+    return false;
   }
-  remove(slot: number) {
+
+  add(identity?: string) {
+    if (this.hunt && this.phase === 'playing') this.checkSurvivors();
+    const id = !this.players.size ? 'host' : typeof identity === 'string' && /^[a-f0-9-]{36}$/i.test(identity)
+      && ![...this.identities.values()].includes(identity) ? identity : crypto.randomUUID();
+    const saved = this.disconnected.get(id);
+    let slot = 0;
+    if (saved && !this.players.has(saved.player.slot) && (saved.holdUntil > Date.now() || !this.seatHeld(saved.player.slot)))
+      slot = saved.player.slot;
+    if (!slot) {
+      for (slot = 1; slot <= capacity; slot++)
+        if (!this.players.has(slot) && !this.seatHeld(slot)) break;
+      if (slot > capacity) return 0;
+    }
+    this.disconnected.delete(id);
+    this.identities.set(slot, id);
+    this.spawnPlayer(slot);
+    const player = this.players.get(slot)!;
+    if (this.phase === 'playing') {
+      if (saved?.epoch === this.epoch) {
+        const old = saved.player;
+        const stage = stages[this.journal.stage];
+        const fits = canStandAt(stage, old.x, old.z, old.crouch, old.y, this.doors.travel);
+        const cargo = old.cargo && !this.journal.completed.includes(stage.id + '/' + old.cargo)
+          && ![...this.players.values()].some(p => p.cargo === old.cargo) ? old.cargo : '';
+        const position = fits ? {} : {x: player.x, z: player.z, y: 0, hidden: false, crouch: false};
+        Object.assign(player, old, position, { slot, cargo, voice: 0, sprint: false, moving: false, gaze: 0, beam: 0, watching: 0 });
+        if (saved.respawnAt !== undefined) this.respawns.set(slot, saved.respawnAt);
+      } else if (player.alive && !this.hunt && !this.journal.pending) this.joinTeam(player);
+      if (player.alive) this.immunity.set(slot, Infinity);
+    }
+    return slot;
+  }
+  remove(slot: number, holdSeat = false) {
+    const id = this.identities.get(slot), player = this.players.get(slot);
+    if (!id || !player) return;
+    if (this.phase === 'playing' && slot !== 1) {
+      this.disconnected.set(id, { player: { ...player }, epoch: this.epoch,
+        holdUntil: holdSeat ? Date.now() + 120_000 : 0, respawnAt: this.respawns.get(slot) });
+    }
     this.players.delete(slot);
     this.identities.delete(slot);
     this.respawns.delete(slot);
@@ -235,13 +266,19 @@ export class Expedition {
     for (const r of this.residents) r.exposure.delete(slot);
     if (this.hunt?.monster === slot) {
       if (this.phase === 'waiting') this.configureHunt(1);
-      else this.finishHunt('abandoned');
-    } else if (this.hunt && this.players.size < 2) this.finishHunt('abandoned');
+      else if (!holdSeat) this.finishHunt('abandoned');
+    } else if (this.hunt && this.players.size < 2 && !holdSeat) this.finishHunt('abandoned');
     this.checkSurvivors();
   }
   private checkSurvivors() {
     if (this.phase !== 'playing' || !this.players.size) return;
+    if (this.hunt && !this.players.has(this.hunt.monster) && !this.seatHeld(this.hunt.monster)) {
+      this.finishHunt('abandoned');
+      return;
+    }
     if ([...this.players.values()].some(p => p.slot !== this.hunt?.monster && p.lives > 0)) return;
+    for (const saved of this.disconnected.values())
+      if (saved.epoch === this.epoch && saved.player.lives > 0 && saved.player.slot !== this.hunt?.monster && saved.holdUntil > Date.now()) return;
     if (this.hunt) this.finishHunt('caught');
     else this.phase = 'lost';
   }
@@ -258,6 +295,8 @@ export class Expedition {
     this.doors = new ClosetDoors();
     if (!resume) this.journal.teamLives = {};
     this.respawns.clear();
+    for (const [id, entry] of this.disconnected)
+      if (entry.holdUntil <= Date.now()) this.disconnected.delete(id);
     this.epoch++;
     this.revision++;
     this.time = 0;
@@ -353,6 +392,9 @@ export class Expedition {
         voice: Math.max(0, Math.min(1, q.voice)),
       });
       if (this.immunity.get(slot) === Infinity) this.immunity.set(slot, this.time + 3);
+      if (Number.isFinite(q.pitch)) p.pitch = Math.max(-1.36, Math.min(1.36, q.pitch!));
+      if (Number.isFinite(q.stamina)) p.stamina = Math.max(0, Math.min(100, q.stamina!));
+      if (Number.isFinite(q.sanity)) p.sanity = Math.max(0, Math.min(100, q.sanity!));
       this.fresh.set(slot, this.time);
       return;
     }
@@ -477,7 +519,7 @@ export class Expedition {
         p.sprint = false;
         p.moving = false;
       }
-    if (this.hunt) return;
+    if (this.hunt) { this.checkSurvivors(); return; }
     const grace = Math.max(0, (['run', 'hotelchase'].includes(s.id) ? 2.75 : 8) - this.time);
     const active = alive.filter(
       (p) => this.fresh.has(p.slot) && (this.immunity.get(p.slot) ?? 0) <= this.time,

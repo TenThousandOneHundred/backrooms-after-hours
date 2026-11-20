@@ -207,7 +207,7 @@ export class RoomMenu {
       'Multiplayer',
       'Room unavailable',
       '<p class="panel-text" id="room-error" role="alert"></p>' +
-        (code ? this.ui.button('retry-room', 'Retry this room', 'play', true) : '') +
+        (code ? this.ui.button('retry-room', 'Rejoin room ' + code, 'play', true) : '') +
         this.ui.button('rooms-back', 'Back to multiplayer'),
       () => this.menu(),
     );

@@ -201,3 +201,65 @@ test('a late arrival uses the level entrance when the team is on the broken floo
   const [sx,sz] = stages.pitwalk.spawn;
   assert.ok(Math.hypot(guest.x-sx*TILE, guest.z-sz*TILE)<1);
 });
+
+test('disconnect holds the seat and restores the explorer without replaying stale voice or movement', () => {
+  const room = new Expedition(), id = crypto.randomUUID();
+  room.add(); const slot = room.add(id);
+  room.start({ ...room.journal, stage: 'garage' });
+  const pose = { ...room.players.get(slot), x: 9*TILE, z: 3*TILE, yaw: .9, pitch: .2,
+    sanity: 64, stamina: 42, light: true, moving: true, voice: .5 };
+  room.command(slot, room.epoch, { type:'pose', pose });
+  room.remove(slot, true);
+  for (let i=3; i<=capacity; i++) assert.equal(room.add(), i);
+  assert.equal(room.add(), 0);
+  assert.equal(room.add(id), slot);
+  const back = room.players.get(slot);
+  for (const key of ['x','z','yaw','pitch','sanity','stamina','light','lives']) assert.equal(back[key],pose[key]);
+  assert.equal(back.moving,false);
+  assert.equal(back.voice,0);
+});
+
+test('an expired seat can be reused while the returning explorer still recovers their own state', t => {
+  let now = Date.now(); t.mock.method(Date, 'now', () => now);
+  const room = new Expedition(), id = crypto.randomUUID();
+  room.add(); room.add(id); room.start({ ...room.journal, stage: 'garage' });
+  room.command(2, room.epoch, {type:'pose', pose:{...room.players.get(2), x:9*TILE, z:3*TILE}});
+  room.remove(2,true); now += 121000;
+  assert.equal(room.add(),2);
+  const back = room.add(id);
+  assert.equal(back,3); assert.equal(room.players.get(back).x,9*TILE);
+});
+
+test('rejoining across a level change receives the current level and its lives', () => {
+  const room = new Expedition(), id = crypto.randomUUID();
+  room.add(); room.add(id); room.start();
+  room.command(2, room.epoch, {type:'down', cause:'Caught.'});
+  room.remove(2,true);
+  room.journal.pending={ending:'wrong',target:'garage'};
+  room.command(1,room.epoch,{type:'continue'});
+  const back=room.players.get(room.add(id));
+  assert.equal(room.journal.stage,'garage'); assert.equal(back.alive,true);
+  assert.equal(back.lives,room.players.get(1).lives);
+  assert.ok(Math.hypot(back.x-stages.garage.spawn[0]*TILE,back.z-stages.garage.spawn[1]*TILE)<1);
+});
+
+test('disconnect during respawn preserves the lost life and completes the existing respawn', () => {
+  const room = new Expedition(), id = crypto.randomUUID();
+  room.add(); room.add(id); room.start();
+  room.command(2,room.epoch,{type:'down',cause:'Caught.'});
+  room.remove(2,true); room.step(3);
+  assert.equal(room.add(id),2); room.step(.05);
+  assert.equal(room.players.get(2).alive,true);
+  assert.equal(room.players.get(2).lives,2);
+});
+
+test('a disconnected hunt monster can return to its role before the seat expires', t => {
+  let now = Date.now(); t.mock.method(Date,'now',()=>now);
+  const room = new Expedition(), id=crypto.randomUUID();
+  room.add(); room.add(id); room.configureHunt(2); room.start();
+  room.remove(2,true); room.step(.05);
+  assert.equal(room.phase,'playing'); assert.equal(room.add(),3);
+  assert.equal(room.add(id),2); assert.equal(room.hunt.monster,2);
+  room.remove(2,true); now+=121000; room.step(.05);
+  assert.equal(room.hunt.result,'abandoned');
+});

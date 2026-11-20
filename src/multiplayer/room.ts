@@ -28,6 +28,28 @@ export function newCode() {
   ).join('');
 }
 
+// Chrome can report an open data channel long after its tab has gone away.
+function answersProbe(conn: DataConnection): Promise<boolean> {
+  if (!conn.open) return Promise.resolve(false);
+  const nonce = crypto.randomUUID();
+  return new Promise(resolve => {
+    const finish = (alive: boolean) => {
+      clearTimeout(timer);
+      conn.off('data', reply);
+      conn.off('close', closed);
+      resolve(alive);
+    };
+    const reply = (value: unknown) => {
+      if (value && typeof value === 'object' && 'rejoinAck' in value && value.rejoinAck === nonce) finish(true);
+    };
+    const closed = () => finish(false);
+    const timer = window.setTimeout(closed, 1800);
+    conn.on('data', reply);
+    conn.on('close', closed);
+    try { conn.send({ type: 'rejoin-probe', nonce }); } catch { closed(); }
+  });
+}
+
 export class Room {
   private peer: Peer;
   readonly voice: ProximityVoice;
@@ -39,6 +61,8 @@ export class Room {
   private voiceMembers: VoiceMember[] = [];
   private hostGame?: Expedition;
   private guests = new Map<DataConnection, number>();
+  private resumeTokens = new Map<string, string>();
+  private readonly resumeKey: string;
   private sentRevision = new WeakMap<DataConnection, number>();
   private savedRevision = 0;
   private upstream?: DataConnection;
@@ -60,6 +84,7 @@ export class Room {
     private progress: (message: string) => void,
     iceServers: RTCIceServer[],
   ) {
+    this.resumeKey = 'backrooms-after-hours.rejoin.' + code;
     const id = hosting ? namespace + code : 'explorer-' + crypto.randomUUID();
     this.hasRelay = iceServers.some(server => [server.urls].flat().some(url => /^turns?:/i.test(url)));
     this.peer = new Peer(id, { config: { iceServers } });
@@ -100,24 +125,70 @@ export class Room {
         conn.close();
         return;
       }
-      conn.once('open', () => {
+      let lastActivity = performance.now(), presenceTimer = 0;
+      conn.once('open', async () => {
         if (this.closed || !this.hostGame) {
           conn.close();
           return;
         }
-        const slot = this.hostGame.add(conn.metadata?.explorerId);
+        const token = conn.metadata?.resumeToken;
+        const returningId = typeof token === 'string' ? this.resumeTokens.get(token) : undefined;
+        // A reload can reconnect before WebRTC reports the old channel closed.
+        // Only a token from a previous welcome may take over that connection.
+        if (returningId) for (const [old, seat] of this.guests) {
+          if (this.hostGame.identityOf(seat) !== returningId) continue;
+          if (!conn.metadata?.sameTab) {
+            const alive = await answersProbe(old);
+            if (this.closed || !conn.open) return;
+            const owner = [...this.guests].find(([, current]) => this.hostGame?.identityOf(current) === returningId);
+            if (owner && (owner[0] !== old || alive)) {
+              conn.send({ type: 'still-connected' });
+              conn.close({ flush: true });
+              return;
+            }
+            if (!owner) break;
+          }
+          this.guests.delete(old);
+          this.guestListeners.delete(old);
+          this.nextRadioPacket.delete(seat);
+          this.hostGame.remove(seat, true);
+          old.close();
+          this.publishVoiceRoster();
+          break;
+        }
+        const slot = this.hostGame.add(returningId ?? conn.metadata?.explorerId);
         if (!slot) {
           conn.send({ type: 'full' });
           conn.close({ flush: true });
           return;
         }
         this.guests.set(conn, slot);
-        conn.send({ type: 'welcome', slot, explorerId: this.hostGame.identityOf(slot) });
+        if (conn.metadata?.canProbe) {
+          presenceTimer = window.setInterval(async () => {
+            if (!this.guests.has(conn) || this.closed) { clearInterval(presenceTimer); return; }
+            if (performance.now() - lastActivity < 5000) return;
+            const since = lastActivity;
+            if (!await answersProbe(conn) && lastActivity === since && this.guests.has(conn)) {
+              leave();
+              conn.close();
+            }
+          }, 5000);
+        }
+        const explorerId = this.hostGame.identityOf(slot)!;
+        const resumeToken = returningId ? token : crypto.randomUUID();
+        this.resumeTokens.set(resumeToken, explorerId);
+        conn.send({ type: 'welcome', slot, explorerId, resumeToken });
         conn.send({ type: 'voice-roster', members: this.voiceMembers });
         this.publish();
       });
       conn.on('data', (value) => {
+        lastActivity = performance.now();
         const slot = this.guests.get(conn);
+        if (slot && value && typeof value === 'object' && 'type' in value && value.type === 'depart') {
+          leave();
+          conn.close();
+          return;
+        }
         if (slot && value && typeof value === 'object' && 'type' in value && value.type === 'radio') {
           if (this.guestListeners.has(conn) && 'epoch' in value && 'packet' in value)
             this.relayRadio(slot, value.epoch, value.packet);
@@ -145,12 +216,13 @@ export class Room {
           this.hostGame?.command(slot, Number(value.epoch), value.action as Command);
       });
       const leave = () => {
+        clearInterval(presenceTimer);
         const slot = this.guests.get(conn);
         if (!slot || this.closed) return;
         this.guests.delete(conn);
         this.nextRadioPacket.delete(slot);
         if (this.guestListeners.delete(conn)) this.publishVoiceRoster();
-        this.hostGame?.remove(slot);
+        this.hostGame?.remove(slot, true);
         this.publish();
       };
       conn.on('close', leave);
@@ -165,6 +237,12 @@ export class Room {
         if (!this.closed && !this.peer.destroyed && this.peer.disconnected) this.peer.reconnect();
       }, 2000);
     });
+  }
+  private resumeToken() {
+    try {
+      const session = sessionStorage.getItem(this.resumeKey);
+      return { resumeToken: session ?? localStorage.getItem(this.resumeKey), sameTab: !!session };
+    } catch { return {}; }
   }
   private connectToHost() {
     if (this.closed || this.upstream || this.state) return;
@@ -182,7 +260,7 @@ export class Room {
     try {
       conn = this.peer.connect(namespace + this.code, {
         serialization: 'binary', reliable: true, label: 'campaign-v4',
-        metadata: { explorerId: explorerIdentity() },
+        metadata: { explorerId: explorerIdentity(), canProbe: true, ...this.resumeToken() },
       });
       // PeerJS creates the connection synchronously. ICE gathering starts when its offer is applied.
       if (tryingRelay) conn.peerConnection.setConfiguration({
@@ -260,8 +338,16 @@ export class Room {
       }
       return;
     }
+    if (value.type === 'rejoin-probe' && 'nonce' in value && typeof value.nonce === 'string') {
+      if (this.upstream?.open) this.upstream.send({ rejoinAck: value.nonce });
+      return;
+    }
+    if (value.type === 'still-connected') {
+      this.fail('Your explorer is still connected in another tab. Close that tab, then retry this room.');
+      return;
+    }
     if (value.type === 'full') {
-      this.fail('Room full. All eight explorer slots are taken.');
+      this.fail('All eight seats are occupied or held for reconnecting players. Try again in a moment.');
       return;
     }
     if (
@@ -273,6 +359,12 @@ export class Room {
       value.slot <= capacity
     ) {
       this.slot = value.slot;
+      if ('resumeToken' in value && typeof value.resumeToken === 'string') {
+        try {
+          sessionStorage.setItem(this.resumeKey, value.resumeToken);
+          localStorage.setItem(this.resumeKey, value.resumeToken);
+        } catch { /* Storage is unavailable in this browser. */ }
+      }
       if ('explorerId' in value && typeof value.explorerId === 'string') {
         try { sessionStorage.setItem('backrooms-after-hours.explorer', value.explorerId); } catch { /* Private session. */ }
       }
@@ -453,6 +545,9 @@ export class Room {
     if (this.hostGame && !this.hostGame.hunt && this.hostGame.phase !== 'waiting' && this.savedRevision !== this.hostGame.revision)
       void storeProgress(this.hostGame.journal, roomSave);
     this.closed = true;
+    if (this.upstream?.open) {
+      try { this.upstream.send({type: 'depart'}); } catch { /* Channel already dropped. */ }
+    }
     clearInterval(this.timer);
     clearTimeout(this.lookupRetry);
     clearTimeout(this.deadline);
