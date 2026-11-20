@@ -21,7 +21,11 @@ export class VoiceInput {
 
   private onError: (message: string) => void;
 
-  constructor(onError: (message: string) => void) { this.onError = onError; }
+  private onStream?: (stream?: MediaStream) => void;
+  constructor(onError: (message: string) => void, onStream?: (stream?: MediaStream) => void) {
+    this.onError = onError;
+    this.onStream = onStream;
+  }
 
   async start() {
     if (this.state !== 'off') return;
@@ -51,7 +55,10 @@ export class VoiceInput {
         this.analyser = analyser;
       });
       await Promise.all([capture, context.resume()]);
-      if (this.request === request) this.state = 'live';
+      if (this.request === request) {
+        this.state = 'live';
+        this.onStream?.(this.stream);
+      }
     } catch (error) {
       if (this.request !== request) return;
       const name = error instanceof Error ? error.name : '';
@@ -71,6 +78,7 @@ export class VoiceInput {
 
   stop() {
     this.request++;
+    if (this.stream) this.onStream?.();
     this.state = 'off';
     this.volume = 0;
     this.analyser?.disconnect();

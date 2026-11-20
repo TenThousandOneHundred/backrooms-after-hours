@@ -74,14 +74,21 @@ function notify(message: string) {
   toastTimer = window.setTimeout(() => (node.hidden = true), 4300);
 }
 let voiceEnabled = false;
+let roomMicEnabled = false;
+let voiceRoom: import('./multiplayer/room').Room | undefined;
+const micEnabled = () => voiceRoom ? roomMicEnabled : voiceEnabled;
+function setMicEnabled(value: boolean) {
+  if (voiceRoom) roomMicEnabled = value;
+  else voiceEnabled = value;
+}
 const mic = new VoiceInput(message => {
-  voiceEnabled = false;
+  setMicEnabled(false);
   refreshMic();
   notify(message);
-});
+}, stream => voiceRoom?.voice.setStream(stream));
 function refreshMic(volume = 0, heard = false) {
   const live = mic.state === 'live';
-  el('mic-label').textContent = live ? (heard ? 'Heard you' : 'Mic live') :
+  el('mic-label').textContent = live ? (heard ? 'Heard you' : voiceRoom ? 'Voice chat on' : 'Mic live') :
     mic.state === 'starting' ? 'Connecting…' : 'Mic off';
   const meter = el<HTMLMeterElement>('mic-level');
   meter.value = live ? volume : 0;
@@ -89,7 +96,9 @@ function refreshMic(volume = 0, heard = false) {
   el('mic-hud').classList.toggle('heard', live && heard);
 }
 function syncMic() {
-  if (voiceEnabled && mode === 'playing' && !document.hidden) {
+  const playing = mode === 'playing' && !document.hidden;
+  voiceRoom?.setListening(playing);
+  if (micEnabled() && playing) {
     void mic.start().then(() => refreshMic());
   } else mic.stop();
   refreshMic();
@@ -116,6 +125,7 @@ function persistSettings() {
   }
   horror.setVolume(settings.volume);
   game?.applySettings({ ...settings });
+  voiceRoom?.voice.setVolume(settings.volume);
   updateSound();
 }
 function refreshHome() {
@@ -196,7 +206,7 @@ const controls = [
   ['Look', ['Mouse']],
   ['Interact / read', ['E']],
   ['Flashlight / lidar', ['F']],
-  ['Toggle microphone for monster hearing', ['M']],
+  ['Toggle mic for monsters and nearby teammates', ['M']],
   ['Sprint / crouch', ['Shift', 'C']],
   ['Jump', ['Space']],
   ['Field inventory', ['Tab']],
@@ -278,9 +288,11 @@ function settingsMenu() {
       '<div class="setting"><label for="quality">Graphics quality</label><select id="quality"><option value="high">High</option><option value="standard">Standard</option></select></div>' +
       '<div class="setting"><label for="head-bob">Head movement</label><input type="checkbox" id="head-bob" ' +
       (settings.headBob ? 'checked' : '') +
-      '></div><div class="setting"><label for="voice-enabled">Monsters hear my microphone</label>' +
-      '<input type="checkbox" id="voice-enabled" aria-describedby="voice-help"' + (voiceEnabled ? ' checked' : '') + '></div>' +
-      '<p class="panel-text" id="voice-help">Your mic is active during play. Louder sounds carry farther. Audio stays on this device. Press M to toggle.</p>' +
+      '></div><div class="setting"><label for="voice-enabled">' + (voiceRoom ? 'Speak to nearby teammates and monsters' : 'Monsters hear my microphone') + '</label>' +
+      '<input type="checkbox" id="voice-enabled" aria-describedby="voice-help"' + (micEnabled() ? ' checked' : '') + '></div>' +
+      '<p class="panel-text" id="voice-help">' + (voiceRoom
+        ? 'Press M to share your voice with nearby explorers. Monsters can hear you too. Pausing mutes your mic.'
+        : 'Press M during play to let monsters hear you. In single player your audio stays on this device.') + '</p>' +
       '<div class="panel-buttons">' +
       actions('settings-done', 'Done', 'check', true) +
       '</div>',
@@ -315,7 +327,7 @@ function settingsMenu() {
     persistSettings();
   };
   const voiceToggle = el<HTMLInputElement>('voice-enabled');
-  voiceToggle.onchange = () => { voiceEnabled = voiceToggle.checked; };
+  voiceToggle.onchange = () => { setMicEnabled(voiceToggle.checked); };
   wire('settings-done', closeSubmenu);
 }
 function pauseMenu() {
@@ -381,6 +393,7 @@ const callbacks: GameCallbacks = {
   },
   screen: (screen, detail) => {
     if (screen !== 'playing') {
+      voiceRoom?.setListening(false);
       mic.stop();
       refreshMic();
       horror.quiet();
@@ -526,11 +539,15 @@ async function multiplayer() {
       panel:showPanel,button:actions,exit:titleScreen,
       prepare:async()=>{await Promise.all([loadRuntime(), (await import('./multiplayer/explorers')).loadExplorer()]);},
       enter:room=>{
+        roomMicEnabled=false; voiceRoom=room; room.voice.setVolume(settings.volume);
         activeMod=undefined; horror.unlock(); horror.preload(); horror.clear();
         game=new runtime!.Game(el<HTMLCanvasElement>('world'), callbacks, undefined, room);
         game.applySettings(settings); game.start(false);
       },
-      stop:()=>{game?.dispose();game=null;mic.stop();horror.clear();hud.hidden=true;},
+      stop:()=>{
+        voiceRoom?.setListening(false); mic.stop(); voiceRoom=undefined; roomMicEnabled=false;
+        game?.dispose();game=null;horror.clear();hud.hidden=true;
+      },
     });
     rooms.menu();
   }catch{notify('Could not load multiplayer. Check your connection and try again.');}
@@ -661,7 +678,7 @@ document.addEventListener(
     if (mode === 'playing' && event.code === 'KeyM' && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();
       if (!event.repeat) {
-        voiceEnabled = !voiceEnabled;
+        setMicEnabled(!micEnabled());
         syncMic();
       }
       return;

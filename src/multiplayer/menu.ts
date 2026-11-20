@@ -26,7 +26,7 @@ export class RoomMenu {
       'coop-menu',
       'Co-op expedition',
       'Multiplayer',
-      '<p class="panel-text">Play the full campaign together. One computer hosts up to eight explorers.</p>' +
+      '<p class="panel-text">Play the full campaign with up to eight explorers. Voice chat gets quieter as friends move away.</p>' +
         button('host-room', 'Create room', 'play', true) +
         '<form id="join-form" class="join-room"><label for="join-code">Join with a room code</label>' +
         '<div><input class="code-input" id="join-code" maxlength="6" autocomplete="off" spellcheck="false" required pattern="[A-Za-z2-9]{6}" placeholder="ABC234">' +
@@ -80,7 +80,7 @@ export class RoomMenu {
       get('coop-hud').hidden = true;
       const waiting = state.phase === 'waiting';
       const text = waiting
-        ? 'Any explorer can solve puzzles and lead the team through an exit. Your host saves the campaign.'
+        ? 'Any explorer can lead the team through an exit. During play, press M to talk to nearby teammates. Monsters can hear you too.'
         : 'Everyone was caught. Retry this level with your shared objectives intact.';
       this.ui.panel(
         'coop-room',

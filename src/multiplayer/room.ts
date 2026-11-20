@@ -1,6 +1,7 @@
 import Peer, { type DataConnection } from 'peerjs';
 import { capacity, Expedition, roomSave, type Command, type Snapshot } from './expedition';
 
+import { ProximityVoice, type VoiceMember } from './proximity-voice';
 import { loadProgress, storeProgress } from '../game-state';
 
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -14,6 +15,10 @@ export function newCode() {
 
 export class Room {
   private peer: Peer;
+  readonly voice: ProximityVoice;
+  private listening = false;
+  private guestListeners = new Set<DataConnection>();
+  private voiceMembers: VoiceMember[] = [];
   private hostGame?: Expedition;
   private guests = new Map<DataConnection, number>();
   private sentRevision = new WeakMap<DataConnection, number>();
@@ -32,6 +37,7 @@ export class Room {
     private failure: (message: string) => void,
   ) {
     this.peer = hosting ? new Peer(namespace + code) : new Peer('explorer-' + crypto.randomUUID());
+    this.voice = new ProximityVoice(this.peer);
     this.deadline = window.setTimeout(
       () =>
         this.fail(
@@ -83,10 +89,26 @@ export class Room {
         }
         this.guests.set(conn, slot);
         conn.send({ type: 'welcome', slot });
+        conn.send({ type: 'voice-roster', members: this.voiceMembers });
         this.publish();
       });
       conn.on('data', (value) => {
         const slot = this.guests.get(conn);
+        if (
+          slot &&
+          value &&
+          typeof value === 'object' &&
+          'type' in value &&
+          value.type === 'voice-ready' &&
+          'listening' in value &&
+          typeof value.listening === 'boolean'
+        ) {
+          if (this.guestListeners.has(conn) === value.listening) return;
+          if (value.listening) this.guestListeners.add(conn);
+          else this.guestListeners.delete(conn);
+          this.publishVoiceRoster();
+          return;
+        }
         if (slot && value && typeof value === 'object' && 'epoch' in value && 'action' in value)
           this.hostGame?.command(slot, Number(value.epoch), value.action as Command);
       });
@@ -94,6 +116,7 @@ export class Room {
         const slot = this.guests.get(conn);
         if (!slot || this.closed) return;
         this.guests.delete(conn);
+        if (this.guestListeners.delete(conn)) this.publishVoiceRoster();
         this.hostGame?.remove(slot);
         this.publish();
       };
@@ -112,6 +135,19 @@ export class Room {
   }
   private receive(value: unknown) {
     if (!value || typeof value !== 'object' || !('type' in value)) return;
+    if (value.type === 'voice-roster' && this.slot && 'members' in value && Array.isArray(value.members)) {
+      if (
+        value.members.length <= capacity &&
+        value.members.every(
+          (m) =>
+            m && typeof m.id === 'string' && Number.isInteger(m.slot) && m.slot >= 1 && m.slot <= capacity,
+        )
+      ) {
+        this.voiceMembers = value.members;
+        this.updateVoice();
+      }
+      return;
+    }
     if (value.type === 'full') {
       this.fail('Room full. All eight explorer slots are taken.');
       return;
@@ -141,9 +177,32 @@ export class Room {
       this.accept(state);
     }
   }
+  setListening(listening: boolean) {
+    if (this.closed || this.listening === listening) return;
+    this.listening = listening;
+    if (this.hosting) this.publishVoiceRoster();
+    else {
+      if (this.upstream?.open) this.upstream.send({ type: 'voice-ready', listening });
+      this.updateVoice();
+    }
+  }
+  private updateVoice() {
+    if (this.state) this.voice.update(this.slot, this.state, this.voiceMembers, this.listening);
+  }
+  private publishVoiceRoster() {
+    this.voiceMembers = this.listening ? [{ id: this.peer.id, slot: this.slot }] : [];
+    for (const conn of this.guestListeners) {
+      const slot = this.guests.get(conn);
+      if (slot) this.voiceMembers.push({ id: conn.peer, slot });
+    }
+    for (const conn of this.guests.keys())
+      if (conn.open) conn.send({ type: 'voice-roster', members: this.voiceMembers });
+    this.updateVoice();
+  }
   private accept(state: Snapshot) {
     clearTimeout(this.deadline);
     this.state = state;
+    this.updateVoice();
     this.change(state);
   }
   private publish() {
@@ -197,6 +256,8 @@ export class Room {
     clearInterval(this.timer);
     clearTimeout(this.deadline);
     clearTimeout(this.reconnectTimer);
+    this.voice.dispose();
+    this.guestListeners.clear();
     this.peer.destroy();
     this.guests.clear();
   }
