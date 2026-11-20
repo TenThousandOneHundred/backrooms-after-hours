@@ -1,3 +1,4 @@
+import { ClosetDoors, coverZone, reachableDoor } from '../concourse-cover.ts';
 import { shoutStrength } from '../voice-reach.ts';
 import type { Hunt, HuntResult } from './hunt.ts';
 import { livesPerLevel, readLives, type Difficulty } from '../difficulty.ts';
@@ -36,6 +37,7 @@ export type Explorer = Pose & {
 };
 export type Command =
   | { type: 'pose'; pose: Pose }
+  | { type: 'closet'; id:number; open:boolean }
   | { type: 'carry'; id: string }
   | { type: 'use'; id: string; code?: string }
   | { type: 'down'; cause: string; spawnId?: number }
@@ -67,6 +69,7 @@ export type Snapshot = {
   players: Explorer[];
   monsters: Monster[];
   residents: ResidentFrame[];
+  closets?: { open:number; travel:number[] };
   journal: Progress;
 };
 const spawn = (slot: number, stage: string, lives: number): Explorer => {
@@ -97,6 +100,7 @@ const spawn = (slot: number, stage: string, lives: number): Explorer => {
 };
 
 export class Expedition {
+  private doors = new ClosetDoors();
   readonly players = new Map<number, Explorer>();
   private hunters: { ai: Encounter; target: number; speed: number; visible: boolean }[] = [];
   private residents: {
@@ -224,6 +228,7 @@ export class Expedition {
   private enter(stage: string, resume = false) {
     this.phase = 'playing';
     this.journal.stage = stage;
+    this.doors = new ClosetDoors();
     if (!resume) this.journal.teamLives = {};
     this.respawns.clear();
     this.epoch++;
@@ -281,6 +286,14 @@ export class Expedition {
       return;
     }
     if (!p.alive || j.pending) return;
+    if (action.type === 'closet') {
+      if(s.id==='lobby' && typeof action.open==='boolean' && Number.isInteger(action.id) &&
+        reachableDoor(p.x,p.z)?.door===action.id) {
+        if(action.open)this.doors.open |= 1<<action.id;
+        else this.doors.open &= ~(1<<action.id);
+      }
+      return;
+    }
     if (action.type === 'pose') {
       const q = action.pose;
       if (
@@ -290,7 +303,7 @@ export class Expedition {
         Math.abs(q.y) > 10 ||
         Math.abs(q.x) > s.map[0].length * TILE ||
         Math.abs(q.z) > s.map.length * TILE ||
-        !canStandAt(s, q.x, q.z) ||
+        !canStandAt(s, q.x, q.z, q.crouch, q.y, this.doors.travel) ||
         ![q.gaze, q.beam, q.watching].every((v) => Number.isInteger(v) && v >= 0 && v < 65536) ||
         ![q.crouch, q.hidden, q.moving, q.sprint, q.light].every((v) => typeof v === 'boolean')
       )
@@ -301,7 +314,9 @@ export class Expedition {
         y: q.y,
         yaw: q.yaw,
         crouch: q.crouch,
-        hidden: q.hidden,
+        hidden: q.hidden && (s.id !== 'lobby' || s.objects.some(o =>
+          o.kind === 'hide' && Math.hypot(o.x * TILE - q.x, o.z * TILE - q.z) < 4.85 &&
+          clearSight(s, q.x / TILE, q.z / TILE, o.x, o.z, 1.45, 1.45, this.doors.travel))),
         moving: q.moving,
         sprint: q.sprint,
         light: q.light,
@@ -427,6 +442,7 @@ export class Expedition {
     const s = stages[this.journal.stage],
       flags = this.journal.flags;
     const alive = [...this.players.values()].filter((p) => p.alive);
+    if(s.id==='lobby')this.doors.step(dt,alive);
     for (const p of alive)
       if (this.time - (this.fresh.get(p.slot) ?? 0) > 0.65) {
         p.voice = 0;
@@ -446,7 +462,8 @@ export class Expedition {
           !p.hidden &&
           grace === 0 &&
           Math.hypot(p.x - site.x * TILE, p.z - site.z * TILE) < (veil ? 12 : 8) &&
-          clearSight(s, p.x / TILE, p.z / TILE, site.x, site.z),
+          (!veil || !this.enclosed(p)) &&
+          clearSight(s, p.x / TILE, p.z / TILE, site.x, site.z,p.y+(p.crouch?.97:1.58),veil?1.85:2.2,this.doors.travel),
       );
       const nearSlots = new Set(nearby.map((p) => p.slot));
       for (const slot of r.exposure.keys()) if (!nearSlots.has(slot)) r.exposure.delete(slot);
@@ -492,7 +509,7 @@ export class Expedition {
         if (!player.alive) continue;
         const loudness = this.audibleLevel(player);
         const cues = e.perceive(player.x / TILE, player.z / TILE,
-          { ...player, voice: loudness });
+          { ...player, voice: loudness }, this.doors.travel, player.y);
         const inReach = e.kind === 'bonethief' && !cues.hidden && cues.line && cues.distance < 0.77;
         const detected = cues.heardVoice || cues.heardSteps || cues.seen || inReach;
         const rank = detected ? 2 : cues.hidden ? 0 : 1;
@@ -541,6 +558,8 @@ export class Expedition {
         asleep ? 1 : grace,
         this.time < this.alarm ? s.objects.find((o) => o.gives?.includes('archive-alarm')) : undefined,
         this.audibleLevel(p),
+        this.doors.travel,
+        p.y,
       );
       h.speed = (Math.hypot(e.x - x, e.z - z) * TILE) / dt;
       if (e.contact) {
@@ -565,6 +584,10 @@ export class Expedition {
     }
     this.checkSurvivors();
   }
+  private enclosed(p: Explorer){
+    const zone=this.journal.stage==='lobby' && coverZone(p.x,p.z,p.crouch,this.doors.travel,p.y);
+    return !!zone && zone!=='cubicle';
+  }
   snapshot(): Snapshot {
     return {
       phase: this.phase,
@@ -573,6 +596,7 @@ export class Expedition {
       revision: this.revision,
       time: this.time,
       journal: this.journal,
+      closets: this.journal.stage==='lobby' ? {open:this.doors.open,travel:[...this.doors.travel]} : undefined,
       residents: this.hunt ? [] : this.residents.map(({ behavior: b, target }) => ({
         phase: b.phase,
         time: b.time,

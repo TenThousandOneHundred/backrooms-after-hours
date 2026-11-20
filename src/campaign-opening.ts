@@ -1,3 +1,4 @@
+import { concoursePlan } from './concourse-plan.ts';
 import { roomDetails, stage, item, act, code, exit, note, hide, prop, noteKeys, rangeFlags } from './campaign-format.ts';
 
 export const opening = [
@@ -7,34 +8,8 @@ export const opening = [
     'The Lobby',
     'lobby',
     'The humming started before you opened your eyes. The carpet is still damp.',
-    'Recover the four ladder pieces. Check the south records hall and the east telephone exchange.',
-    `
-##################################################
-#......#...............#.##....A....#.......1....#
-#..##..#..######.##.!..#.##.##..##..#..####..##..#
-#..##.....#......#...#......##..##.....#..#..##..#
-#......#..#..#...#...#.E.##.....####.###..#......#
-####...#.....#...###.#...##.###....#......#.####.#
-#..2...#..K..#....T..#...##...##.D.####...#...J..#
-#....###.....#####.......####....D......####.....#
-#......#..L.%#....###.##.##..D...D.###.....#.###.#
-#..##..#.....#....#...##.##......D...#.&F..#...#.#
-#..##....###......#......##..#####...#..3.%....#.#
-#.....#H.###.#....#...#.###..#...#...########..#.#
-#....&#......##.......#..##......#....D.D......#.#
-###.###.##....#..##...#..##..#...####......###...#
-#...#...#...W.#..##..........#..........#....#...#
-#.......#..@.....#...N...##..G...#####..#........#
-###########.###########.##########################
-#########....S.....D...S..########################
-########.U..###.......#....#######################
-########.....##..S.......P.#######################
-########...S........#S.....#######################
-########........#.Q.S......#######################
-########........S......#...#######################
-########..##..........##.4.#######################
-########.U#..D......S..#...#######################
-##################################################`,
+    'Recover the four ladder pieces. Search the concrete hall, east offices and flooded returns basement.',
+    concoursePlan,
     {
       Q: prop('roof-monitor'),
       S: prop('records-rack'),
@@ -62,7 +37,7 @@ export const opening = [
       H: hide('Climb inside the grey service locker'),
       T: hide('Hide beneath the abandoned drafting desk', 'desk'),
       A: note('Records / night shift', 'Every incoming call is logged under your name. The last entry is still wet.','sign'),
-      G: note('East telephone exchange', 'Records is north. Someone scratched a second message below it: “When the ceiling knocks twice, get low. When the faces sing, look at the floor.”','sign'),
+      G: note('East telephone exchange', 'Records is south of the exchange. Someone scratched a second message below it: “When the ceiling knocks twice, get low. When the faces sing, look at the floor.”','sign'),
       F: act('Lift the red receiver', 'exchange-call', 'telephone', 'Your own voice whispers from the receiver. “Put it down. It heard you.”'),
       J: hide('Slip into the switchboard cabinet'),
       D: prop('desk'),
@@ -72,11 +47,11 @@ export const opening = [
       ),
       N: note(
         'Maintenance slip',
-        'Left the service key above the broken ladder. The right rail went to Returns in the south records hall. Two pieces went east: one by the red phone and one in the exchange stacks.',
+        'Left the service key above the broken ladder. The right rail went downstairs to Returns. Three ramps lead into the flooded basement. Two pieces went east: one by the red phone and one in the exchange stacks.',
       ),
     },
     'bacteria',
-    Math.PI,
+    Math.PI / 2,
   ),
   stage(
     'pitwalk',

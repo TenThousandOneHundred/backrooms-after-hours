@@ -1,3 +1,4 @@
+import { ClosetDoors, coverFits, coverZone, reachableDoor, headroom, standingHeight, crouchingHeight } from './concourse-cover';
 import { FilmCamera } from './film-camera';
 import { campaignAtmosphere } from './level-atmosphere';
 import * as THREE from 'three';
@@ -68,6 +69,8 @@ const creatureNames: Record<string, string> = {
   bonethief: 'the Bone Thief', partyhost: 'the Party Host', membri: 'the Aranea Membri',
   scratcher: 'the Scratcher',
 };
+const coverLabels = { alcove:'In shadow · structural alcove', closet:'Concealed · maintenance closet',
+  duct:'Concealed · ventilation shaft', machine:'Concealed · machine undercarriage', cubicle:'Low cover · stay below the partition' };
 const controls = new Set([
   'KeyW',
   'KeyA',
@@ -92,8 +95,8 @@ export { playerSpeed };
 const defaultSettings: GameSettings = { sensitivity: 1, volume: 0.65, headBob: true, quality: 'high' };
 
 export class Game {
-  private film: FilmCamera;
   private renderer: THREE.WebGLRenderer;
+  private film: FilmCamera;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(70, 1, 0.06, 145);
   private lamp = new THREE.SpotLight(0xfff2d1, 0, 29, 0.54, 0.56, 1.15);
@@ -124,6 +127,17 @@ export class Game {
   private grounded = true;
   private crouchBlend = 0;
   private hidden = false;
+  private doors = new ClosetDoors();
+  private crouched() {
+    return this.hidden || this.keys.has('KeyC') || this.keys.has('ControlLeft') || this.keys.has('ControlRight') ||
+      (this.stage.id==='lobby' && !coverFits(this.x,this.z,false,this.y,this.doors.travel));
+  }
+  private doorInReach() {
+    return this.stage.id==='lobby' ? reachableDoor(this.x,this.z) : undefined;
+  }
+  private naturalCover() {
+    return this.stage.id==='lobby' ? coverZone(this.x,this.z,this.crouched(),this.doors.travel,this.y) : undefined;
+  }
   private lockerView?: { eye: THREE.Vector3; facing: number; yaw: number; pitch: number };
   private cycle = 0;
   private footDist = 0;
@@ -295,6 +309,8 @@ export class Game {
     this.world?.dispose();
     this.scene = new THREE.Scene();
     this.stage = stage;
+    this.doors = new ClosetDoors();
+    if (restore && stage.id === 'lobby') this.doors.restore(this.state.closetDoors ?? 0, this.state.position);
     this.world = buildWorld(this.scene, stage, this.mod ? undefined : campaignAtmosphere(stage.id),
       (pan, gain) => this.sound.ballastBuzz(pan, gain));
     if (this.room?.state?.hunt) {
@@ -343,7 +359,7 @@ export class Game {
     this.crouchBlend = 0;
     this.sprintLocked = false;
     const saved = restore ? this.state.position : null;
-    if (saved && this.canStand(saved.x, saved.z) && !pitFloor(stage, saved.x, saved.z)) {
+    if (saved && canStandAt(stage,saved.x,saved.z,true,0,this.doors.travel) && !pitFloor(stage, saved.x, saved.z)) {
       this.x = saved.x;
       this.z = saved.z;
       this.yaw = saved.yaw;
@@ -378,6 +394,8 @@ export class Game {
     this.sound.setRoom(stage, this.world.spills);
     this.sound.ambience(`${stage.theme} ${stage.id}`.toLowerCase(), this.mod ? undefined : stage.id);
     this.lastHUD = '';
+    this.world.updateDoors?.(this.doors.travel);
+    if(this.crouched()) this.crouchBlend=1;
     this.cameraPose(0, false);
     this.refreshHUD();
     this.persist();
@@ -546,7 +564,8 @@ export class Game {
     if (e.repeat) return;
     if (e.code === 'KeyE') this.interact();
     else if (e.code === 'KeyF') this.flashlight();
-    else if (e.code === 'Space' && this.grounded && !this.hidden) {
+    else if (e.code === 'Space' && this.grounded && !this.hidden &&
+      (this.stage.id !== 'lobby' || headroom(this.x,this.z) >= standingHeight)) {
       this.vy = 4.9;
       this.grounded = false;
     } else if (e.code === 'Digit1' || e.code === 'Digit2')
@@ -595,6 +614,15 @@ export class Game {
       this.callbacks.message('You step out of hiding.');
       this.sound.event('use');
       this.refreshHUD();
+      return;
+    }
+    const door=this.doorInReach();
+    if(door){
+      const open=!(this.doors.open & (1<<door.door));
+      if(this.room) {
+        this.sendPose();
+        this.room.command(this.epoch,{type:'closet',id:door.door,open});
+      }else this.doors.open ^= 1<<door.door;
       return;
     }
     this.target = this.findTarget();
@@ -679,13 +707,13 @@ export class Game {
     if (obj) this.complete(obj);
   }
   private entityPoint(e: Encounter, height: number) {
-    return this.vector.set(e.x * TILE, height, e.z * TILE);
+    return this.vector.set(e.x * TILE, height + terrainHeight(this.stage, e.x * TILE, e.z * TILE), e.z * TILE);
   }
   private entityVisible(frame = 1, e = this.encounter, height = this.entityCenterHeight) {
     if (!e || Math.hypot(e.x - this.x / TILE, e.z - this.z / TILE) >= 14) return false;
     const point = this.projected.copy(this.entityPoint(e, height)).project(this.camera);
     return point.z >= -1 && point.z <= 1 && Math.abs(point.x) <= frame && Math.abs(point.y) <= frame &&
-      clearSight(this.stage, this.x / TILE, this.z / TILE, e.x, e.z);
+      clearSight(this.stage, this.x / TILE, this.z / TILE, e.x, e.z, this.y+(this.crouched()?.97:1.58),1.58,this.doors.travel);
   }
   private entityLit(e = this.encounter, height = this.entityCenterHeight) {
     if (!this.lamp.intensity || !e) return false;
@@ -832,7 +860,9 @@ export class Game {
     this.target = this.findTarget();
     const obj = this.target;
     let prompt = '';
+    const door=this.doorInReach();
     if (this.hidden) prompt = 'Leave hiding place';
+    else if (door) prompt = (this.doors.open & (1<<door.door)) ? 'Pull closet door shut' : 'Slide closet door open';
     else if (obj && !this.challenge.object)
       prompt =
         obj.kind === 'note'
@@ -842,13 +872,14 @@ export class Game {
             : this.done(obj) && obj.kind !== 'exit' && obj.kind !== 'ending'
               ? `${obj.name} · completed`
               : obj.name;
+    const cover = this.naturalCover();
     const items = Object.values(this.state.inventory);
     const hud = {
       lives: this.state.lives,
       difficulty: this.state.difficulty,
       stage: this.stage.id,
       label: this.stage.label,
-      objective: this.room?.isMonster ? 'Follow the sound arrow. Face an explorer at arm’s reach and press E to grab.' : this.residentHint || this.stage.objective || this.stage.description,
+      objective: this.room?.isMonster ? 'Follow the sound arrow. Face an explorer at arm’s reach and press E to grab.' : this.residentHint || (cover ? coverLabels[cover] : this.stage.objective) || this.stage.description,
       prompt,
       stamina: Math.round(this.state.stamina),
       sanity: Math.round(this.state.sanity),
@@ -863,7 +894,7 @@ export class Game {
     }
   }
   private canStand(x: number, z: number) {
-    return canStandAt(this.stage, x, z);
+    return canStandAt(this.stage, x, z, this.crouched(), this.y, this.doors.travel);
   }
   private markCheckpoint() {
     if (this.grounded && !['X', '!'].includes(tileAt(this.stage, this.x / TILE, this.z / TILE)))
@@ -881,9 +912,10 @@ export class Game {
     }
   }
   private cameraPose(dt: number, moving: boolean) {
-    const crouch =
-      this.hidden || this.keys.has('KeyC') || this.keys.has('ControlLeft') || this.keys.has('ControlRight');
+    const crouch = this.crouched();
     this.crouchBlend = THREE.MathUtils.damp(this.crouchBlend, crouch ? 1 : 0, 12, dt);
+    if (this.stage.id==='lobby' && !coverFits(this.x,this.z,false,this.y,this.doors.travel))
+      this.crouchBlend = 1;
     const bob =
       this.settings.headBob && moving && this.grounded && !this.hidden ? Math.sin(this.cycle) * 0.027 : 0;
     const floor = terrainHeight(this.stage, this.x, this.z);
@@ -994,7 +1026,12 @@ export class Game {
       Number(this.keys.has('KeyW') || this.keys.has('ArrowUp')) -
       Number(this.keys.has('KeyS') || this.keys.has('ArrowDown'));
     const s = Number(this.keys.has('KeyD')) - Number(this.keys.has('KeyA'));
-    const crouched = this.keys.has('KeyC') || this.keys.has('ControlLeft') || this.keys.has('ControlRight');
+    if(this.stage.id==='lobby' && !this.room){
+      this.doors.step(dt,[{x:this.x,z:this.z}]);
+      this.world?.updateDoors?.(this.doors.travel);
+      this.state.closetDoors=this.doors.open;
+    }
+    const crouched = this.crouched();
     const moving = (f !== 0 || s !== 0) && !this.hidden;
     const sprint =
       moving &&
@@ -1022,6 +1059,10 @@ export class Game {
       this.grounded = false;
       this.vy -= 12.8 * dt;
       this.y += this.vy * dt;
+      if (this.stage.id==='lobby' && this.vy>0) {
+        const limit=headroom(this.x,this.z)-(crouched ? crouchingHeight : standingHeight);
+        if(this.y>limit){this.y=Math.max(0,limit);this.vy=0;}
+      }
       if (!onPit && this.y <= 0) {
         this.y = 0;
         this.vy = 0;
@@ -1050,7 +1091,9 @@ export class Game {
     const highCeiling = this.world?.tallRoom(this.x / TILE, this.z / TILE);
     if (this.footDist > (sprint ? 2.8 : crouched ? 1 : 1.46)) {
       this.footDist = 0;
-      this.sound.step(sprint, crouched, this.world?.floorAt(this.x, this.z) ?? 'concrete', highCeiling);
+      const duct = this.stage.id === 'lobby' && coverZone(this.x,this.z,crouched,this.doors.travel,this.y) === 'duct';
+      const surface = duct ? 'metal' : this.world?.floorAt(this.x, this.z) ?? 'concrete';
+      this.sound.step(sprint, crouched, surface, highCeiling);
     }
     this.cameraPose(dt, distance > 0.001);
     this.updateChallenge(dt);
@@ -1187,6 +1230,8 @@ export class Game {
       offDuty ? 1 : this.grace,
       this.alarmTime > 0 ? this.stage.objects.find((o) => o.gives?.includes('archive-alarm')) : undefined,
       this.voice,
+      this.doors.travel,
+      this.y,
     );
     if (encounter.heardVoice) this.heardTime = 0.65;
     if (encounter.winding && !wasWinding) {
@@ -1196,6 +1241,7 @@ export class Game {
     if (mesh) {
       mesh.position.x = encounter.x * TILE;
       mesh.position.z = encounter.z * TILE;
+      mesh.position.y = terrainHeight(this.stage, mesh.position.x, mesh.position.z);
       const delta = encounter.angle - mesh.rotation.y;
       const turn = Math.atan2(Math.sin(delta), Math.cos(delta));
       if (encounter.kind === 'camera') mesh.rotation.y = encounter.angle;
@@ -1216,8 +1262,9 @@ export class Game {
       const veil = site.kind === 'veil';
       const dx = this.x - mesh.position.x, dz = this.z - mesh.position.z;
       const range = Math.hypot(dx, dz);
-      const near = !this.hidden && this.grace <= 0 && range < (veil ? 12 : 8) &&
-        clearSight(this.stage, this.x / TILE, this.z / TILE, site.x, site.z);
+      const cover = this.naturalCover();
+      const near = !(veil && cover && cover!=='cubicle') && !this.hidden && this.grace <= 0 && range < (veil ? 12 : 8) &&
+        clearSight(this.stage, this.x / TILE, this.z / TILE, site.x, site.z, this.y+(crouched?.97:1.58), mesh.position.y-terrainHeight(this.stage,mesh.position.x,mesh.position.z),this.doors.travel);
       this.vector.copy(mesh.position);
       this.vector.y += veil ? .13 : -.9;
       this.vector.sub(this.camera.position).normalize();
@@ -1358,7 +1405,7 @@ export class Game {
       d = Math.hypot(dx, dz);
     const facing = (Math.sin(this.yaw) * dx - Math.cos(this.yaw) * dz) / Math.max(d, 0.01);
     const visible =
-      d < 2.35 && facing > 0.42 && clearSight(this.stage, this.x / TILE, this.z / TILE, e.x, e.z);
+      d < 2.35 && facing > 0.42 && clearSight(this.stage, this.x / TILE, this.z / TILE, e.x, e.z, this.y+(this.crouched()?.97:1.58),1.58,this.doors.travel);
     if (
       visible &&
       !this.enemyWasVisible &&
@@ -1400,7 +1447,7 @@ export class Game {
       z: this.z,
       y: this.y,
       yaw: this.yaw,
-      crouch: this.crouchBlend > 0.45,
+      crouch: this.crouched(),
       hidden: this.hidden,
       moving: active && this.moving,
       sprint: active && this.sprinting,
@@ -1423,6 +1470,7 @@ export class Game {
     mesh.visible = m.visible;
     mesh.position.x = THREE.MathUtils.damp(mesh.position.x, m.x, 22, dt);
     mesh.position.z = THREE.MathUtils.damp(mesh.position.z, m.z, 22, dt);
+    mesh.position.y = terrainHeight(this.stage, mesh.position.x, mesh.position.z);
     const turn = Math.atan2(Math.sin(m.yaw - mesh.rotation.y), Math.cos(m.yaw - mesh.rotation.y));
     mesh.rotation.y += turn * (1 - Math.exp(-18 * dt));
     mesh.userData.setContactPose?.(dt, m.contactPose);
@@ -1476,6 +1524,11 @@ export class Game {
         if (this.mode !== 'spectating') this.refreshHUD();
       }
       if (this.state.pending && (transition || !oldPending)) this.change('ending', this.state.pending.ending);
+    }
+    if(snap.closets && this.stage.id==='lobby'){
+      this.doors.open=snap.closets.open;
+      this.doors.travel=snap.closets.travel;
+      this.world?.updateDoors?.(this.doors.travel);
     }
     if (this.spawnId !== self.spawnId) {
       this.reportedDown = false;

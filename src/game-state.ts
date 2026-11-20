@@ -5,6 +5,7 @@ const SLOT = 'backrooms-after-hours.campaign.v1';
 export type Position = { x: number; z: number; yaw: number; pitch: number };
 export type Progress = {
   version: 1;
+  closetDoors?: number;
   difficulty: Difficulty;
   lives: number;
   teamLives?: Record<string, number>;
@@ -81,6 +82,7 @@ export function loadProgress(slot = SLOT): Progress | null {
       result.teamLives = Object.fromEntries(Object.entries(data.teamLives)
         .filter(([id]) => id === 'host' || /^[a-f0-9-]{36}$/i.test(id))
         .map(([id, count]) => [id, readLives(count, result.difficulty)]));
+    if(Number.isInteger(data.closetDoors)) result.closetDoors=data.closetDoors;
     result.flags = [...new Set<string>(data.flags)];
     result.completed = [...new Set<string>(data.completed)];
     result.endings = [...new Set<string>(data.endings)];

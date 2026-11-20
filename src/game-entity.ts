@@ -1,3 +1,6 @@
+import { TILE } from './world-units.ts';
+import { coverFits, coverBlocksSight, coverZone } from "./concourse-cover.ts";
+import { atriumWell, concourseFloor } from './concourse-plan.ts';
 import { shoutStrength } from './voice-reach.ts';
 import type { Stage } from './campaign';
 
@@ -12,8 +15,9 @@ const dirs: Cell[] = [
 ];
 export const tileAt = (stage: Stage, x: number, z: number) =>
   stage.map[Math.round(z)]?.[Math.round(x)] ?? '#';
-export const TILE = 3.2;
-export function canStandAt(stage: Stage, x: number, z: number) {
+export { TILE };
+export function canStandAt(stage: Stage, x: number, z: number, crouch=false, jump=0, doors:readonly number[] = []) {
+  if (stage.id === "lobby" && !coverFits(x,z,crouch,jump,doors)) return false;
   const radius = 0.27;
   const minX = Math.floor((x - radius) / TILE + 0.5), maxX = Math.floor((x + radius) / TILE + 0.5);
   const minZ = Math.floor((z - radius) / TILE + 0.5), maxZ = Math.floor((z + radius) / TILE + 0.5);
@@ -27,13 +31,30 @@ export function canStandAt(stage: Stage, x: number, z: number) {
   return true;
 }
 const walkable = (stage: Stage, x: number, z: number) => !['#', 'X'].includes(tileAt(stage, x, z));
-export function clearSight(stage: Stage, x: number, z: number, px: number, pz: number) {
+export function clearSight(stage: Stage, x: number, z: number, px: number, pz: number,
+  eye=1.58, targetEye=1.58, doors:readonly number[] = []) {
+  if(stage.id==='lobby' && coverBlocksSight(x*TILE,concourseFloor(x,z)+eye,z*TILE,
+    px*TILE,concourseFloor(px,pz)+targetEye,pz*TILE,doors)) return false;
   const steps = Math.ceil(Math.hypot(px - x, pz - z) * 4);
-  for (let i = 1; i < steps; i++)
-    if (tileAt(stage, x + ((px - x) * i) / steps, z + ((pz - z) * i) / steps) === '#') return false;
+  for (let i = 1; i < steps; i++) {
+    const tx = Math.round(x + (px - x) * i / steps), tz = Math.round(z + (pz - z) * i / steps);
+    if (tileAt(stage, tx, tz) === '#' && !(stage.id === 'lobby' && atriumWell(tx, tz))) return false;
+  }
   return true;
 }
 
+// Wall panels can lie between navigation cell centres. Cache the static edges
+// a full-height hunter can traverse; closed closet doorways stay outside its route.
+const coverEdges = new Map<number,boolean>();
+function hunterEdge(x:number,z:number,tx:number,tz:number){
+  const key=(Math.min(z,tz)*128+Math.min(x,tx))*2+Number(x===tx);
+  const cached=coverEdges.get(key);
+  if(cached!==undefined)return cached;
+  let clear=true;
+  for(let i=0;i<=12&&clear;i++)clear=coverFits((x+(tx-x)*i/12)*TILE,(z+(tz-z)*i/12)*TILE,false);
+  coverEdges.set(key,clear);
+  return clear;
+}
 function search(stage: Stage, x: number, z: number, target?: Cell): Cell[] {
   const sx = Math.round(x),
     sz = Math.round(z);
@@ -51,13 +72,22 @@ function search(stage: Stage, x: number, z: number, target?: Cell): Cell[] {
       const tx = cx + dx,
         tz = cz + dz,
         id = key(tx, tz);
-      if (visited.has(id) || !walkable(stage, tx, tz)) continue;
+      if (visited.has(id) || !walkable(stage, tx, tz) || (stage.id==='lobby' && !hunterEdge(cx,cz,tx,tz))) continue;
       visited.add(id);
       cells.push([tx, tz]);
       parent.push(i);
     }
   }
   if (!target) return cells;
+  if (destination < 0 && stage.id==='lobby') {
+    // A noise inside a low shaft can lead a hunter to the mouth, even when its
+    // body cannot occupy the target cell.
+    let best = Infinity;
+    for(let i=0;i<cells.length;i++){
+      const [cx,cz]=cells[i], distance=(cx-target[0])**2+(cz-target[1])**2;
+      if(distance<best){best=distance;destination=i;}
+    }
+  }
   if (destination < 0) return [];
   const path: Cell[] = [];
   while (destination > 0) {
@@ -170,15 +200,17 @@ export class Encounter {
     const distance = Math.hypot(this.x - px, this.z - pz);
     return radius > 0 && distance <= radius && (distance <= radius * 0.52 || clearSight(this.stage, this.x, this.z, px, pz));
   }
-  perceive(px: number, pz: number, cues: PlayerCues) {
+  perceive(px: number, pz: number, cues: PlayerCues, doors: readonly number[] = [], jump = 0) {
     const dx = px - this.x, dz = pz - this.z;
     const distance = Math.hypot(dx, dz);
+    const zone = this.stage.id === 'lobby' && coverZone(px*TILE, pz*TILE, cues.crouch, doors, jump);
     const sheltered = (this.kind === 'neighborhoodwatch' && tileAt(this.stage, px, pz) === '=') ||
       (this.kind === 'partyhost' && Math.hypot(px - this.home.x, pz - this.home.z) > 4.7);
-    const hidden = cues.hidden || sheltered;
+    const hidden = cues.hidden || (!!zone && zone !== 'cubicle') || sheltered;
     const p = this.profile;
     const radius = this.voiceRadius(cues.voice, hidden);
-    const line = distance <= Math.max(16, radius) && clearSight(this.stage, this.x, this.z, px, pz);
+    const line = distance <= Math.max(16, radius) && clearSight(this.stage, this.x, this.z, px, pz,
+      1.58, (cues.crouch ? 0.97 : 1.58) + jump, doors);
     const transmission = line ? 1 : 0.52;
     const heardVoice = !sheltered && radius > 0 && distance <= radius * transmission;
     const footfall = cues.crouch ? 0.10 : cues.sprint ? 1.3 : 0.56;
@@ -210,13 +242,15 @@ export class Encounter {
     grace: number,
     distraction?: { x: number; z: number },
     voice = 0,
+    doors:readonly number[] = [],
+    jump=0,
   ) {
     this.contact = false;
     this.contactPose = 0;
     const dx = this.x - px,
       dz = this.z - pz,
       distance = Math.hypot(dx, dz);
-    const cues = this.perceive(px, pz, { moving, sprint: sprinting, crouch: crouched, hidden, light: flashlight, voice });
+    const cues = this.perceive(px, pz, { moving, sprint: sprinting, crouch: crouched, hidden, light: flashlight, voice }, doors, jump);
     hidden = cues.hidden;
     const { line } = cues;
     const home = this.home;
@@ -335,6 +369,10 @@ export class Encounter {
       const tx = next[0] - this.x, tz = next[1] - this.z;
       const len = Math.hypot(tx, tz);
       if (len > 0.00001) this.angle = Math.atan2(tx, tz);
+      if (this.stage.id==='lobby' && len>.00001) {
+        const fraction=Math.min(1,remaining/len);
+        if (!coverFits((this.x+tx*fraction)*TILE,(this.z+tz*fraction)*TILE,false,0,doors)) break;
+      }
       if (len > remaining) {
         this.x += tx * remaining / len;
         this.z += tz * remaining / len;
@@ -349,7 +387,8 @@ export class Encounter {
     const canStrike = !distraction && !hidden && !retreat && this.memory > 0 && line;
     const reach = this.lunging ? 0.52 : 0.4;
     const hold = this.lunging ? 0.12 : 0.38;
-    if (canStrike && distance < reach) {
+    if (canStrike && distance < reach && (this.stage.id!=='lobby' ||
+      clearSight(this.stage,this.x,this.z,px,pz,.78,.78,doors))) {
       this.attack += dt;
       if (this.attack > hold) this.contact = true;
     } else this.attack = 0;

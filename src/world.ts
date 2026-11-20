@@ -1,6 +1,9 @@
-import { markWet, surfaceMaterial, poolLevel } from './wet-finish';
 import { hallAir } from './hall-air';
 import { fixtureBank, fluorescentRig } from './fluorescents';
+import { markWet, surfaceMaterial, poolLevel } from './wet-finish';
+import {buildConcourseCover} from './concourse-cover-models';
+import { buildConcourseShell } from './concourse-shell';
+import { concourseFloor, concourseRoof, officeTile, waterline } from './concourse-plan';
 import { buildOfficeDecay } from './office-decay';
 import { LooseWallpaper } from './loose-wallpaper';
 import { waterReflection } from './water-reflection';
@@ -20,6 +23,7 @@ import { TILE } from './game-entity';
 export { TILE };
 // The staircase folds back at each landing. Interpolation keeps movement smooth around the turns.
 export function terrainHeight(stage: Stage, x: number, z: number) {
+  if (stage.id === 'lobby') return concourseFloor(x / TILE, z / TILE);
   if (stage.id !== 'stair') return 0;
   const lane = Math.max(0, Math.min(3, (z / TILE - 1) / 2)),
     i = Math.floor(lane),
@@ -74,7 +78,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     nightSky = color('#141e30');
   let domeHorizon: THREE.Color | undefined, domeTop: THREE.Color | undefined;
   scene.background = fog.clone();
-  scene.fog = new THREE.FogExp2(fog, style.open ? 0.018 : style.family === 'blackout' ? 0.063 : 0.033);
+  scene.fog = new THREE.FogExp2(fog, stage.id === 'lobby' ? 0.013 : style.open ? 0.018 : style.family === 'blackout' ? 0.063 : 0.033);
   const ambience = new THREE.AmbientLight(
     profile?.fill ?? (style.family === 'alarm' ? '#ffc7b5' : '#fff8e9'),
     familyLight(stage) * (style.open ? 0.84 : 0.18),
@@ -129,7 +133,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   const lamps: { x: number; z: number }[] = [];
   for (let z = 0; z < stage.map.length; z++)
     for (let x = 0; x < stage.map[z].length; x++) {
-      if (!open(x, z) || isOutdoor) continue;
+      if (!open(x, z) || isOutdoor || (stage.id === 'lobby' && !officeTile(x,z))) continue;
       // Consecutive unpowered banks leave a pocket of darkness visible across a room.
       const brownout = family === 'lobby' && hash(Math.floor(x / 3), Math.floor(z / 3), 98) < 0.41;
       if (brownout && (x !== stage.spawn[0] || z !== stage.spawn[1])) continue;
@@ -646,7 +650,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   }
   for (let z = 0; z < stage.map.length; z++)
     for (let x = 0; x < stage.map[z].length; x++) {
-      if (!open(x, z)) continue;
+      if (!open(x, z) || (stage.id === 'lobby' && !officeTile(x,z))) continue;
       const cx = x * TILE,
         cz = z * TILE,
         ox = cx - TILE / 2,
@@ -1037,6 +1041,12 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   // Repeated architectural details and loose furniture share a small number of draw calls.
   for (const node of statics.children)
     node.position.y += terrainHeight(stage, node.position.x, node.position.z);
+  const updateConcourse = stage.id === 'lobby' ? buildConcourseShell(stage, kit, root, statics, scans, strip => {
+    const {x,y,z} = strip.position;
+    const bank = rig?.add(x,y-.12,z,Math.max(2,y-terrainHeight(stage,x,z))) ?? 0;
+    rig?.bulb(strip,bank);
+  }) : undefined;
+  const updateDoors = stage.id === 'lobby' ? buildConcourseCover(kit, statics, root) : undefined;
   const batches = new Map<string, Chunk>();
   statics.updateMatrixWorld(true);
   statics.traverse((obj) => {
@@ -1163,16 +1173,22 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     entity,
     additionalEntities,
     underMonitor,
-    tallRoom(x: number, z: number) {
-      return underMonitor(x, z) || (!style.open && h > 6);
+    tallRoom(x:number,z:number) {
+      return underMonitor(x,z) || (stage.id === 'lobby' ? concourseRoof(x,z)-concourseFloor(x,z)>6 : !style.open && h>6);
     },
     spills: decay?.spills ?? [],
     floorAt(x: number, z: number): Finish {
-      const cell = tile(Math.round(x / TILE), Math.round(z / TILE));
+      const tx = Math.round(x/TILE), tz = Math.round(z/TILE), cell = tile(tx,tz);
       if (cell === '=' || cell === '|') return 'wood';
-      if (decay?.isWet(x, z) || (style.floor === 'concrete' && poolLevel(x, z) > 1.47)) return 'water';
-      return style.floor;
+      if (decay?.isWet(x,z)) return 'water';
+      let finish: Finish = style.floor;
+      if (stage.id === 'lobby' && !officeTile(tx,tz)) {
+        if (tz >= 24 && concourseFloor(x/TILE,z/TILE) < waterline) return 'water';
+        finish = tx >= 36 && tx <= 59 && tz >= 4 && tz <= 20 ? 'metal' : 'concrete';
+      }
+      return finish === 'concrete' && poolLevel(x,z)>1.47 ? 'water' : finish;
     },
+    updateDoors,
     haunt,
     update(t: number, dt: number, camera?: THREE.Camera) {
       if (rig && camera) {
@@ -1180,6 +1196,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         air?.update(t,rig.spots);
       }
       clock.value = t;
+      updateConcourse?.(t);
       projection?.update(t);
       roof?.update(t);
       circuitAge += dt;

@@ -233,11 +233,11 @@ function closeSubmenu() {
 const controls = [
   ['Move', ['W', 'A', 'S', 'D']],
   ['Look', ['Mouse']],
-  ['Interact / read', ['E']],
+  ['Interact / pull closet door', ['E']],
   ['Flashlight / lidar', ['F']],
   ['Toggle mic for monsters and nearby teammates', ['M']],
   ['Hold to use the co-op walkie-talkie', ['V']],
-  ['Sprint / crouch', ['Shift', 'C']],
+  ['Sprint / crouch into low cover', ['Shift', 'C']],
   ['Jump', ['Space']],
   ['Field inventory', ['Tab']],
   ['Almond water / energy bar', ['1', '2']],
