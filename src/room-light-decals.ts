@@ -34,6 +34,7 @@ export function roomLightDecals(lamp: string) {
       mesh.position.set(x, y, z);
       mesh.scale.set(w + 2.6, l + 2.8, 1);
       parent.add(mesh);
+      return mesh;
     },
     plane, shadowMaterial: shadow, glowMaterial: bloom, texture,
   };

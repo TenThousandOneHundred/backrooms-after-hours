@@ -268,6 +268,11 @@ export class Soundscape {
       this.sound(pitch * 0.22, 103, 0.19, 0.06, pan, 'sawtooth', delay);
     }
   }
+  ballastBuzz(pan: number, volume: number) {
+    if (this.paused) return;
+    this.sound(119, 114, .29, .16*volume, pan, 'sawtooth');
+    this.sound(1440, 510, .11, .14*volume, pan, 'noise');
+  }
   telephone(pan: number, strength: number) {
     for (const delay of [0, 0.24]) {
       this.sound(445, 438, 0.16, 0.19 * strength, pan, 'square', delay);
