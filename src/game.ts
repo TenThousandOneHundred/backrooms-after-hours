@@ -4,7 +4,7 @@ export { loadResidents } from './residents';
 export { loadBacteria } from './bacteria';
 import { ENDINGS, START, stages as campaignStages, type GameObject, type Stage } from './campaign';
 import { buildWorld, terrainHeight, TILE } from './world';
-import { Encounter, clearSight, playerSpeed, tileAt } from './game-entity';
+import { Encounter, canStandAt, clearSight, playerSpeed, tileAt } from './game-entity';
 import { Soundscape } from './game-sound';
 import { FieldChallenge } from './campaign-challenges';
 import type { ModPack } from './mods';
@@ -765,19 +765,7 @@ export class Game {
     }
   }
   private canStand(x: number, z: number) {
-    const r = 0.27;
-    const loX = Math.floor((x - r) / TILE + 0.5),
-      hiX = Math.floor((x + r) / TILE + 0.5),
-      loZ = Math.floor((z - r) / TILE + 0.5),
-      hiZ = Math.floor((z + r) / TILE + 0.5);
-    for (let iz = loZ; iz <= hiZ; iz++)
-      for (let ix = loX; ix <= hiX; ix++)
-        if (tileAt(this.stage, ix, iz) === '#') {
-          const nearX = clamp(x, (ix - 0.5) * TILE, (ix + 0.5) * TILE),
-            nearZ = clamp(z, (iz - 0.5) * TILE, (iz + 0.5) * TILE);
-          if (Math.hypot(x - nearX, z - nearZ) < r) return false;
-        }
-    return true;
+    return canStandAt(this.stage, x, z);
   }
   private markCheckpoint() {
     if (this.grounded && !['X', '!'].includes(tileAt(this.stage, this.x / TILE, this.z / TILE)))

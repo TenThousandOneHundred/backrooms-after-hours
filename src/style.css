@@ -812,3 +812,19 @@ select,
 
 #mic-hud.heard { color: #ffab84; }
 #mic-hud kbd { font-size: 9px; min-width: 15px; padding: 0 3px; }
+
+.multiplayer-button { background: #242920; color: #ece6d5; border: 1px solid #737565; box-shadow: none; }
+.multiplayer-button:hover { background: #353c2f; }
+.multiplayer-button span:last-child { font: 500 12px var(--mono); color: #d5c69d; }
+.join-room { margin-top: 24px; }
+.join-room label, .room-ticket label { display: block; font: 500 12px var(--mono); }
+.join-room > div, .room-ticket { display: flex; align-items: center; gap: 12px; margin: 8px 0 18px; }
+.join-room input { min-width: 0; width: 12ch; margin: 0; text-transform: uppercase; }
+.room-ticket { justify-content: space-between; border-block: 1px solid #545647; padding: 16px 0; }
+.room-ticket strong { display: block; font: 600 32px var(--mono); letter-spacing: .14em; color: var(--amber); }
+#coop-hud { position: fixed; inset: 0; z-index: 3; pointer-events: none; color: #efe9d9; font: 500 13px var(--mono); }
+.coop-top, .coop-bottom { position: absolute; left: 16px; right: 16px; background: #151812dc; padding: 10px 14px; }
+.coop-top { top: 12px; display: flex; align-items: center; justify-content: space-between; }
+.coop-top button { pointer-events: auto; }
+.coop-bottom { bottom: 12px; width: fit-content; max-width: calc(100% - 32px); }
+.coop-bottom small { display: block; color: #c1c3b2; margin-top: 5px; }

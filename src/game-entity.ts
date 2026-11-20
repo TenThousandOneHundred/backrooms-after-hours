@@ -11,6 +11,20 @@ const dirs: Cell[] = [
 ];
 export const tileAt = (stage: Stage, x: number, z: number) =>
   stage.map[Math.round(z)]?.[Math.round(x)] ?? '#';
+export const TILE = 3.2;
+export function canStandAt(stage: Stage, x: number, z: number) {
+  const radius = 0.27;
+  const minX = Math.floor((x - radius) / TILE + 0.5), maxX = Math.floor((x + radius) / TILE + 0.5);
+  const minZ = Math.floor((z - radius) / TILE + 0.5), maxZ = Math.floor((z + radius) / TILE + 0.5);
+  for (let iz = minZ; iz <= maxZ; iz++)
+    for (let ix = minX; ix <= maxX; ix++)
+      if (tileAt(stage, ix, iz) === '#') {
+        const nearX = Math.max((ix - 0.5) * TILE, Math.min((ix + 0.5) * TILE, x));
+        const nearZ = Math.max((iz - 0.5) * TILE, Math.min((iz + 0.5) * TILE, z));
+        if (Math.hypot(x - nearX, z - nearZ) < radius) return false;
+      }
+  return true;
+}
 const walkable = (stage: Stage, x: number, z: number) => !['#', 'X'].includes(tileAt(stage, x, z));
 export function clearSight(stage: Stage, x: number, z: number, px: number, pz: number) {
   const steps = Math.ceil(Math.hypot(px - x, pz - z) * 4);
@@ -132,6 +146,11 @@ export class Encounter {
     }
     if (this.kind === 'smiler' && stage.id === 'slides') this.profile.gaze = 'retreat';
     if (threat.speed) this.profile.speed = threat.speed;
+  }
+  releaseContact() {
+    this.attack = 0;
+    this.contact = false;
+    this.contactPose = 0;
   }
   canHearVoice(volume: number, px: number, pz: number, hidden: boolean) {
     if (volume < 0.1 || this.profile.hearing === 0) return false;

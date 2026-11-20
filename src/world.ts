@@ -5,7 +5,8 @@ import { hash, styleFor, texture, type Finish } from './world-materials';
 import { makeLevelCreature } from './level-creatures';
 import { makeModel, ModelKit } from './world-models';
 
-export const TILE = 3.2;
+import { TILE } from './game-entity';
+export { TILE };
 // The staircase folds back at each landing. Interpolation keeps movement smooth around the turns.
 export function terrainHeight(stage: Stage, x: number, z: number) {
   if (stage.id !== 'stair') return 0;

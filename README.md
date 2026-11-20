@@ -27,6 +27,14 @@ In the Lobby, the Bacteria shares its hunting ground with two other creatures. T
 
 The field manual on the title screen lists controls and ending discoveries. Continue expedition returns to the latest checkpoint. Starting a new run replaces that browser's campaign record.
 
+## Multiplayer
+
+Choose **Multiplayer → Create room** and share the six-character code. Friends choose **Multiplayer**, enter that code, and select **Join room**. The host selects **Start expedition**. Eight explorers can play, including the host. A full room turns additional players away until someone leaves.
+
+Co-op takes place in Level 0. Find four ladder pieces as a team and use the service door. Press E near a piece or the door. The Bacteria can hunt any explorer, including someone making noise with their microphone enabled. Captured players watch a survivor. The host can start another round after the team escapes or everyone is caught. Co-op progress lasts for the room session. Single player has the full campaign and its own checkpoint.
+
+The host's browser runs the room. Keep that tab active while playing. Closing it ends the room. Each device renders its own view. Only controls, microphone loudness and game state travel over the WebRTC data channels. [PeerJS Cloud](https://peerjs.com/server/getting-started) provides room discovery and connection signaling. Some networks restrict peer connections. No installation or account is required. Standard graphics caps multiplayer rendering at 30 FPS to reduce battery use. [Networking library licenses](public/licenses/Multiplayer.txt).
+
 ## Microphone hearing
 
 Press **M** during play and allow microphone access, or enable **Monsters hear my microphone** in Settings before entering. The HUD meter shows your volume. **Heard you** means a nearby creature picked it up. Loud sounds reach farther, walls and lockers muffle them, and a roaming hunter can follow your last audible position even when you stand still. Stay quiet after the Bellwether’s warning knocks.

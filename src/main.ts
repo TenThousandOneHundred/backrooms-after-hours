@@ -121,7 +121,7 @@ function persistSettings() {
 function refreshHome() {
   const saved = runtime ? runtime.readSummary() : loadProgress();
   runSummary = saved ? { stage: saved.stage, endings: saved.endings } : null;
-  el('enter-text').textContent = runSummary ? 'Continue expedition' : 'Enter the Backrooms';
+  el('enter-text').textContent = runSummary ? 'Continue single player' : 'Single player';
   el('new-game').hidden = !runSummary;
 }
 function loadRuntime() {
@@ -508,6 +508,21 @@ async function startRun(resume: boolean, mod?: InstalledMod) {
   }
 }
 wire('enter', () => void startRun(!!runSummary));
+let rooms: import('./multiplayer/menu').RoomMenu | undefined;
+async function multiplayer() {
+  if(enter.disabled)return;
+  const requestedMode=mode;
+  try {
+    const {RoomMenu}=await import('./multiplayer/menu');
+    if(mode!==requestedMode)return;
+    rooms ??= new RoomMenu({panel:showPanel,button:actions,exit:titleScreen,enter:()=>{
+      home.hidden=true;hud.hidden=true;hidePanel();mode='coop-playing';
+    }},settings);
+    rooms.menu();
+  }catch{notify('Could not load multiplayer. Check your connection and try again.');}
+}
+wire('multiplayer',()=>void multiplayer());
+window.addEventListener('pagehide',()=>{if(mode.startsWith('coop-'))rooms?.leave();});
 wire('new-game', () => {
   showPanel(
     'new',
@@ -643,6 +658,10 @@ document.addEventListener(
       if (event.repeat) return;
       if (mode === 'playing') showInventory();
       else game?.resume();
+      return;
+    }
+    if (event.code === 'Escape' && mode.startsWith('coop-')) {
+      if (!overlay.hidden) el('close-dialog')?.click();
       return;
     }
     if (event.code === 'Escape' && !['playing', 'home'].includes(mode)) {
