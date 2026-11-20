@@ -7,8 +7,8 @@ export default {
     if (request.headers.get('Origin') !== origin) return new Response(null, { status: 403 });
     const headers = { 'Access-Control-Allow-Origin': origin, 'Cache-Control': 'no-store', Vary: 'Origin' };
     const unavailable = () => new Response('Relay unavailable', { status: 503, headers });
-    const options = { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ttl: 14400 }), redirect: 'error' };
+    const options = { method: 'POST', headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ttl: 14400 }), redirect: 'manual' };
     let url;
     switch (env.ACTIVE_PROVIDER) {
       case 'cloudflare':
@@ -30,7 +30,7 @@ export default {
       default: return unavailable();
     }
     try {
-      const upstream = await fetch(url, env.ACTIVE_PROVIDER === 'metered' ? { redirect: 'error' } : options);
+      const upstream = await fetch(url, env.ACTIVE_PROVIDER === 'metered' ? { redirect: 'manual' } : options);
       if (!upstream.ok) return unavailable();
       const data = await upstream.json();
       const iceServers = Array.isArray(data) ? data : data?.iceServers;
