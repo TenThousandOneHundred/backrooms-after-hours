@@ -40,7 +40,7 @@ Choose Easy (5 lives), Medium (3 lives), or Hard (1 life). Each explorer has the
 
 ![The field explorer suit, Hound, Smiler, and Deathmoth rendered in the game engine](docs/field-team.webp)
 
-The host's browser runs the room. If the host leaves, a remaining explorer automatically takes over the same room code. Keep the game tab open during the handoff. The room ends when everyone leaves. Each device renders its own view. Explorer poses, microphone loudness and game state travel over the WebRTC data channels. [PeerJS Cloud](https://peerjs.com/server/getting-started) provides room discovery and connection signaling. Some networks restrict peer connections. No installation or account is required. Standard graphics caps multiplayer rendering at 30 FPS to reduce battery use. [Networking library licenses](public/licenses/Multiplayer.txt).
+The host's browser runs the room. If the host leaves, a remaining explorer automatically takes over the same room code. Keep the game tab open during the handoff. The room ends when everyone leaves. Each device renders its own view. Explorer poses, microphone loudness and game state travel over the WebRTC data channels. [PeerJS Cloud](https://peerjs.com/server/getting-started) provides room discovery and connection signaling. Some networks restrict peer connections. No installation or account is required. Standard graphics caps multiplayer rendering at 30 FPS to reduce battery use. [Networking library licenses](public/licenses/Multiplayer.txt). [Configure or switch relay providers](docs/multiplayer-relay.md).
 
 ## Proximity chat, walkie-talkies and monster hearing
 

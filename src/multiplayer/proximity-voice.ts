@@ -1,3 +1,4 @@
+import { speechSdp } from './voice-codec.ts';
 import type Peer from 'peerjs';
 import type { MediaConnection } from 'peerjs';
 import { stages } from '../campaign.ts';
@@ -108,7 +109,7 @@ export class ProximityVoice {
     for (const id of this.listenersInRange) {
       if (this.outgoing.has(id) || (this.nextDial.get(id) ?? 0) > now) continue;
       this.nextDial.set(id, now + 2200);
-      const call = this.peer.call(id, this.stream, { metadata: { purpose: 'proximity', epoch: this.epoch } });
+      const call = this.peer.call(id, this.stream, { metadata: { purpose: 'proximity', epoch: this.epoch }, sdpTransform: speechSdp });
       if (!call) continue;
       this.track(this.outgoing, call);
     }
@@ -177,7 +178,7 @@ export class ProximityVoice {
       };
       channel.apply(mix, this.volume);
     });
-    call.answer();
+    call.answer(undefined, { sdpTransform: speechSdp });
   };
 
   private track(map: Map<string, Channel>, call: MediaConnection) {

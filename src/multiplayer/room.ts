@@ -1,3 +1,4 @@
+import { stateDelta, applyStateDelta } from './state-delta';
 import type { Difficulty } from '../difficulty';
 import Peer, { type DataConnection } from 'peerjs';
 import { capacity, Expedition, roomSave, type Command, type Snapshot } from './expedition';
@@ -88,7 +89,7 @@ export class Room {
   private guests = new Map<DataConnection, number>();
   private resumeTokens = new Map<string, string>();
   private readonly resumeKey: string;
-  private sentRevision = new WeakMap<DataConnection, number>();
+  private lastSent = new WeakMap<DataConnection, Snapshot>();
   private savedRevision = 0;
   private upstream?: DataConnection;
   private timer = 0;
@@ -423,7 +424,7 @@ export class Room {
     try {
       conn = this.peer.connect(namespace + this.code, {
         serialization: 'binary', reliable: true, label: 'campaign-v4',
-        metadata: { session:this.migrating ? this.session : undefined, explorerId: explorerIdentity(), canProbe: true, ...this.resumeToken() },
+        metadata: { session:this.migrating ? this.session : undefined, explorerId: explorerIdentity(), canProbe: true, stateDelta: 1, ...this.resumeToken() },
       });
       // PeerJS creates the connection synchronously. ICE gathering starts when its offer is applied.
       if (tryingRelay) conn.peerConnection.setConfiguration({
@@ -538,8 +539,10 @@ export class Room {
         try { sessionStorage.setItem('backrooms-after-hours.explorer', value.explorerId); } catch { /* Private session. */ }
       }
     }
-    if (value.type === 'state' && this.slot && 'state' in value) {
-      const state = value.state as Snapshot;
+    if (this.slot && (value.type === 'state' || value.type === 'delta')) {
+      const state = value.type === 'delta'
+        ? this.state && 'frame' in value && applyStateDelta(this.state, value.frame)
+        : 'state' in value && value.state as Snapshot;
       if (
         !state ||
         !['waiting', 'playing', 'lost', 'finished'].includes(state.phase) ||
@@ -677,7 +680,7 @@ export class Room {
       void storeProgress(journal, roomSave);
     }
     const roster = state.players.map(p => p.slot).join(',');
-    const refresh = this.guests.size > 0 && ([...this.guests.keys()].some(c => !this.sentRevision.has(c)) || roster !== this.rosterKey || phaseChanged ||
+    const refresh = this.guests.size > 0 && ([...this.guests.keys()].some(c => !this.lastSent.has(c)) || roster !== this.rosterKey || phaseChanged ||
       this.state?.revision !== state.revision || performance.now()-this.lastBackup >= 800);
     let backup: WireBackup | undefined;
     if (refresh) {
@@ -687,12 +690,18 @@ export class Room {
       this.lastBackup = performance.now();
     }
     this.rosterKey = roster;
+    const deltas = new Map<Snapshot, ReturnType<typeof stateDelta>>();
     for (const conn of this.guests.keys()) {
       if (!conn.open) continue;
-      const changed = this.sentRevision.get(conn) !== state.revision;
+      const previous = this.lastSent.get(conn);
+      const changed = previous?.revision !== state.revision;
       if (phaseChanged || changed || conn.dataChannel.bufferedAmount < 32768) {
-        conn.send({ type: 'state', backup, state: changed ? { ...frame, journal: { ...journal, teamLives: undefined } } : frame });
-        this.sentRevision.set(conn, state.revision);
+        if (previous && !changed && conn.metadata?.stateDelta === 1 && !deltas.has(previous))
+          deltas.set(previous, stateDelta(previous, state));
+        const delta = previous && conn.metadata?.stateDelta === 1 && deltas.get(previous);
+        if (delta) conn.send({ type: 'delta', frame: delta, ...(backup && { backup }) });
+        else conn.send({ type: 'state', backup, state: changed ? { ...frame, journal: { ...journal, teamLives: undefined } } : frame });
+        this.lastSent.set(conn, state);
       }
     }
     this.accept(state);
