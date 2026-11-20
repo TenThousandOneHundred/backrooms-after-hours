@@ -1,3 +1,4 @@
+import { shoutStrength } from './voice-reach.ts';
 import type { Stage } from './campaign';
 
 // Entity positions and pathfinding stay in tile space. Geometry and camera are in metres.
@@ -154,7 +155,7 @@ export class Encounter {
   }
   canHearVoice(volume: number, px: number, pz: number, hidden: boolean) {
     if (volume < 0.1 || this.profile.hearing === 0) return false;
-    const radius = this.profile.hearing * (0.45 + 2.15 * volume) * (hidden ? 0.42 : 1);
+    const radius = this.profile.hearing * (0.25 + 1.25 * volume + 6 * shoutStrength(volume)) * (hidden ? 0.42 : 1);
     const distance = Math.hypot(this.x - px, this.z - pz);
     if (distance > radius) return false;
     return distance <= radius * 0.52 || clearSight(this.stage, this.x, this.z, px, pz);

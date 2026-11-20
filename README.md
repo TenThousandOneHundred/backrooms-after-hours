@@ -44,7 +44,7 @@ The host's browser runs the room. Keep that tab active while playing. Closing it
 
 ## Proximity chat, walkie-talkies and monster hearing
 
-In multiplayer, press **M** during play and allow microphone access to talk. You can listen with your own mic off. Friends sound loudest within two metres, fade to silence at twenty metres, and sound muffled through walls or lockers. Their voices pan left or right as you turn. Voice travels directly between nearby players over WebRTC.
+In multiplayer, press **M** during play and allow microphone access to talk. You can listen with your own mic off. Friends sound loudest within two metres. Ordinary speech fades out around 13 metres. The loudest shouts carry up to 96 metres in an open hall and can draw distant monsters. Walls and lockers muffle voices. Their voices pan left or right as you turn. Voice travels directly between nearby players over WebRTC.
 
 **Hold V** to use your walkie-talkie, and release it to stop. It works with proximity chat switched off. Every living teammate in play can hear the broadcast anywhere on the level. The HUD shows who is transmitting. Radio audio passes through the host. Nearby monsters can hear your key-up chirp and speech at your position and at each teammate’s receiving radio.
 

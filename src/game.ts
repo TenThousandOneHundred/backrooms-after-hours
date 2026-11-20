@@ -1,3 +1,4 @@
+import { FilmCamera } from './film-camera';
 import { campaignAtmosphere } from './level-atmosphere';
 import * as THREE from 'three';
 import { createRoomRenderer } from './room-camera';
@@ -91,6 +92,7 @@ export { playerSpeed };
 const defaultSettings: GameSettings = { sensitivity: 1, volume: 0.65, headBob: true, quality: 'high' };
 
 export class Game {
+  private film: FilmCamera;
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(70, 1, 0.06, 145);
@@ -193,6 +195,7 @@ export class Game {
       alpha: false,
       powerPreference: 'high-performance',
     });
+    this.film = new FilmCamera(this.renderer);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.NoToneMapping;
     this.renderer.shadowMap.enabled = true;
@@ -243,7 +246,7 @@ export class Game {
     this.camera.aspect = w / Math.max(1, h);
     this.camera.updateProjectionMatrix();
     if (this.cinema) this.cinema.render(this.renderer, this.camera.aspect, 0);
-    else if (this.world) this.renderer.render(this.scene, this.camera);
+    else if (this.world) this.renderView(0);
   };
   get livesRemaining() { return this.state.lives; }
 
@@ -372,6 +375,7 @@ export class Game {
       }
       if (this.done(obj)) this.placeCompleted(obj);
     });
+    this.sound.setRoom(stage, this.world.spills);
     this.sound.ambience(`${stage.theme} ${stage.id}`.toLowerCase(), this.mod ? undefined : stage.id);
     this.lastHUD = '';
     this.cameraPose(0, false);
@@ -1043,10 +1047,10 @@ export class Game {
     this.moving=distance>.001; this.sprinting=sprint;
     this.cycle += distance * (crouched ? 5.8 : sprint ? 3 : 5);
     this.footDist += this.grounded ? distance : 0;
-    const highCeiling = this.world?.underMonitor(this.x / TILE, this.z / TILE);
+    const highCeiling = this.world?.tallRoom(this.x / TILE, this.z / TILE);
     if (this.footDist > (sprint ? 2.8 : crouched ? 1 : 1.46)) {
       this.footDist = 0;
-      this.sound.step(sprint, crouched, /pool|water|ocean|cave|depth/.test(this.stage.theme), highCeiling);
+      this.sound.step(sprint, crouched, this.world?.floorAt(this.x, this.z) ?? 'concrete', highCeiling);
     }
     this.cameraPose(dt, distance > 0.001);
     this.updateChallenge(dt);
@@ -1340,7 +1344,7 @@ export class Game {
       for (const part of isolated) part.layers.disable(1);
       this.scene.remove(rim);
       rim.dispose();
-      this.renderer.render(this.scene, this.camera);
+      this.renderView(0);
     }
   }
   private closeEncounter(offDuty: boolean) {
@@ -1614,13 +1618,17 @@ export class Game {
       this.cameraPose(dt, false);
       this.sound.syncStage(this.time, 0);
       this.world?.update(this.time, dt, this.camera);
-      this.renderer.render(this.scene, this.camera);
+      this.renderView(dt);
     }
     this.poseTime += dt;
     if (self.alive && this.poseTime >= 0.06) {
       this.poseTime = 0;
       this.sendPose();
     }
+  }
+  private renderView(dt: number) {
+    if (dt > 0) this.sound.listener(this.x,this.z,this.yaw,dt);
+    this.film.render(this.renderer,this.scene,this.camera,dt,this.settings.quality === 'high');
   }
   private run() {
     if (this.frameId) return;
@@ -1640,7 +1648,7 @@ export class Game {
       this.voice = this.callbacks.microphone?.(elapsed) ?? 0;
       const n = Math.max(1, Math.ceil(elapsed / 0.032));
       for (let i = 0; i < n && this.mode === 'playing'; i++) this.step(elapsed / n);
-      if (this.mode === 'playing') this.renderer.render(this.scene, this.camera);
+      if (this.mode === 'playing') this.renderView(elapsed);
     } else if (this.mode === 'ending' && this.cinema)
       this.cinema.render(this.renderer, this.camera.aspect, elapsed);
     this.frameId = requestAnimationFrame(this.frame);
@@ -1663,6 +1671,7 @@ export class Game {
     this.scene.remove(this.camera);
     this.world?.dispose();
     this.lamp.dispose();
+    this.film.dispose();
     this.renderer.dispose();
   }
 }

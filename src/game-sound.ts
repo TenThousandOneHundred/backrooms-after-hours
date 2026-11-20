@@ -1,3 +1,6 @@
+import { roomAcoustics } from './room-acoustics';
+import type { Stage } from './campaign-format';
+import type { Finish } from './world-materials';
 import { campaignAtmosphere } from './level-atmosphere';
 import { StageLoop } from './stage-loop';
 
@@ -7,6 +10,15 @@ export class Soundscape {
   private context?: AudioContext;
   private master?: GainNode;
   private bed?: GainNode;
+  private machine?: GainNode;
+  private machinePan?: StereoPannerNode;
+  private echo?: DelayNode;
+  private echoLevel?: GainNode;
+  private echoFilter?: BiquadFilterNode;
+  private locate?: ReturnType<typeof roomAcoustics>;
+  private listenIn = 0;
+  private dripIn = 1;
+  private groanIn = 4;
   private bg: AudioScheduledSourceNode[] = [];
   private buffers = new Map<string, AudioBuffer>();
   private theme = '';
@@ -63,6 +75,7 @@ export class Soundscape {
     pan = 0,
     shape: OscillatorType | 'noise' = 'sine',
     delay = 0,
+    echo = false,
   ) {
     const ac = this.context;
     if (!ac || !this.master || this.volume === 0 || ac.state !== 'running') return;
@@ -75,6 +88,7 @@ export class Soundscape {
     spatial.pan.value = limit(pan, -1, 1);
     gain.connect(spatial);
     spatial.connect(this.master);
+    if (echo && this.echo) spatial.connect(this.echo);
     let source: OscillatorNode | AudioBufferSourceNode;
     let filter: BiquadFilterNode | undefined;
     if (shape === 'noise') {
@@ -104,6 +118,35 @@ export class Soundscape {
     source.start(at);
     source.stop(at + duration + 0.02);
   }
+  setRoom(stage: Stage, spills: {x:number;z:number}[]) {
+    this.locate = roomAcoustics(stage, spills);
+    this.listenIn = 0;
+    this.dripIn = 1.6;
+    this.groanIn = 5.2;
+  }
+  listener(x: number,z: number,yaw: number,dt: number) {
+    this.listenIn -= dt;
+    if (this.listenIn > 0 || !this.locate || !this.context || this.paused) return;
+    const interval=.1-this.listenIn;
+    this.listenIn=.1;
+    const {machine,drip,steel}=this.locate(x,z,yaw);
+    const now=this.context.currentTime;
+    this.machine?.gain.setTargetAtTime(.24+machine.gain*2.4,now,.12);
+    this.machinePan?.pan.setTargetAtTime(machine.pan*machine.gain,now,.1);
+    this.dripIn-=interval;
+    this.groanIn-=interval;
+    if(this.dripIn<=0 && drip.gain>.012){
+      this.sound(1760,710,.125,.14*drip.gain,drip.pan,'sine',0,true);
+      this.sound(650,350,.19,.075*drip.gain,drip.pan,'noise',.045,true);
+      this.dripIn=1.4+Math.random()*3.7;
+    }
+    if(this.groanIn<=0 && steel.gain>.012){
+      this.sound(93,61,2.4,.15*steel.gain,steel.pan,'triangle',0,true);
+      this.sound(313,188,1.6,.13*steel.gain,steel.pan,'noise',.34,true);
+      this.sound(590,370,.8,.04*steel.gain,steel.pan,'sine',1.07,true);
+      this.groanIn=11+Math.random()*14;
+    }
+  }
   ambience(theme: string, stageId?: string) {
     this.theme = theme;
     this.stageId = stageId;
@@ -122,6 +165,23 @@ export class Soundscape {
     }
     this.bg = [];
     this.bed?.disconnect();
+    this.machine?.disconnect();
+    this.machinePan?.disconnect();
+    this.machine = ac.createGain();
+    this.machine.gain.value=.24;
+    this.machinePan=ac.createStereoPanner();
+    this.machine.connect(this.machinePan).connect(this.master);
+    if (!this.echo) {
+      this.echo=ac.createDelay(.4);
+      this.echoLevel=ac.createGain();
+      this.echoFilter=ac.createBiquadFilter();
+      this.echoFilter.type='lowpass';
+      this.echoFilter.frequency.value=1650;
+      this.echoLevel.gain.value=.18;
+      this.echo.delayTime.value=.14;
+      this.echo.connect(this.echoFilter).connect(this.echoLevel).connect(this.master);
+      this.echoLevel.connect(this.echo);
+    }
     this.bed = ac.createGain();
     this.bed.connect(this.master);
     const outside = /suburb|outside|town|field|grass|farm|village|forest|overgrowth|sky/.test(theme);
@@ -140,7 +200,7 @@ export class Soundscape {
       src.type = mult === 1 ? 'sine' : 'triangle';
       level.gain.value = g;
       src.connect(level);
-      level.connect(this.bed);
+      level.connect(this.machine);
       src.start();
       this.bg.push(src);
     }
@@ -176,15 +236,23 @@ export class Soundscape {
     this.sound(640, 210, .10, .02 + strength * .08, pan, 'noise');
   }
 
-  step(fast: boolean, crouch: boolean, wet: boolean, highCeiling = false) {
+  step(fast: boolean, crouch: boolean, surface: Finish, highCeiling = false) {
     this.stepSide *= -1;
-    const level = crouch ? 0.055 : fast ? 0.19 : 0.13;
-    this.sound(wet ? 290 : 125, wet ? 88 : 53, wet ? 0.24 : 0.14, level, this.stepSide * 0.16);
-    this.sound(wet ? 2300 : 780, wet ? 510 : 270, 0.115, level * 0.7, this.stepSide * 0.18, 'noise');
-    if (highCeiling) {
-      this.sound(290, 83, .22, level * .32, -this.stepSide * .66, 'noise', .105);
-      this.sound(180, 68, .27, level * .14, this.stepSide * .51, 'noise', .235);
+    const level = crouch ? .052 : fast ? .18 : .12;
+    const pan=this.stepSide*.17;
+    const wet=surface==='water', metal=surface==='metal', wood=surface==='wood';
+    const soft=['carpet','earth','grass','sand'].includes(surface);
+    const tile=surface==='tile'||surface==='hospital';
+    if(this.context && this.echo && this.echoLevel){
+      const now=this.context.currentTime;
+      this.echo.delayTime.setTargetAtTime(highCeiling ? .21 : .092,now,.09);
+      this.echoLevel.gain.setTargetAtTime(soft ? .07 : highCeiling ? .35 : .23,now,.08);
     }
+    this.sound(wet?250:wood?155:metal?196:112,wet?85:wood?79:52,wet?.18:.13,level,pan,'sine',0,true);
+    const impact=wet?2400:metal?3100:wood?980:soft?570:tile?2500:1610;
+    this.sound(impact,impact*.36,wet?.21:soft?.17:.088,level*(soft?.43:.83),pan,'noise',.018,true);
+    if(metal || wood) this.sound(metal?790:214,metal?691:138,metal?.34:.14,level*.32,pan,'triangle',.012,true);
+    if(wet) this.sound(1850,740,.115,level*.38,-pan,'noise',.087,true);
   }
   tick(dt: number, danger: number, pan: number, farmerActive = false, highCeiling = false) {
     if (highCeiling && danger < .28) {
@@ -311,6 +379,11 @@ export class Soundscape {
       }
       s.disconnect();
     }
+    this.machine?.disconnect();
+    this.machinePan?.disconnect();
+    this.echo?.disconnect();
+    this.echoFilter?.disconnect();
+    this.echoLevel?.disconnect();
     this.master?.disconnect();
     if (this.context) void this.context.close().catch(() => {});
   }

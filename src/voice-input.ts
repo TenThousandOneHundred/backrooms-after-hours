@@ -1,5 +1,6 @@
 // Map the waveform's RMS level to a game volume. Ignore DC offset and the quiet noise floor.
 export function voiceVolume(samples: Float32Array) {
+  if (!samples.length) return 0;
   let sum = 0, squares = 0;
   for (const sample of samples) {
     sum += sample;
@@ -7,7 +8,10 @@ export function voiceVolume(samples: Float32Array) {
   }
   const power = squares / samples.length - (sum / samples.length) ** 2;
   if (power <= 0) return 0;
-  return Math.max(0, Math.min(1, (10 * Math.log10(power) + 48) / 30));
+  // Give everyday speech less weight while preserving headroom for a shout.
+  const floorDb = -48, fullDb = -3;
+  const level = Math.max(0, Math.min(1, (10 * Math.log10(power) - floorDb) / (fullDb - floorDb)));
+  return level * level;
 }
 
 export class VoiceInput {

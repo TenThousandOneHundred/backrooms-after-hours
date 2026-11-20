@@ -1,3 +1,4 @@
+import { markWet, surfaceMaterial, poolLevel } from './wet-finish';
 import { hallAir } from './hall-air';
 import { fixtureBank, fluorescentRig } from './fluorescents';
 import { buildOfficeDecay } from './office-decay';
@@ -289,11 +290,10 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       map: tex,
     };
     const gloss = kind === 'metal' || kind === 'tile' || kind === 'wood';
-    const mat = kind && kind !== 'water'
-      ? new THREE.MeshPhongMaterial({ ...surface, bumpMap: tex, bumpScale: gloss ? .022 : .035,
-          shininess: gloss ? 38 : 9, specular: gloss ? '#474c46' : '#171815' })
+    const mat = kind
+      ? surfaceMaterial(kind, { ...surface, bumpMap: tex, bumpScale: gloss ? .022 : .035 })
       : new THREE.MeshLambertMaterial(surface);
-    if (kind && mat instanceof THREE.MeshPhongMaterial) scans.apply(mat, kind, s === floors, col);
+    if (kind && mat instanceof THREE.MeshStandardMaterial) scans.apply(mat, kind, s === floors, col);
     const m = new THREE.Mesh(geo, mat);
     if (kind === 'water') reflection = waterReflection(m);
     if (kind === 'water')
@@ -325,6 +325,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
           );
         reflection!.prepare(shader);
       };
+    if (s === floors && (kind === 'water' || kind === 'concrete')) markWet(mat,kind === 'concrete');
     m.receiveShadow = true;
     m.castShadow = s === walls;
     if (m.castShadow) mat.shadowSide = THREE.DoubleSide;
@@ -1162,6 +1163,16 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     entity,
     additionalEntities,
     underMonitor,
+    tallRoom(x: number, z: number) {
+      return underMonitor(x, z) || (!style.open && h > 6);
+    },
+    spills: decay?.spills ?? [],
+    floorAt(x: number, z: number): Finish {
+      const cell = tile(Math.round(x / TILE), Math.round(z / TILE));
+      if (cell === '=' || cell === '|') return 'wood';
+      if (decay?.isWet(x, z) || (style.floor === 'concrete' && poolLevel(x, z) > 1.47)) return 'water';
+      return style.floor;
+    },
     haunt,
     update(t: number, dt: number, camera?: THREE.Camera) {
       if (rig && camera) {

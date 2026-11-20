@@ -2,8 +2,8 @@ import type Peer from 'peerjs';
 import type { MediaConnection } from 'peerjs';
 import { stages } from '../campaign.ts';
 import type { Snapshot } from './expedition';
-import { monsterVoiceRange } from './hunt.ts';
-import { voiceMix, voiceRange } from './voice-range.ts';
+import { monsterHearing } from './hunt.ts';
+import { voiceMix } from './voice-range.ts';
 
 type Mix = ReturnType<typeof voiceMix>;
 type Channel = {
@@ -17,6 +17,8 @@ export type VoiceMember = { id: string; slot: number };
 // Each speaker places a one-way call. A listener can answer without opening a microphone.
 export class ProximityVoice {
   private context?: AudioContext;
+  private output?: DynamicsCompressorNode;
+  private outputTrim?: GainNode;
   private incoming = new Map<string, Channel>();
   private outgoing = new Map<string, Channel>();
   private nextDial = new Map<string, number>();
@@ -81,11 +83,12 @@ export class ProximityVoice {
         const speaker = state.players.find((p) => p.slot === other);
         if (!speaker?.alive) continue;
         const stage = stages[state.journal.stage];
-        const mix = voiceMix(stage, self, speaker, slot === state.hunt?.monster ? monsterVoiceRange : voiceRange);
+        const mix = voiceMix(stage, self, speaker, slot === state.hunt?.monster ? monsterHearing : 1);
         const reverse = state.hunt && (slot === state.hunt.monster || other === state.hunt.monster)
-          ? voiceMix(stage, speaker, self, other === state.hunt.monster ? monsterVoiceRange : voiceRange) : mix;
-        if (reverse.gain > 0) this.listenersInRange.add(id);
-        if (mix.gain > 0) this.nearby.set(id, mix);
+          ? voiceMix(stage, speaker, self, other === state.hunt.monster ? monsterHearing : 1) : mix;
+        // Keep media connected between words so a distant yell is audible immediately.
+        if (reverse.inRange) this.listenersInRange.add(id);
+        if (mix.inRange) this.nearby.set(id, mix);
       }
     }
     for (const [id, channel] of this.incoming) {
@@ -139,7 +142,19 @@ export class ProximityVoice {
       const gain = ctx.createGain();
       gain.gain.value = 0;
       const pan = ctx.createStereoPanner();
-      source.connect(filter).connect(gain).connect(pan).connect(ctx.destination);
+      if (!this.output) {
+        // Limit the combined nearby voices after distance, wall filtering and panning.
+        this.output = ctx.createDynamicsCompressor();
+        this.output.threshold.value = -8;
+        this.output.knee.value = 6;
+        this.output.ratio.value = 8;
+        this.output.attack.value = .003;
+        this.output.release.value = .12;
+        this.outputTrim = ctx.createGain();
+        this.outputTrim.gain.value = .72;
+        this.output.connect(this.outputTrim).connect(ctx.destination);
+      }
+      source.connect(filter).connect(gain).connect(pan).connect(this.output);
       let previousGain = -1,
         previousPan = -2,
         previousCutoff = -1;
@@ -203,6 +218,8 @@ export class ProximityVoice {
     this.stream = undefined;
     this.clear(this.incoming);
     this.clear(this.outgoing);
+    this.output?.disconnect();
+    this.outputTrim?.disconnect();
     if (this.context) void this.context.close().catch(() => {});
   }
 }

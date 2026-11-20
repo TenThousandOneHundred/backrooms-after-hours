@@ -72,6 +72,8 @@ test('sound direction follows the listener’s yaw and only audible, living expl
   assert.equal(cue({...player,voice:.7}, Math.PI/2).angle, 0);
   assert.equal(cue({...player,voice:.7,slot:2}), undefined);
   assert.equal(cue({...player,voice:.7,alive:false}), undefined);
-  assert.equal(cue({...player,voice:1,x:45}), undefined);
+  assert.equal(cue({...player,voice:.44,x:60}), undefined);
+  assert.ok(cue({...player,voice:1,x:100}));
+  assert.equal(cue({...player,voice:1,x:121}), undefined);
   assert.equal(cue({...player,x:8,moving:true,crouch:true}), undefined);
 });

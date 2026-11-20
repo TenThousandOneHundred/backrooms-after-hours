@@ -1,3 +1,4 @@
+import { shoutStrength } from '../voice-reach.ts';
 import type { Hunt, HuntResult } from './hunt.ts';
 import { livesPerLevel, readLives, type Difficulty } from '../difficulty.ts';
 import { START, stages } from '../campaign.ts';
@@ -485,12 +486,15 @@ export class Expedition {
     }
     for (const [i, h] of this.hunters.entries()) {
       const e = h.ai;
-      const score = (p: Explorer) =>
-        Math.hypot(e.x - p.x / TILE, e.z - p.z / TILE) +
-        (p.hidden ? 30 : 0) +
-        (clearSight(s, e.x, e.z, p.x / TILE, p.z / TILE) ? 0 : 8) -
-        (e.canHearVoice(this.audibleLevel(p), p.x / TILE, p.z / TILE, p.hidden) ? 6 : 0) -
-        (h.target === p.slot ? 0.8 : 0);
+      const score = (p: Explorer) => {
+        const loudness = this.audibleLevel(p);
+        const heard = e.canHearVoice(loudness, p.x / TILE, p.z / TILE, p.hidden);
+        return Math.hypot(e.x - p.x / TILE, e.z - p.z / TILE) +
+          (p.hidden ? 30 : 0) +
+          (clearSight(s, e.x, e.z, p.x / TILE, p.z / TILE) ? 0 : 8) -
+          (heard ? 6 + 32 * shoutStrength(loudness) : 0) -
+          (h.target === p.slot ? 0.8 : 0);
+      };
       const p = active
         .filter((p) => p.alive)
         .reduce<Explorer | undefined>((a, b) => (!a || score(b) < score(a) ? b : a), undefined);

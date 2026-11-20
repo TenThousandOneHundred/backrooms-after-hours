@@ -41,7 +41,7 @@ export function roomSurfaceScans() {
   }
 
   return {
-    apply(mat: THREE.MeshPhongMaterial, finish: Finish, floor: boolean, tint: string) {
+    apply(mat: THREE.MeshStandardMaterial | THREE.MeshPhongMaterial, finish: Finish, floor: boolean, tint: string) {
       const spec = finishes[finish];
       if (!spec) return;
       const [source, repeat, relief] = spec;
@@ -63,6 +63,12 @@ export function roomSurfaceScans() {
             diffuseColor.rgb *= mix(vec3(1.), max(vec3(.12), wear * 2.), strength);
           #endif`,
         );
+        shader.fragmentShader = shader.fragmentShader.replace('#include <roughnessmap_fragment>',
+          `#include <roughnessmap_fragment>
+           #ifdef USE_NORMALMAP
+             float pores = dot(wear,vec3(.21,.72,.07))-.5;
+             roughnessFactor = clamp(roughnessFactor-pores*.28,.06,1.);
+           #endif`);
       };
       void load(finish === 'concrete' && floor ? 'slab' : source, repeat).then(pair => {
         if (!active || !pair) return;
