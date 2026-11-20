@@ -32,6 +32,7 @@
         <h1><span>BACKROOMS</span><span>AFTER HOURS</span></h1>
         <p class="intro">The lights are on. Nobody is here.<br />Explore the Backrooms and find a way out.</p>
         <nav class="main-actions" aria-label="Main menu">
+          <div id="solo-difficulty-row"></div>
           <button id="enter" class="start-button" type="button">
             <span data-icon="play"></span><span id="enter-text">Single player</span
             ><span data-icon="arrow"></span>
@@ -76,6 +77,7 @@
           <span class="micro">CURRENT OBJECTIVE</span><span id="hud-objective"></span>
         </div>
         <div class="vitals">
+          <div><span id="hud-lives"></span></div>
           <div id="mic-hud"><span id="mic-label">Mic off</span><kbd>M</kbd><meter id="mic-level" min="0" max="100" value="0" aria-label="Microphone loudness" hidden></meter></div>
           <div><span>Stamina</span><meter id="stamina" min="0" max="100" value="100"></meter></div>
           <div><span>Sanity</span><meter id="sanity" min="0" max="100" value="100"></meter></div>

@@ -1,8 +1,13 @@
+import { livesPerLevel, readDifficulty, readLives, type Difficulty } from './difficulty.ts';
+
 const SLOT = 'backrooms-after-hours.campaign.v1';
 
 export type Position = { x: number; z: number; yaw: number; pitch: number };
 export type Progress = {
   version: 1;
+  difficulty: Difficulty;
+  lives: number;
+  teamLives?: Record<string, number>;
   stage: string;
   flags: string[];
   completed: string[];
@@ -16,9 +21,11 @@ export type Progress = {
   flashlight: boolean;
 };
 
-export function freshProgress(stage: string): Progress {
+export function freshProgress(stage: string, difficulty: Difficulty = 'medium'): Progress {
   return {
     version: 1,
+    difficulty,
+    lives: livesPerLevel[difficulty],
     stage,
     flags: [],
     completed: [],
@@ -68,7 +75,12 @@ export function loadProgress(slot = SLOT): Progress | null {
       !stringList(data.endings)
     )
       return null;
-    const result = freshProgress(data.stage);
+    const result = freshProgress(data.stage, readDifficulty(data.difficulty));
+    result.lives = readLives(data.lives, result.difficulty);
+    if (data.teamLives && typeof data.teamLives === 'object' && !Array.isArray(data.teamLives))
+      result.teamLives = Object.fromEntries(Object.entries(data.teamLives)
+        .filter(([id]) => id === 'host' || /^[a-f0-9-]{36}$/i.test(id))
+        .map(([id, count]) => [id, readLives(count, result.difficulty)]));
     result.flags = [...new Set<string>(data.flags)];
     result.completed = [...new Set<string>(data.completed)];
     result.endings = [...new Set<string>(data.endings)];

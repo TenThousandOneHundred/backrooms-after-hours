@@ -6,8 +6,9 @@ import { stages, ENDINGS } from '../src/campaign.ts';
 import { TILE } from '../src/game-entity.ts';
 import { stages as itinerary, endByStage } from './campaign-itinerary.mjs';
 
-function room() {
+function room(difficulty = 'medium') {
   const r = new Expedition();
+  r.setDifficulty(difficulty);
   for (let i = 0; i < capacity; i++) r.add();
   r.start();
   return r;
@@ -103,7 +104,7 @@ test('team finishes every campaign scene and all five endings, alternating explo
 });
 
 test('range and state validation, team capture, retry and save restoration', () => {
-  const r = room(),
+  const r = room('hard'),
     rail = stages.lobby.objects.find((o) => o.gives?.includes('rail1'));
   r.command(1, r.epoch, { type: 'use', id: rail.id });
   assert.equal(r.journal.flags.length, 0);

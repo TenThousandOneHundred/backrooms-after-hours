@@ -831,3 +831,21 @@ select,
 
 #coop-hud .coop-top { top: 68px; left: auto; right: 18px; width: fit-content; gap: 12px; padding: 4px 8px; border-radius: 3px; font-size: 11px; }
 #coop-leave { min-height: 25px; padding: 2px 6px; font-size: 11px; }
+
+.difficulty-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 .55rem;
+  font: inherit;
+}
+.difficulty-picker select {
+  color-scheme: dark;
+  color: inherit;
+  background: #191b17;
+  border: 1px solid #646653;
+  border-radius: 3px;
+  padding: .35rem .55rem;
+  font: inherit;
+}

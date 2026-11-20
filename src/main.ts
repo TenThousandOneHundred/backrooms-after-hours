@@ -1,3 +1,4 @@
+import { difficultyName, difficultyPicker, lifeCount, readDifficulty } from './difficulty';
 import './style.css';
 import { icon } from './icons';
 import { Horror } from './horror';
@@ -11,6 +12,10 @@ const home = el('home'),
   hud = el('hud'),
   overlay = el('overlay'),
   panel = el('panel');
+el('solo-difficulty-row').innerHTML = difficultyPicker('solo-difficulty');
+function selectedDifficulty(id: string) {
+  return readDifficulty(document.querySelector<HTMLSelectElement>('#' + id)?.value);
+}
 const enter = el<HTMLButtonElement>('enter');
 const settingsKey = 'backrooms-after-hours:settings';
 const defaults: GameSettings = { volume: 0.65, sensitivity: 1, quality: 'high', headBob: true };
@@ -156,6 +161,7 @@ function refreshHome() {
   runSummary = saved ? { stage: saved.stage, endings: saved.endings } : null;
   el('enter-text').textContent = runSummary ? 'Continue single player' : 'Single player';
   el('new-game').hidden = !runSummary;
+  el('solo-difficulty-row').hidden = !!runSummary;
 }
 function loadRuntime() {
   if (!pendingLoad)
@@ -405,6 +411,7 @@ const callbacks: GameCallbacks = {
   message: notify,
   hud: (h) => {
     refreshMic(h.voice, h.heardVoice);
+    el('hud-lives').textContent = difficultyName(h.difficulty) + ' · ' + lifeCount(h.lives);
     el('hud-label').textContent = h.label;
     el('hud-name').textContent = (activeMod?.stages ?? campaign?.stages)?.[h.stage]?.name ?? h.stage;
     el('hud-objective').textContent = h.objective;
@@ -433,7 +440,7 @@ const callbacks: GameCallbacks = {
     }
     if(screen==='spectating'){
       mode='spectating';hidePanel();hud.hidden=false;
-      el('hud-objective').textContent=(detail??'You were caught.')+' Watching a teammate. You rejoin at the next level.';
+      el('hud-objective').textContent=(detail??'You were caught.')+ ((game?.livesRemaining ?? 0) > 0 ? ' Returning to the level entrance…' : ' Out of lives. You rejoin when a teammate reaches the next level.');
       el('interact').hidden=true;
       return;
     }
@@ -454,12 +461,12 @@ const callbacks: GameCallbacks = {
               : '';
       showPanel(
         'death',
-        'EXPEDITION TERMINATED',
+        game?.livesRemaining ? lifeCount(game.livesRemaining) + ' left' : 'Out of lives',
         'You died',
         '<p class="panel-text">' +
           safe(cause + (advice ? ' ' + advice : '')) +
           '</p><div class="panel-buttons">' +
-          actions('retry', 'Retry checkpoint', 'play', true) +
+          actions('retry', game?.livesRemaining ? 'Retry checkpoint' : 'Restart level', 'play', true) +
           actions('title', 'Title screen', 'exit') +
           '</div>',
       );
@@ -514,7 +521,7 @@ const callbacks: GameCallbacks = {
     }
   },
 };
-async function startRun(resume: boolean, mod?: InstalledMod) {
+async function startRun(resume: boolean, mod?: InstalledMod, difficulty = selectedDifficulty('solo-difficulty')) {
   horror.unlock();
   horror.preload();
   horror.clear();
@@ -528,7 +535,7 @@ async function startRun(resume: boolean, mod?: InstalledMod) {
     activeMod = mod;
     game = new runtime!.Game(el<HTMLCanvasElement>('world'), callbacks, mod);
     game.applySettings({ ...settings });
-    game.start(resume);
+    game.start(resume, difficulty);
   } catch (err) {
     game?.dispose();
     game = null;
@@ -584,14 +591,14 @@ wire('new-game', () => {
     'new',
     'EXPEDITION RECORD',
     'Start over?',
-    '<p class="panel-text">Starting a new run replaces your checkpoint and ending record on this browser.</p><div class="panel-buttons">' +
+    '<p class="panel-text">Starting a new run replaces your checkpoint and ending record on this browser.</p>' + difficultyPicker('new-difficulty') + '<div class="panel-buttons">' +
       actions('cancel-new', 'Keep current run') +
       actions('confirm-new', 'Start new run', 'play', true) +
       '</div>',
     titleScreen,
   );
   wire('cancel-new', titleScreen);
-  wire('confirm-new', () => void startRun(false));
+  wire('confirm-new', () => void startRun(false, undefined, selectedDifficulty('new-difficulty')));
 });
 async function installMod(getSource: () => Promise<string>, remember: boolean) {
   const request = ++modRequest;
@@ -632,6 +639,7 @@ function modsMenu(message = '') {
     '<div class="panel-buttons">' + actions('mod-import', 'Import file') + actions('mod-example', 'Load sample') +
     '</div><input type="file" accept=".json,application/json" id="mod-file" hidden>' +
     '<p class="mod-status" id="mod-status" role="status">' + safe(message) + '</p>' + summary +
+    (pack && (!save || finished) ? difficultyPicker('mod-difficulty') : '') +
     (pack ? '<div class="panel-buttons">' + actions('mod-play', playLabel, 'play', true) +
       (save && !finished ? actions('mod-restart', 'Start over') : '') + '</div>' : ''), closeSubmenu);
   wire('mod-import', () => el<HTMLInputElement>('mod-file').click());
@@ -650,14 +658,14 @@ function modsMenu(message = '') {
     return response.text();
   }, true));
   if (pack) {
-    wire('mod-play', () => void startRun(!!save && !finished, pack));
+    wire('mod-play', () => void startRun(!!save && !finished, pack, selectedDifficulty('mod-difficulty')));
     wire('mod-restart', () => {
       showPanel('mod-restart', pack.name, 'Restart mod?',
-        '<p class="panel-text">This replaces this mod’s checkpoint.</p><div class="panel-buttons">' +
+        '<p class="panel-text">This replaces this mod’s checkpoint.</p>' + difficultyPicker('mod-difficulty') + '<div class="panel-buttons">' +
         actions('keep-mod', 'Keep checkpoint') + actions('restart-mod', 'Restart', 'play', true) +
         '</div>', () => modsMenu());
       wire('keep-mod', () => modsMenu());
-      wire('restart-mod', () => void startRun(false, pack));
+      wire('restart-mod', () => void startRun(false, pack, selectedDifficulty('mod-difficulty')));
     });
   }
 }

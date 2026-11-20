@@ -34,7 +34,7 @@ Choose **Multiplayer → Create room** and share the six-character code. Friends
 
 The whole campaign supports co-op. Split up to collect supplies, operate equipment, solve keypads and carry objects. Any explorer who opens an eligible exit takes the team to the next area. Everyone sees the ending together, and the host chooses when to continue. All five endings count toward the room’s shared record.
 
-If you die, you watch a surviving teammate and rejoin at the next level. If everyone dies, the host can retry the current level with completed objectives intact. The host’s browser saves the co-op campaign separately from single player. Create a room on the same browser and choose **Continue saved campaign** to pick up at your last area. Friends can join a campaign in progress using its current room code.
+Choose Easy (5 lives), Medium (3 lives), or Hard (1 life). Each explorer has their own lives, which refill at the next level. In single player, a spare life lets you retry your checkpoint. When you run out, you restart at the level entrance. In co-op, the host chooses the difficulty. With lives left, you respawn at the entrance. Once you run out, you spectate until a teammate reaches the next level. If everyone runs out, the host can retry the current level with completed objectives intact. The host’s browser saves the co-op campaign separately from single player. Create a room on the same browser and choose **Continue saved campaign** to pick up at your last area. Friends can join a campaign in progress using its current room code.
 
 ![The field explorer suit, Hound, Smiler, and Deathmoth rendered in the game engine](docs/field-team.webp)
 

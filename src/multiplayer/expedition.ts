@@ -1,3 +1,4 @@
+import { livesPerLevel, readLives, type Difficulty } from '../difficulty.ts';
 import { START, stages } from '../campaign.ts';
 import { recordObjective } from '../campaign-progress.ts';
 import { canStandAt, clearSight, Encounter, TILE } from '../game-entity.ts';
@@ -25,6 +26,7 @@ export type Pose = {
 export type Explorer = Pose & {
   slot: number;
   alive: boolean;
+  lives: number;
   cause: string;
   supplies: number;
   lastSupply: string;
@@ -34,7 +36,7 @@ export type Command =
   | { type: 'pose'; pose: Pose }
   | { type: 'carry'; id: string }
   | { type: 'use'; id: string; code?: string }
-  | { type: 'down'; cause: string }
+  | { type: 'down'; cause: string; spawnId?: number }
   | { type: 'continue' }
   | { type: 'consume'; key: string };
 export type Monster = {
@@ -63,7 +65,7 @@ export type Snapshot = {
   residents: ResidentFrame[];
   journal: Progress;
 };
-const spawn = (slot: number, stage: string): Explorer => {
+const spawn = (slot: number, stage: string, lives: number): Explorer => {
   const s = stages[stage];
   return {
     slot,
@@ -71,7 +73,8 @@ const spawn = (slot: number, stage: string): Explorer => {
     z: s.spawn[1] * TILE + (Math.floor((slot - 1) / 3) - 1) * 0.42,
     y: 0,
     yaw: s.facing ?? 0,
-    alive: true,
+    alive: lives > 0,
+    lives,
     cause: '',
     supplies: 0,
     lastSupply: '',
@@ -108,17 +111,41 @@ export class Expedition {
   revision = 0;
   time = 0;
   phase: Snapshot['phase'] = 'waiting';
-  add() {
+  private identities = new Map<number, string>();
+  private respawns = new Map<number, number>();
+
+  setDifficulty(difficulty: Difficulty) {
+    if (this.phase !== 'waiting' || difficulty === this.journal.difficulty) return;
+    this.journal.difficulty = difficulty;
+    this.journal.lives = livesPerLevel[difficulty];
+    for (const p of this.players.values()) p.lives = this.journal.lives;
+    this.revision++;
+  }
+
+  identityOf(slot: number) { return this.identities.get(slot); }
+
+  private spawnPlayer(slot: number) {
+    const id = this.identities.get(slot)!;
+    const lives = readLives(this.journal.teamLives?.[id], this.journal.difficulty);
+    this.players.set(slot, spawn(slot, this.journal.stage, lives));
+    this.immunity.set(slot, this.time + 3);
+  }
+
+  add(identity?: string) {
     for (let i = 1; i <= capacity; i++)
       if (!this.players.has(i)) {
-        this.players.set(i, spawn(i, this.journal.stage));
-        this.immunity.set(i, this.time + 3);
+        const id = i === 1 ? 'host' : typeof identity === 'string' && /^[a-f0-9-]{36}$/i.test(identity)
+          && ![...this.identities.values()].includes(identity) ? identity : crypto.randomUUID();
+        this.identities.set(i, id);
+        this.spawnPlayer(i);
         return i;
       }
     return 0;
   }
   remove(slot: number) {
     this.players.delete(slot);
+    this.identities.delete(slot);
+    this.respawns.delete(slot);
     this.fresh.delete(slot);
     this.radioNoise.delete(slot);
     this.immunity.delete(slot);
@@ -126,17 +153,21 @@ export class Expedition {
     this.checkSurvivors();
   }
   private checkSurvivors() {
-    if (this.phase === 'playing' && this.players.size && ![...this.players.values()].some((p) => p.alive))
+    if (this.phase === 'playing' && this.players.size && ![...this.players.values()].some((p) => p.lives > 0))
       this.phase = 'lost';
   }
   start(saved?: Progress | null) {
     if (this.phase === 'playing') return;
-    if (this.phase === 'waiting' && saved && Object.hasOwn(stages, saved.stage)) this.journal = saved;
-    this.enter(this.journal.stage);
+    const resume = this.phase === 'waiting' && saved && Object.hasOwn(stages, saved.stage);
+    if (resume) this.journal = saved;
+    this.enter(this.journal.stage, !!resume);
+    this.checkSurvivors();
   }
-  private enter(stage: string) {
+  private enter(stage: string, resume = false) {
     this.phase = 'playing';
     this.journal.stage = stage;
+    if (!resume) this.journal.teamLives = {};
+    this.respawns.clear();
     this.epoch++;
     this.revision++;
     this.time = 0;
@@ -160,8 +191,23 @@ export class Expedition {
         visible: true,
       }),
     );
-    for (const slot of this.players.keys()) this.players.set(slot, spawn(slot, stage));
+    for (const slot of this.players.keys()) this.spawnPlayer(slot);
   }
+  private loseLife(p: Explorer, cause: string) {
+    if (!p.alive) return;
+    p.alive = false;
+    p.cause = cause;
+    p.lives--;
+    p.cargo = '';
+    this.radioNoise.delete(p.slot);
+    this.fresh.delete(p.slot);
+    for (const resident of this.residents) resident.exposure.delete(p.slot);
+    (this.journal.teamLives ??= {})[this.identities.get(p.slot)!] = p.lives;
+    if (p.lives > 0) this.respawns.set(p.slot, this.time + 2.5);
+    this.revision++;
+    this.checkSurvivors();
+  }
+
   command(slot: number, epoch: number, action: Command) {
     const p = this.players.get(slot),
       j = this.journal,
@@ -210,9 +256,8 @@ export class Expedition {
       return;
     }
     if (action.type === 'down') {
-      p.alive = false;
-      p.cause = typeof action.cause === 'string' ? action.cause.slice(0, 120) : 'Lost in the dark.';
-      this.checkSurvivors();
+      if ((action.spawnId ?? 0) === p.spawnId)
+        this.loseLife(p, typeof action.cause === 'string' ? action.cause.slice(0, 120) : 'Lost in the dark.');
       return;
     }
     if (action.type === 'consume') {
@@ -306,6 +351,16 @@ export class Expedition {
   step(dt: number) {
     if (this.phase !== 'playing' || this.journal.pending) return;
     this.time += dt;
+    for (const [slot, at] of this.respawns) {
+      if (this.time < at) continue;
+      const previous = this.players.get(slot)!;
+      this.spawnPlayer(slot);
+      const next = this.players.get(slot)!;
+      next.spawnId = previous.spawnId + 1;
+      next.cause = previous.cause;
+      next.supplies = previous.supplies;
+      this.respawns.delete(slot);
+    }
     const s = stages[this.journal.stage],
       flags = this.journal.flags;
     const alive = [...this.players.values()].filter((p) => p.alive);
@@ -336,8 +391,7 @@ export class Expedition {
           const amount = Math.max(0, (r.exposure.get(p.slot) ?? 0) + dt * (p.watching & (1 << i) ? 1 : -3.5));
           r.exposure.set(p.slot, amount);
           if (amount >= 1.9) {
-            p.alive = false;
-            p.cause = 'Caught by veil.';
+            this.loseLife(p, 'Caught by veil.');
           }
         }
         behavior.exposure = Math.max(0, ...r.exposure.values());
@@ -354,8 +408,7 @@ export class Expedition {
               const amount = (r.exposure.get(p.slot) ?? 0) + dt;
               r.exposure.set(p.slot, amount);
               if (amount >= 0.48) {
-                p.alive = false;
-                p.cause = 'Caught by bellwether.';
+                this.loseLife(p, 'Caught by bellwether.');
               }
             }
           }
@@ -420,8 +473,9 @@ export class Expedition {
       h.speed = (Math.hypot(e.x - x, e.z - z) * TILE) / dt;
       if (e.contact) {
         if (e.kind === 'camera') {
-          const origin = spawn(p.slot, s.id);
+          const origin = spawn(p.slot, s.id, p.lives);
           Object.assign(p, {
+            cause: '',
             x: origin.x,
             z: origin.z,
             y: 0,
@@ -432,8 +486,7 @@ export class Expedition {
           });
           this.immunity.set(p.slot, this.time + 3);
         } else {
-          p.alive = false;
-          p.cause = 'Caught by ' + e.kind + '.';
+          this.loseLife(p, 'Caught by ' + e.kind + '.');
         }
         e.releaseContact();
       }

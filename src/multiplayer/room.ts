@@ -1,3 +1,4 @@
+import type { Difficulty } from '../difficulty';
 import Peer, { type DataConnection } from 'peerjs';
 import { capacity, Expedition, roomSave, type Command, type Snapshot } from './expedition';
 
@@ -6,6 +7,17 @@ import { RadioAudio } from './radio-audio';
 import { readRadioPacket, radioRate, radioSamples } from './radio-packet';
 import { voiceVolume } from '../voice-input';
 import { loadProgress, storeProgress } from '../game-state';
+
+function explorerIdentity() {
+  const key = 'backrooms-after-hours.explorer';
+  try {
+    const existing = sessionStorage.getItem(key) ?? localStorage.getItem(key);
+    if (existing) return existing;
+    const id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+    return id;
+  } catch { return crypto.randomUUID(); }
+}
 
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const namespace = 'backrooms-afterhours-campaign-4-';
@@ -91,14 +103,14 @@ export class Room {
           conn.close();
           return;
         }
-        const slot = this.hostGame.add();
+        const slot = this.hostGame.add(conn.metadata?.explorerId);
         if (!slot) {
           conn.send({ type: 'full' });
           conn.close({ flush: true });
           return;
         }
         this.guests.set(conn, slot);
-        conn.send({ type: 'welcome', slot });
+        conn.send({ type: 'welcome', slot, explorerId: this.hostGame.identityOf(slot) });
         conn.send({ type: 'voice-roster', members: this.voiceMembers });
         this.publish();
       });
@@ -159,6 +171,7 @@ export class Room {
       serialization: 'binary',
       reliable: true,
       label: 'campaign-v4',
+      metadata: { explorerId: explorerIdentity() },
     });
     this.upstream = conn;
     const pc = conn.peerConnection;
@@ -226,8 +239,12 @@ export class Room {
       Number.isInteger(value.slot) &&
       value.slot >= 2 &&
       value.slot <= capacity
-    )
+    ) {
       this.slot = value.slot;
+      if ('explorerId' in value && typeof value.explorerId === 'string') {
+        try { sessionStorage.setItem('backrooms-after-hours.explorer', value.explorerId); } catch { /* Private session. */ }
+      }
+    }
     if (value.type === 'state' && this.slot && 'state' in value) {
       const state = value.state as Snapshot;
       if (
@@ -346,7 +363,7 @@ export class Room {
     const state = this.hostGame.snapshot();
     const phaseChanged = state.phase !== this.state?.phase;
     const { journal, ...frame } = state;
-    if (this.savedRevision !== state.revision) {
+    if (state.phase !== 'waiting' && this.savedRevision !== state.revision) {
       this.savedRevision = state.revision;
       void storeProgress(journal, roomSave);
     }
@@ -354,11 +371,15 @@ export class Room {
       if (!conn.open) continue;
       const changed = this.sentRevision.get(conn) !== state.revision;
       if (phaseChanged || changed || conn.dataChannel.bufferedAmount < 32768) {
-        conn.send({ type: 'state', state: changed ? state : frame });
+        conn.send({ type: 'state', state: changed ? { ...frame, journal: { ...journal, teamLives: undefined } } : frame });
         this.sentRevision.set(conn, state.revision);
       }
     }
     this.accept(state);
+  }
+  setDifficulty(difficulty: Difficulty) {
+    this.hostGame?.setDifficulty(difficulty);
+    this.publish();
   }
   start(resume = false) {
     if (!this.hostGame || this.hostGame.phase === 'playing') return;
@@ -386,7 +407,7 @@ export class Room {
   }
   close() {
     if (this.closed) return;
-    if (this.hostGame && this.savedRevision !== this.hostGame.revision)
+    if (this.hostGame && this.hostGame.phase !== 'waiting' && this.savedRevision !== this.hostGame.revision)
       void storeProgress(this.hostGame.journal, roomSave);
     this.closed = true;
     clearInterval(this.timer);

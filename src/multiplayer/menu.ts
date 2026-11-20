@@ -1,3 +1,4 @@
+import { difficultyName, difficultyPicker, lifeCount, livesPerLevel, readDifficulty } from '../difficulty';
 import { loadProgress } from '../game-state';
 import { roomIceServers } from './ice';
 import { Room, newCode } from './room';
@@ -91,7 +92,7 @@ export class RoomMenu {
       const waiting = state.phase === 'waiting';
       const text = waiting
         ? 'Any explorer can lead the team through an exit. Press M for proximity chat or hold V to radio the whole team. Monsters can hear both ends.'
-        : 'Everyone was caught. Retry this level with your shared objectives intact.';
+        : 'Everyone is out of lives. Retry this level with your shared objectives intact.';
       this.ui.panel(
         'coop-room',
         'Campaign · Co-op',
@@ -107,6 +108,7 @@ export class RoomMenu {
             : 'The host starts the expedition.') +
           '</p>' +
           '<div class="panel-buttons">' +
+          (waiting && r.hosting ? difficultyPicker('room-difficulty') : '<p class="panel-text" id="room-difficulty-summary"></p>') +
           (r.hosting
             ? this.ui.button('start-room', waiting ? 'Start expedition' : 'Retry level', 'play', true)
             : '') +
@@ -125,10 +127,15 @@ export class RoomMenu {
           get('copy-code').textContent = 'Select the code to copy';
         }
       };
+      const picker = get('room-difficulty') as HTMLSelectElement | null;
+      if (picker) picker.onchange = () => r.setDifficulty(readDifficulty(picker.value));
       if (r.hosting) get('start-room').onclick = () => r.start();
       if (get('resume-room')) get('resume-room').onclick = () => r.start(true);
       get('leave-room').onclick = () => this.leave();
     }
+    const difficulty = readDifficulty(state.journal.difficulty);
+    const summary = get('room-difficulty-summary');
+    if (summary) summary.textContent = difficultyName(difficulty) + ' · ' + lifeCount(livesPerLevel[difficulty]) + ' per explorer per level';
     get('room-roster').textContent =
       state.players.length + ' / ' + capacity + ' explorers · You are Explorer ' + r.slot;
   }

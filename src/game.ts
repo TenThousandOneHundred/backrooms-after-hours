@@ -16,6 +16,7 @@ import { FieldChallenge } from './campaign-challenges';
 import type { ModPack } from './mods';
 import { EndingCinema } from './ending-cinema';
 import './campaign-challenges.css';
+import { livesPerLevel, lifeCount, readDifficulty, readLives, type Difficulty } from './difficulty';
 import { freshProgress, loadProgress, storeProgress, type Progress } from './game-state';
 
 export type GameSettings = {
@@ -25,6 +26,8 @@ export type GameSettings = {
   quality: 'standard' | 'high';
 };
 export type GameHUD = {
+  lives: number;
+  difficulty: Difficulty;
   stage: string;
   label: string;
   objective: string;
@@ -168,6 +171,7 @@ export class Game {
   private sprinting = false;
   private restoredSupply = 0;
   private spawnId = 0;
+  private reportedDown = false;
   private cargoOrigins = new Map<string,THREE.Vector3>();
   private carrying = '';
   get guest() { return !!this.room && !this.room.hosting; }
@@ -237,7 +241,9 @@ export class Game {
     if (this.cinema) this.cinema.render(this.renderer, this.camera.aspect, 0);
     else if (this.world) this.renderer.render(this.scene, this.camera);
   };
-  start(resume: boolean) {
+  get livesRemaining() { return this.state.lives; }
+
+  start(resume: boolean, difficulty: Difficulty = 'medium') {
     if (this.disposed) return;
     if (this.room) {
       this.sound.unlock();
@@ -248,7 +254,11 @@ export class Game {
     const state = resume ? loadProgress(this.mod?.slot) : null;
     const stages = this.mod?.stages ?? campaignStages;
     const validEnding = (id: string) => this.mod ? id === 'mod-escape' : Object.hasOwn(ENDINGS, id);
-    this.state = state && stages[state.stage] ? state : freshProgress(this.mod?.start ?? START);
+    this.state = state && stages[state.stage] ? state : freshProgress(this.mod?.start ?? START, difficulty);
+    if (this.state.lives === 0) {
+      this.state.lives = livesPerLevel[this.state.difficulty];
+      this.state.position = this.state.checkpoint = null;
+    }
     this.activeClock = 0;
     this.lastScare = -90;
     this.scareStages.clear();
@@ -287,6 +297,7 @@ export class Game {
       encounter: new Encounter(stage, TILE, site), mesh, kind: site.kind,
       height: new THREE.Box3().setFromObject(mesh).getCenter(this.vector).y,
     }));
+    if (!this.room && this.state.stage !== id) this.state.lives = livesPerLevel[this.state.difficulty];
     this.state.stage = id;
     this.time = 0;
     this.alarmTime = 0;
@@ -411,10 +422,15 @@ export class Game {
   }
   retry() {
     if (this.mode !== 'death') return;
+    const checkpointRetry = this.state.lives > 0;
+    if (!checkpointRetry) {
+      this.state.lives = livesPerLevel[this.state.difficulty];
+      this.state.checkpoint = null;
+    }
     this.state.position = this.state.checkpoint;
     this.state.sanity = 100;
     this.state.stamina = 100;
-    this.enter(this.state.stage, true);
+    this.enter(this.state.stage, checkpointRetry);
     this.returnToPlay();
     this.persist();
   }
@@ -802,6 +818,8 @@ export class Game {
               : obj.name;
     const items = Object.values(this.state.inventory);
     const hud = {
+      lives: this.state.lives,
+      difficulty: this.state.difficulty,
       stage: this.stage.id,
       label: this.stage.label,
       objective: this.residentHint || this.stage.objective || this.stage.description,
@@ -922,14 +940,18 @@ export class Game {
     }
   }
   private die(reason: string) {
+    if (this.mode !== 'playing') return;
     if (this.room) {
-      this.room.command(this.epoch,{type:'down',cause:reason});
-      this.change('spectating',reason);
+      if (this.reportedDown) return;
+      this.reportedDown = true;
+      this.room.command(this.epoch, { type: 'down', cause: reason, spawnId: this.spawnId });
       return;
     }
-    this.state.position = this.state.checkpoint;
+    this.state.lives--;
+    this.state.position = this.state.lives > 0 ? this.state.checkpoint : null;
     this.state.sanity = 100;
     this.state.stamina = 100;
+    this.refreshHUD();
     this.sound.event('death');
     this.change('death', reason);
     this.persist();
@@ -1388,6 +1410,8 @@ export class Game {
       const j = snap.journal,
         before = this.state.completed,
         oldPending = this.state.pending;
+      this.state.difficulty = readDifficulty(j.difficulty);
+      this.state.lives = readLives(self.lives, this.state.difficulty);
       this.state.flags = j.flags.slice();
       this.state.completed = j.completed.slice();
       this.state.endings = j.endings.slice();
@@ -1395,6 +1419,7 @@ export class Game {
       this.state.pending = j.pending ? { ...j.pending } : null;
       this.revision = snap.revision;
       if (transition) {
+        this.reportedDown = false;
         this.epoch = snap.epoch;
         this.restoredSupply = self.supplies;
         this.spawnId = self.spawnId;
@@ -1424,16 +1449,26 @@ export class Game {
       if (this.state.pending && (transition || !oldPending)) this.change('ending', this.state.pending.ending);
     }
     if (this.spawnId !== self.spawnId) {
+      this.reportedDown = false;
       this.spawnId = self.spawnId;
       this.x = self.x;
       this.z = self.z;
       this.y = 0;
       this.yaw = self.yaw;
       this.hidden = false;
+      this.lockerView = undefined;
+      this.keypad = undefined;
+      this.vy = this.pitch = this.crouchBlend = 0;
+      this.grounded = true;
       this.challenge.clear();
+      if (self.cause) {
+        this.state.sanity = this.state.stamina = 100;
+        this.sprintLocked = false;
+        this.grace = 3;
+      }
       this.change('playing');
       this.cameraPose(0, false);
-      this.callbacks.message('The camera spotted you. Stay low or disable the feed.');
+      this.callbacks.message(self.cause ? 'Back at the entrance · ' + lifeCount(self.lives) + ' left.' : 'The camera spotted you. Stay low or disable the feed.');
     }
     if (self.supplies !== this.restoredSupply) {
       this.restoredSupply = self.supplies;
