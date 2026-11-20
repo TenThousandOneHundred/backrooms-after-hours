@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { stages } from '../src/campaign.ts';
-import { atriumWell, concourseFloor, waterline } from '../src/concourse-plan.ts';
+import { atriumWell, concourseFloor, concourseRoof, officeTile, waterline } from '../src/concourse-plan.ts';
 import { TILE, canStandAt, clearSight } from '../src/game-entity.ts';
 
 const stage = stages.lobby;
@@ -47,5 +47,21 @@ test('three independent ramps join the office, hall and atrium to knee-deep wate
     assert.ok(Math.abs(waterline - concourseFloor(x, 35) - 0.52) < 0.0001);
   }
   assert.ok(clearSight(stage, 64, 8, 89, 8));
-  assert.ok(clearSight(stage, 3, 12, 62, 12));
+});
+
+test('the first view meets a wallpaper partition and every ladder piece is reachable on the office floor', () => {
+  const [sx, sz] = stage.spawn;
+  assert.equal(concourseRoof(sx, sz), 3.08);
+  assert.equal(clearSight(stage, sx, sz, sx + 8, sz), false);
+  const queue = [stage.spawn], seen = new Set([stage.spawn.join(',')]);
+  for (const [x, z] of queue) {
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const u = x + dx, v = z + dz, key = [u, v].join(',');
+      if (seen.has(key) || !officeTile(u, v) || !walk(u, v)) continue;
+      seen.add(key);
+      queue.push([u, v]);
+    }
+  }
+  for (const obj of stage.objects.filter(o => o.gives?.some(flag => /^rail[1-4]$/.test(flag)) || o.target === 'pitwalk'))
+    assert.ok(seen.has([obj.x, obj.z].join(',')), obj.name);
 });

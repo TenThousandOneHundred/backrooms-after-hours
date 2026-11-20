@@ -81,7 +81,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   scene.fog = new THREE.FogExp2(fog, stage.id === 'lobby' ? 0.013 : style.open ? 0.018 : style.family === 'blackout' ? 0.063 : 0.033);
   const ambience = new THREE.AmbientLight(
     profile?.fill ?? (style.family === 'alarm' ? '#ffc7b5' : '#fff8e9'),
-    familyLight(stage) * (style.open ? 0.84 : 0.18),
+    familyLight(stage) * (style.open ? 0.84 : stage.id === 'lobby' ? 0.38 : 0.18),
   );
   const sky = new THREE.HemisphereLight(
     profile?.lamp ?? (style.open ? '#e2ebe7' : '#fff9df'),
@@ -233,6 +233,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         (hash(ix, iz + 1, 673) * (1 - u) + hash(ix + 1, iz + 1, 673) * u) * v;
       const k = Math.max(0, Math.min(1, (field - 0.32) * 2.1));
       value *= 0.25 + 0.9 * k;
+      // Low acoustic ceilings bounce warm light back onto the wallpaper.
+      if (stage.id === 'lobby' && officeTile(tx, tz)) value += kind === 'wall' ? 0.27 : 0.14;
     }
     if (family === 'alarm') value *= 0.73;
     if (family === 'pipes') value *= 0.7;

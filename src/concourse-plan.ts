@@ -21,13 +21,13 @@ export function concourseFloor(x: number, z: number) {
 
 export function concourseRoof(x: number, z: number) {
   if (z >= 24) return 4.5 + concourseFloor(x, z);
-  if (x >= officeStart) return 3.08;
+  if (officeTile(x, z)) return 3.08;
   if (x === atriumStart - 1) return 6.8;
-  return x < atriumStart ? 14.4 : 21;
+  return 21;
 }
 
 export function officeTile(x: number, z: number) {
-  return x >= officeStart && z <= 23;
+  return z <= 23 && (x < atriumStart - 1 || x >= officeStart || z <= 2);
 }
 
 function buildPlan() {
@@ -36,11 +36,26 @@ function buildPlan() {
     for (let z = z0; z <= z1; z++) cells[z].fill(tile, x0, x1 + 1);
   }
 
-  // Two process halls separated by a pierced spine wall.
+  // Wallpaper partitions stop short at alternating ends, creating parallel routes around each room.
   rect(1, 1, 31, 23);
   rect(33, 1, 62, 23);
   for (const z of [4, 12, 20]) rect(32, z, 32, z + 1);
   for (const z of [4, 10, 16, 22]) for (const x of [6, 25]) rect(x, z, x, z, '#');
+  const partitions = [
+    [5, 7, 5, 10], [5, 13, 5, 16], [5, 13, 9, 13],
+    [8, 4, 13, 4], [9, 7, 9, 11], [9, 11, 13, 11],
+    [12, 6, 12, 8], [15, 4, 15, 10], [15, 10, 19, 10],
+    [11, 15, 17, 15], [17, 14, 17, 18], [5, 20, 9, 20],
+    [20, 4, 20, 7], [20, 7, 24, 7], [23, 10, 23, 14],
+    [20, 17, 24, 17], [20, 17, 20, 21], [27, 4, 27, 9],
+    [27, 13, 30, 13], [27, 16, 27, 20], [7, 12, 7, 12],
+  ];
+  for (const [x0, z0, x1, z1] of partitions) rect(x0, z0, x1, z1, '#');
+
+  // The north passage connects both office wings on carpet, above the returns ramps.
+  rect(31, 1, 64, 2);
+  rect(33, 3, 62, 3, '#');
+  for (const x of [35, 60]) rect(x, 3, x, 3);
   for (let z = 4; z <= 20; z++) for (let x = 36; x <= 59; x++) if (atriumWell(x, z)) cells[z][x] = '#';
 
   // Interlocking office circuits. The crossovers alternate ends, so no single
@@ -91,7 +106,7 @@ function buildPlan() {
     [80, 22, 'S'],
     [74, 17, 'D'],
     [80, 18, 'D'],
-    [6, 44, '4'],
+    [7, 18, '4'],
     [4, 45, 'U'],
     [32, 45, 'U'],
     [5, 43, 'P'],

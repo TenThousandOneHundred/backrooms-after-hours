@@ -275,8 +275,9 @@ export function buildOfficeDecay(
       0.37,
       0.72,
     );
-    if (n % 3 !== 2) pipe(g, 2.75);
-    if (n % 3 !== 1)
+    const serviceWall = n % 8 === 7;
+    if (serviceWall) pipe(g, 2.75);
+    if (serviceWall)
       for (let i = 0; i < 2; i++) {
         piece(
           g,
@@ -314,13 +315,10 @@ export function buildOfficeDecay(
         ([dx, dz]) => stage.map[z + dz]?.[x + dx] === '#' && !occupied.has(x + dx + ',' + (z + dz)),
       ),
   );
-  const [sx, sz] = stage.spawn;
-  const closest = [...candidates].sort(
-    (a, b) => Math.hypot(a[0] - sx, a[1] - sz) - Math.hypot(b[0] - sx, b[1] - sz),
-  )[0];
   const sites: Cell[] = [];
   const sorted = candidates.sort((a, b) => hash(...a, 67) - hash(...b, 67));
-  for (const [x, z] of closest ? [closest, ...sorted] : sorted) {
+  for (const [x, z] of sorted) {
+    if (Math.hypot(x - stage.spawn[0], z - stage.spawn[1]) < 6) continue;
     if (sites.some(([u, v]) => Math.hypot(u - x, v - z) < 3.5)) continue;
     const [dx, dz] = sides.find(
       ([a, b]) => stage.map[z + b]?.[x + a] === '#' && !occupied.has(x + a + ',' + (z + b)),
@@ -328,28 +326,6 @@ export function buildOfficeDecay(
     leak(x, z, dx, dz, sites.length);
     sites.push([x, z]);
     if (sites.length >= 30) break;
-  }
-  // The abandoned workstation marks the entry even when it opens into the concrete hall.
-  const forwardX = Math.round(Math.sin(stage.facing ?? 0)),
-    forwardZ = -Math.round(Math.cos(stage.facing ?? 0));
-  const ex = sx + forwardX * 2,
-    ez = sz + forwardZ * 2;
-  if (free(ex, ez) && !sites.some(([x, z]) => Math.hypot(x - ex, z - ez) < 1.5)) {
-    const g = new T.Group();
-    g.position.set(ex * TILE, 0, ez * TILE);
-    g.rotation.y = -(stage.facing ?? 0) + 0.18;
-    chair(g, -0.82, 0);
-    monitor(g, 0.5, 0.05);
-    paperwork(g, 7, 144);
-    statics.add(g);
-    spills.push({
-      x: ex * TILE - forwardX * 0.7,
-      z: ez * TILE - forwardZ * 0.7,
-      length: 1.36,
-      width: 0.69,
-      angle: 0.38,
-      seed: 36,
-    });
   }
   if (!spills.length) return;
   const water = corridorPuddles(spills);

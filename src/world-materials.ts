@@ -463,7 +463,7 @@ export function styleFor(theme: string, id: string): Style {
     'lobby',
     'paper',
     'carpet',
-    '#c6b372',
+    id === 'lobby' ? '#e2c46d' : '#c6b372',
     '#9f884f',
     '#c4bc98',
     '#554735',

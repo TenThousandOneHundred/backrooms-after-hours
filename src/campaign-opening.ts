@@ -7,8 +7,8 @@ export const opening = [
     'Level 0',
     'The Lobby',
     'lobby',
-    'The humming started before you opened your eyes. The carpet is still damp.',
-    'Recover the four ladder pieces. Search the concrete hall, east offices and flooded returns basement.',
+    'The carpet gives under your shoes. Beyond the next corner, the same yellow wallpaper starts again.',
+    'Find the four ladder pieces scattered through the yellow rooms and the east offices.',
     concoursePlan,
     {
       Q: prop('roof-monitor'),
@@ -47,7 +47,7 @@ export const opening = [
       ),
       N: note(
         'Maintenance slip',
-        'Left the service key above the broken ladder. The right rail went downstairs to Returns. Three ramps lead into the flooded basement. Two pieces went east: one by the red phone and one in the exchange stacks.',
+        'Left the service key above the broken ladder. The right rail is in the west rooms, past the little wall that stands by itself. The north passage leads to the other two pieces, by the red phone and the exchange stacks.',
       ),
     },
     'bacteria',

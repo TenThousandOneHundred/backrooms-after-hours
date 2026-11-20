@@ -48,8 +48,7 @@ export function buildConcourseShell(
   }
   const steel = '#52615e',
     edge = '#a29a76';
-  const pier = '#707570',
-    beam = '#82847b';
+  const beam = '#82847b';
   const sides = [
     [0, -1],
     [1, 0],
@@ -185,34 +184,6 @@ export function buildConcourseShell(
       if (!officeTile(x, z) && (well || stage.map[z][x] !== '#')) shell(x, z, well);
     }
 
-  // Longitudinal column lines carry deep transverse concrete lintels.
-  for (const z of [4, 10, 16, 22]) {
-    box(beam, 16 * TILE, 13.35, z * TILE, 31 * TILE, 2.1, 1.48);
-    for (const x of [6, 25]) {
-      box(pier, x * TILE, 12.33, z * TILE, 5.5, 0.85, 4.95);
-      box('#aaa99c', x * TILE, 11.81, z * TILE, 4.18, 0.3, 3.95);
-    }
-    for (const x of [6, 25]) {
-      for (const side of [-1, 1]) {
-        const haunch = box(beam, x * TILE + side * 2.7, 12.6, z * TILE, 3.9, 1.05, 1.44);
-        haunch.rotation.z = side * 0.32;
-      }
-    }
-    for (const x of [10, 18]) lightStrip(box('#d9d9c6', x * TILE, 12.26, z * TILE, 9, 0.068, 0.16, false));
-  }
-  for (const x of [5, 17, 27]) box(beam, x * TILE, 14, 12 * TILE, 0.64, 0.8, 23 * TILE);
-  // Repeated high light slots make the hall's side walls legible from the entry.
-  for (let x = 2; x < 31; x += 3) {
-    box('#505a59', x * TILE, 9.9, 0.5 * TILE + 0.03, 7.8, 2.55, 0.13);
-    box('#becbc6', x * TILE, 10.0, 0.5 * TILE + 0.13, 7.12, 1.78, 0.06, false);
-    box(steel, x * TILE, 10, 0.5 * TILE + 0.18, 0.11, 1.85, 0.06);
-  }
-
-  // Formwork reveals run unbroken along the nave, then stop at its doorways.
-  for (const z of [0.5, 23.5]) {
-    const v = z * TILE + (z < 1 ? 0.022 : -0.022);
-    for (const y of [3.6, 7.2, 10.8]) box('#747a74', 16 * TILE, y, v, 31 * TILE, 0.055, 0.07);
-  }
   const span = 30 * TILE;
   for (const z of [3, 9, 15, 21]) {
     const mid = 47.5 * TILE,
