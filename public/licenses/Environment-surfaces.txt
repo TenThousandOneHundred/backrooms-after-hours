@@ -1,0 +1,34 @@
+Environment surface photography from Poly Haven (CC0 1.0 Universal).
+https://polyhaven.com/license
+https://creativecommons.org/publicdomain/zero/1.0/
+
+The game uses compressed, palette-adapted color maps and OpenGL normal maps.
+
+paper: Decrepit Wallpaper — Rob Tuytel
+https://polyhaven.com/a/decrepit_wallpaper
+carpet: Dirty Carpet — Rohit Seervi
+https://polyhaven.com/a/dirty_carpet
+ceiling: Ceiling Interior — Dimitrios Savva
+https://polyhaven.com/a/ceiling_interior
+concrete: Concrete Wall 004 — Dario Barresi, Charlotte Baglioni
+https://polyhaven.com/a/concrete_wall_004
+slab: Concrete Floor Worn 001 — Dimitrios Savva, Rico Cilliers
+https://polyhaven.com/a/concrete_floor_worn_001
+tile: Square Tiled Wall — Charlotte Baglioni
+https://polyhaven.com/a/square_tiled_wall
+wood: Old Wood Floor — Guillaume Monsergent
+https://polyhaven.com/a/old_wood_floor
+plaster: Plastered Wall — Amal Kumar
+https://polyhaven.com/a/plastered_wall
+rock: Rock Face 03 — Dario Barresi, Rico Cilliers
+https://polyhaven.com/a/rock_face_03
+grass: Aerial Grass Rock — Rob Tuytel
+https://polyhaven.com/a/aerial_grass_rock
+earth: Forest Floor — eye-candy.xyz
+https://polyhaven.com/a/forest_floor
+metal: Rusty Metal 04 — Amal Kumar
+https://polyhaven.com/a/rusty_metal_04
+road: Asphalt 04 — Jenelle van Heerden, Sergej Majboroda
+https://polyhaven.com/a/asphalt_04
+brick: Concrete Brick Wall 001 — Dimitrios Savva, Rico Cilliers
+https://polyhaven.com/a/concrete_brick_wall_001

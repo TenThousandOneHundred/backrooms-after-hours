@@ -1,3 +1,5 @@
+import { roomSurfaceScans } from './scanned-surfaces';
+import { roomLightDecals } from './room-light-decals';
 import { stageProjection } from './atmosphere-light';
 import type { LevelAtmosphere } from './level-atmosphere';
 import { makeResident } from './residents';
@@ -46,6 +48,11 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     materials: THREE.Material[] = [],
     geometries: THREE.BufferGeometry[] = [],
     textures: THREE.Texture[] = [];
+  const scans = roomSurfaceScans();
+  const decals = roomLightDecals(profile?.lamp ?? style.lamp);
+  geometries.push(decals.plane);
+  materials.push(decals.glowMaterial, decals.shadowMaterial);
+  textures.push(decals.texture);
   const monitor = stage.props?.find(p => p.model === 'roof-monitor');
   const underMonitor = (x: number, z: number) => !!monitor &&
     Math.abs(x - monitor.x) < roofHalfWidth + .5 && Math.abs(z - monitor.z) < roofHalfDepth + .5;
@@ -170,6 +177,9 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     if (kind === 'floor') value = 0.112 + 0.89 * direct + 0.17 * bounce;
     if (kind === 'ceil') value = 0.134 + 0.89 * direct + 0.13 * bounce;
     if (kind === 'wall' || kind === 'trim') {
+      // A ceiling tube grazes the upper wall, then falls away toward the skirting.
+      const rise = Math.max(.28, h - y);
+      value *= .53 + .85 * (nearest + 1.6) / (nearest + 1.6 + rise * rise);
       value *= 0.83 + 0.21 * (y / h) + 0.07 * Math.sin((Math.PI * y) / h);
       value *= 1 + normal[0] * 0.17 + normal[2] * 0.09;
     }
@@ -266,10 +276,11 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       map: tex,
     };
     const gloss = kind === 'metal' || kind === 'tile' || kind === 'wood';
-    const mat = kind && kind !== 'water' && !isOutdoor
+    const mat = kind && kind !== 'water'
       ? new THREE.MeshPhongMaterial({ ...surface, bumpMap: tex, bumpScale: gloss ? .022 : .035,
           shininess: gloss ? 38 : 9, specular: gloss ? '#474c46' : '#171815' })
       : new THREE.MeshLambertMaterial(surface);
+    if (kind && mat instanceof THREE.MeshPhongMaterial) scans.apply(mat, kind, s === floors, col);
     if (kind === 'water')
       mat.onBeforeCompile = (shader) => {
         shader.uniforms.uWaterTime = clock;
@@ -299,6 +310,9 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
           );
       };
     const m = new THREE.Mesh(geo, mat);
+    m.receiveShadow = true;
+    m.castShadow = s === walls;
+    if (m.castShadow) mat.shadowSide = THREE.DoubleSide;
     if (s === floors)
       m.onBeforeRender = (_r, _s, camera) => {
         camera.getWorldPosition(eye);
@@ -375,8 +389,14 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         }
       }
       if (rand < 0.043) {
-        piece('#aaa58d', 0.16, 2.4, 0.02, 0.59, 0.26, 0.035);
-        for (let i = 0; i < 6; i++) piece('#5e6155', 0.16, 2.29 + i * 0.04, 0.04, 0.5, 0.012, 0.008);
+        piece('#aaa58d', .16, 2.4, .02, .66, .31, .036);
+        piece('#383c34', .16, 2.4, .043, .58, .24, .018);
+        for (let i = 0; i < 6; i++) {
+          const vane = piece('#959584', .16, 2.3 + i * .038, .059, .56, .018, .034);
+          vane.rotateX(-.38);
+        }
+        for (const u of [-.144, .464])
+          for (const y of [2.265, 2.535]) piece('#656354', u, y, .043, .014, .014, .008);
       }
     }
     if (family === 'pipes' || family === 'utility' || family === 'garage') {
@@ -822,15 +842,29 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       side = compact ? 0.045 : 0.025,
       hh = h + (underMonitor(x / TILE, z / TILE) ? roofRise : 0) - 0.041;
     const glow = off ? '#75776a' : (profile?.lamp ?? style.lamp);
+    if (!off) decals.glow(statics, x, hh + .033, z, w, l);
     b('#716f60', x, hh, z, w + 0.069, 0.052, l + 0.063);
-    b(glow, x, hh - 0.035, z, w, 0.024, l, !off);
+    // The luminous tubes sit below a darker reflector and inside its folded rim.
+    const tray = color(glow).multiplyScalar(.51).getHexString();
+    b('#' + tray, x, hh - .035, z, w, .024, l, !off);
     if (!compact) {
-      for (let j = 0; j < 3; j++) {
-        b(off ? '#858779' : (profile?.lamp ?? '#fffce6'), x + (j - 1) * 0.212, hh - 0.053, z, 0.069, 0.012, l - 0.06, !off);
+      for (const side of [-1, 1]) {
+        const rim = b('#a7a599', x + side * w * .49, hh - .056, z, .035, .077, l);
+        rim.rotation.z = side * .25;
+      }
+      for (const lane of [-1, 0, 1]) {
+        const tx = x + lane * w * .295;
+        const tube = kit.cylinder(statics, off ? '#858779' : glow, tx, hh - .061, z,
+          .048, l - .098, .048, off);
+        tube.rotation.x = Math.PI / 2;
+        for (const end of [-1, 1])
+          b('#827f70', tx, hh - .059, z + end * (l / 2 - .06), .061, .06, .042);
       }
       for (let j = -2; j <= 2; j++)
-        b(off ? '#64685c' : '#bdbda5', x, hh - 0.06, z + j * 0.265, w - 0.03, 0.009, 0.012);
+        b('#aaa99b', x, hh - .093, z + j * l * .185, w - .034, .032, .009);
     } else {
+      const tube = kit.cylinder(statics, glow, x, hh - .057, z, .058, l - .06, .058, off);
+      tube.rotation.x = Math.PI / 2;
       b('#8b8f79', x - w / 2, hh - 0.065, z, side, 0.065, l);
       b('#8b8f79', x + w / 2, hh - 0.065, z, side, 0.065, l);
     }
@@ -914,6 +948,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   for (const spec of stage.props ?? []) {
     if (spec.model === 'pit' || spec.model === 'roof-monitor') continue;
     const group = makeModel(kit, spec);
+    if (tile(spec.x, spec.z) !== 'X') decals.shadow(group);
     const pos = alignment(spec.x, spec.z);
     group.position.set(spec.x * TILE + (spec.solid ? 0 : pos.dx * 0.2), 0, spec.z * TILE + (spec.solid ? 0 : pos.dz * 0.2));
     group.rotation.y = spec.rotation ?? pos.angle;
@@ -925,17 +960,19 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     const model = spec.model ?? '',
       attached = /door|exit|gate|elevator|vent|sign|portrait|panel|terminal|locker/.test(model);
     const offset = attached ? 1.19 : 0;
+    if (!attached && spec.model !== 'pit') decals.shadow(group);
     group.position.set(
       spec.x * TILE + pos.dx * offset,
       terrainHeight(stage, spec.x * TILE, spec.z * TILE),
       spec.z * TILE + pos.dz * offset,
     );
     group.rotation.y = pos.angle;
-    // A small, broad contact shadow grounds every freestanding pickup and interaction.
-    if (spec.model !== 'pit' && !attached) {
-      const sh = kit.cube(group, '#6b6552', 0, 0.009, 0, 0.64, 0.012, 0.54);
-      sh.material = kit.get('#6b6552');
-    }
+    group.traverse(part => {
+      if (part instanceof THREE.Mesh && !part.material.transparent) {
+        part.castShadow = true;
+        part.receiveShadow = true;
+      }
+    });
     objects.set(spec.id, group);
     root.add(group);
   }
@@ -971,6 +1008,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   for (const batch of batches.values()) {
     const mesh = new THREE.InstancedMesh(batch.geo, batch.mat, batch.transforms.length);
     batch.transforms.forEach((m, i) => mesh.setMatrixAt(i, m));
+    mesh.castShadow = !batch.mat.transparent && batch.mat instanceof THREE.MeshLambertMaterial;
+    mesh.receiveShadow = mesh.castShadow;
     mesh.instanceMatrix.needsUpdate = true;
     mesh.computeBoundingSphere();
     root.add(mesh);
@@ -1116,6 +1155,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     },
     dispose() {
       scene.remove(root);
+      scans.dispose();
       roof?.dispose();
       for (const lamp of markerLights) lamp.dispose();
       for (const resident of residents) resident.dispose();

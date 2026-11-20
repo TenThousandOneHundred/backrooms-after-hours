@@ -186,6 +186,13 @@ export class Game {
     });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.NoToneMapping;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.lamp.shadow.mapSize.set(512, 512);
+    this.lamp.shadow.camera.near = .15;
+    this.lamp.shadow.bias = -.0004;
+    this.lamp.shadow.normalBias = .018;
+    this.lamp.shadow.autoUpdate = false;
     this.camera.rotation.order = 'YXZ';
     this.lamp.position.set(0.12, -0.1, -0.12);
     this.lampTarget.position.set(0.04, -0.05, -7);
@@ -215,6 +222,7 @@ export class Game {
       headBob: settings.headBob,
       quality: settings.quality,
     };
+    this.renderer.shadowMap.enabled = this.settings.quality === 'high';
     this.sound.setVolume(this.settings.volume);
     this.resize();
   }
@@ -845,6 +853,8 @@ export class Game {
     this.camera.updateMatrixWorld(true);
     const scanner = this.isScanner();
     this.lamp.intensity = scanner ? 0 : this.state.flashlight && !this.hidden ? 12 : 0;
+    this.lamp.castShadow = this.lamp.intensity > 0 && this.renderer.shadowMap.enabled;
+    this.lamp.shadow.needsUpdate = this.lamp.castShadow;
   }
   private isScanner() {
     return !this.mod && (this.stage.id === 'dark' || /lights out/i.test(this.stage.name));
@@ -1567,6 +1577,7 @@ export class Game {
     this.clearScan();
     this.scene.remove(this.camera);
     this.world?.dispose();
+    this.lamp.dispose();
     this.renderer.dispose();
   }
 }

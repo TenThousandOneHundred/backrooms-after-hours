@@ -22,7 +22,10 @@ const treated = new WeakSet<MeshStandardMaterial>();
 export function detailCreature(root: Object3D) {
   root.traverse((object) => {
     if (!(object instanceof Mesh)) return;
-    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    object.castShadow = materials.some(material => !material.transparent);
+    object.receiveShadow = object.castShadow;
+    for (const material of materials) {
       if (!(material instanceof MeshStandardMaterial) || treated.has(material)) continue;
       treated.add(material);
       const name = material.name.toLowerCase();
