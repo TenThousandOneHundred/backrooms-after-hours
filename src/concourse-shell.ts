@@ -255,6 +255,8 @@ export function buildConcourseShell(
     if (wet || surface === slab) markWet(mat, !wet);
     const part = new T.Mesh(geo, mat);
     part.name = name;
+    // Fill the depth buffer with the opaque hall walls before shading props behind them.
+    if (surface === wall) part.renderOrder = -2;
     part.castShadow = !wet;
     part.receiveShadow = true;
     root.add(part);

@@ -485,7 +485,24 @@ export function hash(x: number, z: number, k = 0) {
   return ((a ^ (a >>> 16)) >>> 0) / 4294967296;
 }
 const SIZE = 256;
+// Keep a bounded set of deterministic source images for retries and repeated room finishes.
+const finishImages = new Map<string, HTMLCanvasElement>();
+
 export function texture(finish: Finish, hex: string): THREE.CanvasTexture {
+  const key = finish + '/' + hex;
+  let canvas = finishImages.get(key);
+  if (canvas) finishImages.delete(key);
+  else canvas = drawFinish(finish, hex);
+  finishImages.set(key, canvas);
+  if (finishImages.size > 8) finishImages.delete(finishImages.keys().next().value!);
+  const t = new THREE.CanvasTexture(canvas);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  return t;
+}
+
+function drawFinish(finish: Finish, hex: string) {
   const c = document.createElement('canvas');
   c.width = c.height = SIZE;
   const g = c.getContext('2d')!;
@@ -651,9 +668,5 @@ export function texture(finish: Finish, hex: string): THREE.CanvasTexture {
       );
     }
   }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 4;
-  return t;
+  return c;
 }

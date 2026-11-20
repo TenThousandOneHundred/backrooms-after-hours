@@ -74,12 +74,14 @@ export class RoomMenu {
         this.ui.panel('coop-loading', 'Co-op expedition', 'Entering the campaign', '', () => this.leave());
         void this.play(r);
       }
-      get('coop-count').textContent = state.players.length + ' / ' + capacity;
+      const count = get('coop-count'), roster = state.players.length + ' / ' + capacity;
+      if (count.textContent !== roster) count.textContent = roster;
       const radio = get('radio-state'), receiving = r.radio.receiving;
       const label = r.isMonster ? 'E · Grab' : r.radio.transmitting ? 'Radio · Transmitting' : receiving.length ?
         'Radio · Explorer ' + receiving.join(' + ') : 'Hold V · Radio';
       if (radio.textContent !== label) radio.textContent = label;
-      get('coop-status').textContent = stages[state.journal.stage]?.name ?? '';
+      const status = get('coop-status'), stage = stages[state.journal.stage]?.name ?? '';
+      if (status.textContent !== stage) status.textContent = stage;
       return;
     }
     if (this.phase !== state.phase) {

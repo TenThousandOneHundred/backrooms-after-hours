@@ -40,11 +40,65 @@ const DIRS = [
 ];
 type Vec = [number, number, number];
 type SurfaceData = { p: number[]; n: number[]; u: number[]; c: number[]; i: number[] };
-type Chunk = { geo: THREE.BufferGeometry; mat: THREE.Material; transforms: THREE.Matrix4[] };
+// Each camera, including the reflection and shadow cameras, culls these regions independently.
+const chunkTiles = 8;
+const chunkKey = (x: number, z: number) => Math.floor(x / chunkTiles) + ',' + Math.floor(z / chunkTiles);
+type SurfaceChunks = Map<string, SurfaceData>;
 function familyLight(stage: Stage) {
   return /suburbs|dark|pipes|blackgarage|run|hotelchase|redrooms/.test(stage.id) ? 1.16 : 1.55;
 }
 const newSurface = (): SurfaceData => ({ p: [], n: [], u: [], c: [], i: [] });
+
+function batchStaticProps(statics: THREE.Group, root: THREE.Group, kit: ModelKit) {
+  type Batch = { geo: THREE.BufferGeometry; mat: THREE.Material; parts: THREE.Mesh[]; colored: boolean };
+  const groups = new Map<string, Batch>();
+  const instances: THREE.InstancedMesh[] = [];
+  const plain = new Set(kit.materials.values());
+  statics.updateMatrixWorld(true);
+  statics.traverse(obj => {
+    if (!(obj instanceof THREE.Mesh) || Array.isArray(obj.material)) return;
+    const original = obj.material;
+    // Plain kit paints differ only by diffuse color. Bulbs that animate, decals, and textured finishes
+    // retain their original materials. Double-sided props also keep their original sidedness.
+    const colored = plain.has(original) && original.side === THREE.FrontSide && !original.transparent &&
+      !original.map && (original instanceof THREE.MeshLambertMaterial || original instanceof THREE.MeshBasicMaterial);
+    const mat = colored ? kit.get(0xffffff, original instanceof THREE.MeshLambertMaterial) : original;
+    const key = obj.geometry.uuid + '|' + mat.uuid;
+    let batch = groups.get(key);
+    if (!batch) {
+      batch = { geo: obj.geometry, mat, parts: [], colored };
+      groups.set(key, batch);
+    }
+    batch.parts.push(obj);
+  });
+
+  for (const { geo, mat, parts, colored } of groups.values()) {
+    const cells = new Map<string, THREE.Mesh[]>();
+    const triangles = (geo.index?.count ?? geo.attributes.position.count) / 3;
+    // Group tiny batches together and preserve the original sorting of transparent surfaces.
+    const split = !mat.transparent && parts.length > 1 && triangles * parts.length >= 1800;
+    for (const part of parts) {
+      const pos = part.matrixWorld.elements;
+      const key = split ? chunkKey(pos[12] / TILE, pos[14] / TILE) : '';
+      const cell = cells.get(key);
+      if (cell) cell.push(part);
+      else cells.set(key, [part]);
+    }
+    for (const cell of cells.values()) {
+      const mesh = new THREE.InstancedMesh(geo, mat, cell.length);
+      cell.forEach((part, i) => {
+        mesh.setMatrixAt(i, part.matrixWorld);
+        if (colored) mesh.setColorAt(i, (part.material as THREE.MeshLambertMaterial).color);
+      });
+      mesh.castShadow = !mat.transparent && mat instanceof THREE.MeshLambertMaterial;
+      mesh.receiveShadow = mesh.castShadow;
+      mesh.computeBoundingSphere();
+      root.add(mesh);
+      instances.push(mesh);
+    }
+  }
+  return instances;
+}
 
 export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmosphere,
   buzz: (pan: number, volume: number) => void = () => {}) {
@@ -118,10 +172,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     0,
   );
   const loosePaper = stage.id !== 'lobby' && (style.wall === 'paper' || style.wall === 'hotel') ? new LooseWallpaper() : undefined;
-  const walls = newSurface(),
-    floors = newSurface(),
-    ceilings = newSurface(),
-    trim = newSurface();
+  const walls: SurfaceChunks = new Map(), floors: SurfaceChunks = new Map(),
+    ceilings: SurfaceChunks = new Map(), trim: SurfaceChunks = new Map();
   const clock = { value: 0 },
     circuit = { value: 0 },
     circuitCenter = { value: new THREE.Vector2() };
@@ -243,7 +295,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     return Math.max(0.004, value * style.level);
   }
   function quad(
-    s: SurfaceData,
+    chunks: SurfaceChunks,
     origin: Vec,
     U: Vec,
     V: Vec,
@@ -255,6 +307,13 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     tx: number,
     tz: number,
   ) {
+    // Water shares a single planar reflection capture across its entire floor.
+    const key = chunks === floors && style.floor === 'water' ? 'water' : chunkKey(tx, tz);
+    let s = chunks.get(key);
+    if (!s) {
+      s = newSurface();
+      chunks.set(key, s);
+    }
     const index = s.p.length / 3;
     const cross = [U[1] * V[2] - U[2] * V[1], U[2] * V[0] - U[0] * V[2], U[0] * V[1] - U[1] * V[0]];
     const forward = cross[0] * N[0] + cross[1] * N[1] + cross[2] * N[2] > 0;
@@ -279,15 +338,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         }
       }
   }
-  function finish(s: SurfaceData, kind: Finish | undefined, col: string) {
-    if (!s.p.length) return;
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(s.p, 3));
-    geo.setAttribute('normal', new THREE.Float32BufferAttribute(s.n, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(s.u, 2));
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(s.c, 3));
-    geo.setIndex(s.i);
-    geo.computeBoundingSphere();
+  function finish(chunks: SurfaceChunks, kind: Finish | undefined, col: string) {
+    if (!chunks.size) return;
     const tex = kind ? texture(kind, col) : null;
     if (tex) textures.push(tex);
     const surface = {
@@ -299,9 +351,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     const mat = kind
       ? surfaceMaterial(kind, { ...surface, bumpMap: tex, bumpScale: gloss ? .022 : .035 })
       : new THREE.MeshLambertMaterial(surface);
-    if (kind && mat instanceof THREE.MeshStandardMaterial) scans.apply(mat, kind, s === floors, col);
-    const m = new THREE.Mesh(geo, mat);
-    if (kind === 'water') reflection = waterReflection(m);
+    if (kind && mat instanceof THREE.MeshStandardMaterial) scans.apply(mat, kind, chunks === floors, col);
     if (kind === 'water')
       mat.onBeforeCompile = (shader) => {
         shader.uniforms.uWaterTime = clock;
@@ -331,19 +381,32 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
           );
         reflection!.prepare(shader);
       };
-    if (s === floors && (kind === 'water' || kind === 'concrete')) markWet(mat,kind === 'concrete');
-    m.receiveShadow = true;
-    m.castShadow = s === walls;
-    if (m.castShadow) mat.shadowSide = THREE.DoubleSide;
-    if (s === floors)
-      m.onBeforeRender = (renderer, scene, camera, _geo, _mat, group) => {
-        reflection?.capture(renderer, scene, camera, group);
-        camera.getWorldPosition(eye);
-        camera.getWorldDirection(view);
-      };
-    root.add(m);
+    if (chunks === floors && (kind === 'water' || kind === 'concrete')) markWet(mat,kind === 'concrete');
     materials.push(mat);
-    geometries.push(geo);
+    if (chunks === walls) mat.shadowSide = THREE.DoubleSide;
+    for (const s of chunks.values()) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(s.p, 3));
+      geo.setAttribute('normal', new THREE.Float32BufferAttribute(s.n, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(s.u, 2));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(s.c, 3));
+      geo.setIndex(s.i);
+      geo.computeBoundingSphere();
+      const m = new THREE.Mesh(geo, mat);
+      m.receiveShadow = true;
+      m.castShadow = chunks === walls;
+      if (chunks === walls) m.renderOrder = -2;
+      if (kind === 'water') reflection = waterReflection(m);
+      if (chunks === floors)
+        m.onBeforeRender = (renderer, scene, camera, _geo, _mat, group) => {
+          reflection?.capture(renderer, scene, camera, group);
+          camera.getWorldPosition(eye);
+          camera.getWorldDirection(view);
+        };
+      root.add(m);
+      geometries.push(geo);
+    }
+    chunks.clear();
   }
   const crop = new THREE.BufferGeometry();
   crop.setAttribute(
@@ -1049,29 +1112,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     rig?.bulb(strip,bank);
   }) : undefined;
   const updateDoors = stage.id === 'lobby' ? buildConcourseCover(kit, statics, root) : undefined;
-  const batches = new Map<string, Chunk>();
-  statics.updateMatrixWorld(true);
-  statics.traverse((obj) => {
-    if (!(obj instanceof THREE.Mesh) || Array.isArray(obj.material)) return;
-    const key = obj.geometry.uuid + '|' + obj.material.uuid;
-    let batch = batches.get(key);
-    if (!batch) {
-      batch = { geo: obj.geometry, mat: obj.material, transforms: [] };
-      batches.set(key, batch);
-    }
-    batch.transforms.push(obj.matrixWorld.clone());
-  });
-  const instances: THREE.InstancedMesh[] = [];
-  for (const batch of batches.values()) {
-    const mesh = new THREE.InstancedMesh(batch.geo, batch.mat, batch.transforms.length);
-    batch.transforms.forEach((m, i) => mesh.setMatrixAt(i, m));
-    mesh.castShadow = !batch.mat.transparent && batch.mat instanceof THREE.MeshLambertMaterial;
-    mesh.receiveShadow = mesh.castShadow;
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.computeBoundingSphere();
-    root.add(mesh);
-    instances.push(mesh);
-  }
+  const instances = batchStaticProps(statics, root, kit);
   // A failing ballast affects only its circuit, including the lit panels themselves.
   for (const mat of [...materials, ...kit.materials.values(), ...(rig?.materials() ?? [])]) {
     if (!(mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshLambertMaterial || mat instanceof THREE.MeshPhongMaterial || mat instanceof THREE.MeshBasicMaterial)) continue;
