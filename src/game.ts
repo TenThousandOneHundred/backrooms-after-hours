@@ -301,12 +301,12 @@ export class Game {
       for (const { mesh } of [...this.world.residents, ...this.world.additionalEntities]) mesh.visible = false;
       if (this.room.isMonster) {
         const darkness = new THREE.Color(0x0e1011);
-        this.scene.fog = new THREE.FogExp2(darkness, .20);
+        this.scene.fog = new THREE.Fog(darkness, 2.25, 6);
         this.scene.background = darkness;
-        this.camera.far = 13;
-        this.camera.updateProjectionMatrix();
       }
     }
+    this.camera.far = this.room?.isMonster ? 6.5 : 145;
+    this.camera.updateProjectionMatrix();
     if (this.world.entity) this.entityCenterHeight = new THREE.Box3().setFromObject(this.world.entity).getCenter(this.vector).y;
     this.scene.add(this.camera);
     this.team?.attach(this.scene);

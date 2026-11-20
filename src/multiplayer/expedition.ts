@@ -486,18 +486,23 @@ export class Expedition {
     }
     for (const [i, h] of this.hunters.entries()) {
       const e = h.ai;
-      const score = (p: Explorer) => {
-        const loudness = this.audibleLevel(p);
-        const heard = e.canHearVoice(loudness, p.x / TILE, p.z / TILE, p.hidden);
-        return Math.hypot(e.x - p.x / TILE, e.z - p.z / TILE) +
-          (p.hidden ? 30 : 0) +
-          (clearSight(s, e.x, e.z, p.x / TILE, p.z / TILE) ? 0 : 8) -
-          (heard ? 6 + 32 * shoutStrength(loudness) : 0) -
-          (h.target === p.slot ? 0.8 : 0);
-      };
-      const p = active
-        .filter((p) => p.alive)
-        .reduce<Explorer | undefined>((a, b) => (!a || score(b) < score(a) ? b : a), undefined);
+      let p: Explorer | undefined;
+      let bestRank = -1, bestDistance = Infinity;
+      for (const player of active) {
+        if (!player.alive) continue;
+        const loudness = this.audibleLevel(player);
+        const cues = e.perceive(player.x / TILE, player.z / TILE,
+          { ...player, voice: loudness });
+        const inReach = e.kind === 'bonethief' && !cues.hidden && cues.line && cues.distance < 0.77;
+        const detected = cues.heardVoice || cues.heardSteps || cues.seen || inReach;
+        const rank = detected ? 2 : cues.hidden ? 0 : 1;
+        const distance = cues.distance - (cues.heardVoice ? 6 + 32 * shoutStrength(loudness) : 0) - (h.target === player.slot ? 0.8 : 0);
+        if (rank > bestRank || (rank === bestRank && distance < bestDistance)) {
+          p = player;
+          bestRank = rank;
+          bestDistance = distance;
+        }
+      }
       if (!p) break;
       if (p.slot !== h.target) e.releaseContact();
       h.target = p.slot;

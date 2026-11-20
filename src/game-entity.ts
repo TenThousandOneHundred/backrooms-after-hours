@@ -77,32 +77,41 @@ type Profile = {
   chase?: boolean;
 };
 const profiles: Record<string, Profile> = {
-  bacteria: { sight: 8, hearing: 4.2, speed: 12.85, memory: 4.5 },
-  skinstealer: { sight: 7, hearing: 2.5, speed: 12.8, memory: 4 },
-  smiler: { sight: 13, hearing: 5.6, speed: 13.1, memory: 5 },
-  hound: { sight: 6, hearing: 4.8, speed: 13.05, memory: 3, gaze: 'retreat' },
-  partygoer: { sight: 6, hearing: 3.15, speed: 13, memory: 2.6 },
+  bacteria: { sight: 1.8, hearing: 5.6, speed: 12.85, memory: 4.5 },
+  skinstealer: { sight: 1.8, hearing: 5, speed: 12.8, memory: 4 },
+  smiler: { sight: 2.4, hearing: 6, speed: 13.1, memory: 5 },
+  hound: { sight: 1.5, hearing: 6.8, speed: 13.05, memory: 3, gaze: 'retreat' },
+  partygoer: { sight: 1.7, hearing: 5.2, speed: 13, memory: 2.6 },
   crawler: { sight: 0, hearing: 7.2, speed: 13, memory: 3.5, blind: true },
-  animation: { sight: 8, hearing: 2, speed: 13.2, memory: 4, gaze: 'freeze' },
-  king: { sight: 7, hearing: 3.5, speed: 12.9, memory: 4, gaze: 'retreat' },
+  animation: { sight: 2, hearing: 4.8, speed: 13.2, memory: 4, gaze: 'freeze' },
+  king: { sight: 2, hearing: 5.2, speed: 12.9, memory: 4, gaze: 'retreat' },
   camera: { sight: 7, hearing: 0, speed: 0, memory: 1 },
-  membri: { sight: 7, hearing: 1.8, speed: 13.35, memory: 0.8 },
+  membri: { sight: 1.4, hearing: 4.8, speed: 13.35, memory: 0.8 },
   neighborhoodwatch: { sight: 12, hearing: 0, speed: 13.15, memory: 2.4 },
-  farmer: { sight: 8, hearing: 5, speed: 13.05, memory: 5, chase: true },
+  farmer: { sight: 2.2, hearing: 6, speed: 13.05, memory: 5, chase: true },
   scratcher: { sight: 0, hearing: 7.2, speed: 13, memory: 3.5, blind: true },
   bonethief: { sight: 1, hearing: 0, speed: 0, memory: 0 },
-  partyhost: { sight: 5, hearing: 4.1, speed: 13.1, memory: 3 },
-  leviathan: { sight: 2.3, hearing: 2.3, speed: 12.9, memory: 4 },
-  shark: { sight: 7, hearing: 3.8, speed: 13.05, memory: 4.2 },
+  partyhost: { sight: 1.8, hearing: 5.8, speed: 13.1, memory: 3 },
+  leviathan: { sight: 1.6, hearing: 4.8, speed: 12.9, memory: 4 },
+  shark: { sight: 1.8, hearing: 5.8, speed: 13.05, memory: 4.2 },
   wretch: { sight: 0, hearing: 4.5, speed: 12.95, memory: 3.1, blind: true },
-  moth: { sight: 2.3, hearing: 1.1, speed: 12.75, memory: 2 },
-  watcher: { sight: 9, hearing: 1.4, speed: 13.3, memory: 4, gaze: 'freeze' },
-  kitty: { sight: 8, hearing: 2, speed: 13.25, memory: 3, gaze: 'freeze' },
-  clump: { sight: 4.4, hearing: 4.3, speed: 12.7, memory: 4.5 },
-  faceling: { sight: 6, hearing: 2.2, speed: 12.7, memory: 2.6 },
+  moth: { sight: 1.5, hearing: 3.4, speed: 12.75, memory: 2 },
+  watcher: { sight: 2, hearing: 4.8, speed: 13.3, memory: 4, gaze: 'freeze' },
+  kitty: { sight: 2, hearing: 4.8, speed: 13.25, memory: 3, gaze: 'freeze' },
+  clump: { sight: 1.4, hearing: 5.6, speed: 12.7, memory: 4.5 },
+  faceling: { sight: 1.8, hearing: 5, speed: 12.7, memory: 2.6 },
 };
 export const playerSpeed = { walk: 4, sprint: 12, crouch: 1.75 } as const;
 export const bacteriaChargeSeconds = 0.85;
+
+type PlayerCues = {
+  moving: boolean;
+  sprint: boolean;
+  crouch: boolean;
+  hidden: boolean;
+  light: boolean;
+  voice: number;
+};
 
 export class Encounter {
   x: number;
@@ -153,12 +162,34 @@ export class Encounter {
     this.contact = false;
     this.contactPose = 0;
   }
+  private voiceRadius(volume: number, hidden: boolean) {
+    return volume < 0.1 ? 0 : this.profile.hearing * (0.25 + 1.25 * volume + 6 * shoutStrength(volume)) * (hidden ? 0.42 : 1);
+  }
   canHearVoice(volume: number, px: number, pz: number, hidden: boolean) {
-    if (volume < 0.1 || this.profile.hearing === 0) return false;
-    const radius = this.profile.hearing * (0.25 + 1.25 * volume + 6 * shoutStrength(volume)) * (hidden ? 0.42 : 1);
+    const radius = this.voiceRadius(volume, hidden);
     const distance = Math.hypot(this.x - px, this.z - pz);
-    if (distance > radius) return false;
-    return distance <= radius * 0.52 || clearSight(this.stage, this.x, this.z, px, pz);
+    return radius > 0 && distance <= radius && (distance <= radius * 0.52 || clearSight(this.stage, this.x, this.z, px, pz));
+  }
+  perceive(px: number, pz: number, cues: PlayerCues) {
+    const dx = px - this.x, dz = pz - this.z;
+    const distance = Math.hypot(dx, dz);
+    const sheltered = (this.kind === 'neighborhoodwatch' && tileAt(this.stage, px, pz) === '=') ||
+      (this.kind === 'partyhost' && Math.hypot(px - this.home.x, pz - this.home.z) > 4.7);
+    const hidden = cues.hidden || sheltered;
+    const p = this.profile;
+    const radius = this.voiceRadius(cues.voice, hidden);
+    const line = distance <= Math.max(16, radius) && clearSight(this.stage, this.x, this.z, px, pz);
+    const transmission = line ? 1 : 0.52;
+    const heardVoice = !sheltered && radius > 0 && distance <= radius * transmission;
+    const footfall = cues.crouch ? 0.10 : cues.sprint ? 1.3 : 0.56;
+    const heardSteps = !hidden && cues.moving && distance < p.hearing * footfall * transmission;
+    const camera = this.kind === 'camera', watch = this.kind === 'neighborhoodwatch';
+    const facing = (dx * Math.sin(this.angle) + dz * Math.cos(this.angle)) / Math.max(0.001, distance);
+    const inView = distance < (camera || watch ? 1 : 0.4) || facing > (watch ? 0.48 : camera ? 0.68 : 0.72);
+    const light = cues.light && this.kind === 'leviathan' ? 4.6 : cues.light && this.kind === 'moth' ? 3.8 : 1;
+    const seen = !hidden && line && !p.blind && inView && distance < p.sight * (cues.crouch ? 0.64 : 1) * light &&
+      (!camera || !cues.crouch);
+    return { distance, hidden, line, seen, heardSteps, heardVoice };
   }
   investigate(x: number, z: number) {
     this.lastSeen = [x, z];
@@ -185,7 +216,9 @@ export class Encounter {
     const dx = this.x - px,
       dz = this.z - pz,
       distance = Math.hypot(dx, dz);
-    const line = distance < 16 && clearSight(this.stage, this.x, this.z, px, pz);
+    const cues = this.perceive(px, pz, { moving, sprint: sprinting, crouch: crouched, hidden, light: flashlight, voice });
+    hidden = cues.hidden;
+    const { line } = cues;
     const home = this.home;
     if (this.kind === 'bonethief') {
       const withinReach = grace <= 0 && !hidden && distance < 0.77 && line;
@@ -195,29 +228,16 @@ export class Encounter {
       this.danger = this.reach;
       return;
     }
-    const onPorch = this.kind === 'neighborhoodwatch' && tileAt(this.stage, px, pz) === '=';
-    const beyondPartyWing = this.kind === 'partyhost' && Math.hypot(px - home.x, pz - home.z) > 4.7;
-    const sheltered = onPorch || beyondPartyWing;
     const wasHearingVoice = this.heardVoice;
-    this.heardVoice = !sheltered && grace <= 0 && !distraction && this.canHearVoice(voice, px, pz, hidden);
+    this.heardVoice = grace <= 0 && !distraction && cues.heardVoice;
     if (this.heardVoice && !wasHearingVoice) this.repath = 0;
-    hidden ||= sheltered;
     const looking = visible && line && !hidden;
-    const enemyFacing = (-dx * Math.sin(this.angle) - dz * Math.cos(this.angle)) / Math.max(0.001, distance);
     const sweepingCamera = this.kind === 'camera';
-    const inView = distance < 1.0 || enemyFacing > (sweepingCamera ? 0.68 : this.kind === 'neighborhoodwatch' ? 0.48 : crouched ? 0.52 : -0.32);
     if (sweepingCamera) this.angle += dt * 0.43;
-    const p = this.profile,
-      hearing = (sprinting ? 1.0 : crouched ? 0.1 : 0.56) * p.hearing;
-    const visual =
-      p.sight *
-      (crouched ? 0.64 : 1) *
-      (this.kind === 'leviathan' && flashlight ? 4.6 : this.kind === 'moth' && flashlight ? 3.8 : 1);
-    const detectsPlayer =
-      (line && !p.blind && inView && distance < visual && (!sweepingCamera || !crouched)) ||
-      (moving && distance < hearing);
+    const p = this.profile;
+    const detectsPlayer = cues.seen || cues.heardSteps;
     const sense = grace <= 0 && !hidden && (detectsPlayer || p.chase === true);
-    const exposed = this.kind === 'bacteria' && !distraction && sense && line && inView && distance < 2.2;
+    const exposed = this.kind === 'bacteria' && !distraction && grace <= 0 && cues.seen;
     this.recovery = Math.max(0, this.recovery - dt);
     if (this.lunging && !exposed) this.recovery = 3;
     this.pursuitSeconds = exposed && this.recovery === 0 ? this.pursuitSeconds + dt : 0;
@@ -226,6 +246,7 @@ export class Encounter {
       this.recovery = 3;
     }
     if (sense || this.heardVoice) {
+      if (this.memory === 0) this.repath = 0;
       this.memory = p.memory;
       const nextX = Math.round(px), nextZ = Math.round(pz);
       if (!this.path.length && (this.lastSeen[0] !== nextX || this.lastSeen[1] !== nextZ)) this.repath = 0;
@@ -266,10 +287,11 @@ export class Encounter {
         const post: Cell = [home.x, home.z];
         this.path = Math.round(this.x) === home.x && Math.round(this.z) === home.z
           ? [post] : search(this.stage, this.x, this.z, post);
-      } else if (this.kind === 'bacteria' && !hidden && this.stalkClock <= 0) {
+      } else if (this.kind === 'bacteria' && this.stalkClock <= 0) {
+        const [lastX, lastZ] = this.lastSeen;
         const unseen = this.tiles.filter(([x, z]) => {
-          const d = Math.hypot(px - x, pz - z);
-          return d >= 3 && d <= 5.5 && !clearSight(this.stage, px, pz, x, z);
+          const d = Math.hypot(lastX - x, lastZ - z);
+          return d >= 3 && d <= 5.5 && !clearSight(this.stage, lastX, lastZ, x, z);
         });
         const spot = unseen[Math.floor(Math.random() * unseen.length)];
         if (spot) this.path = search(this.stage, this.x, this.z, spot);
@@ -278,8 +300,7 @@ export class Encounter {
         const near = this.tiles.filter(
           ([x, z]) =>
             Math.hypot(this.x - x, this.z - z) > 2 &&
-            Math.hypot(this.x - x, this.z - z) < 8 &&
-            Math.hypot(px - x, pz - z) > 1.9,
+            Math.hypot(this.x - x, this.z - z) < 8,
         );
         const spot = near[Math.floor(Math.random() * near.length)];
         if (spot) this.path = search(this.stage, this.x, this.z, spot);
