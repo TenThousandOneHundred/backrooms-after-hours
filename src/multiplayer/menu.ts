@@ -28,7 +28,7 @@ export class RoomMenu {
       'coop-menu',
       'Co-op expedition',
       'Multiplayer',
-      '<p class="panel-text">Play the full campaign with up to eight explorers. Voice chat gets quieter as friends move away.</p>' +
+      '<p class="panel-text">Play the campaign together, or hunt your friends as the Bacteria. Rooms hold up to eight players.</p>' +
         button('host-room', 'Create room', 'play', true) +
         '<form id="join-form" class="join-room"><label for="join-code">Join with a room code</label>' +
         '<div><input class="code-input" id="join-code" maxlength="6" autocomplete="off" spellcheck="false" required pattern="[A-Za-z2-9]{6}" placeholder="ABC234">' +
@@ -76,7 +76,7 @@ export class RoomMenu {
       }
       get('coop-count').textContent = state.players.length + ' / ' + capacity;
       const radio = get('radio-state'), receiving = r.radio.receiving;
-      const label = r.radio.transmitting ? 'Radio · Transmitting' : receiving.length ?
+      const label = r.isMonster ? 'E · Grab' : r.radio.transmitting ? 'Radio · Transmitting' : receiving.length ?
         'Radio · Explorer ' + receiving.join(' + ') : 'Hold V · Radio';
       if (radio.textContent !== label) radio.textContent = label;
       get('coop-status').textContent = stages[state.journal.stage]?.name ?? '';
@@ -90,13 +90,16 @@ export class RoomMenu {
       this.rendering = false;
       get('coop-hud').hidden = true;
       const waiting = state.phase === 'waiting';
-      const text = waiting
-        ? 'Any explorer can lead the team through an exit. Press M for proximity chat or hold V to radio the whole team. Monsters can hear both ends.'
+      const result = state.hunt?.result;
+      const text = result === 'escaped' ? 'An explorer opened the service exit.' :
+        result === 'caught' ? 'The Bacteria took the explorers’ last life.' :
+        result === 'abandoned' ? 'A side left the hunt. Choose roles for another round.' : waiting
+        ? 'Press M to speak nearby. Explorers can hold V to use their radios.'
         : 'Everyone is out of lives. Retry this level with your shared objectives intact.';
       this.ui.panel(
         'coop-room',
-        'Campaign · Co-op',
-        waiting ? 'Room lobby' : 'Team lost',
+        state.hunt && !waiting ? 'Monster Hunt · Level 0' : 'Multiplayer',
+        waiting ? 'Room lobby' : result === 'escaped' ? 'Explorers escaped' : result === 'caught' ? 'Monster wins' : result ? 'Hunt ended' : 'Team lost',
         '<p class="panel-text">' +
           text +
           '</p><div class="room-ticket"><label>Room code<strong id="room-code"></strong></label>' +
@@ -108,9 +111,13 @@ export class RoomMenu {
             : 'The host starts the expedition.') +
           '</p>' +
           '<div class="panel-buttons">' +
+          (waiting && r.hosting ?
+            '<label class="difficulty-picker">Game mode <select id="room-mode"><option value="coop">Campaign co-op</option><option value="hunt">Monster Hunt</option></select></label>' +
+            '<label class="difficulty-picker" id="monster-choice" hidden>Play as monster <select id="monster-seat"></select></label>' : '') +
+          (waiting ? '<p id="mode-brief" class="panel-text"></p>' : '') +
           (waiting && r.hosting ? difficultyPicker('room-difficulty') : '<p class="panel-text" id="room-difficulty-summary"></p>') +
           (r.hosting
-            ? this.ui.button('start-room', waiting ? 'Start expedition' : 'Retry level', 'play', true)
+            ? this.ui.button('start-room', waiting ? 'Start expedition' : result ? 'Back to lobby' : 'Retry level', 'play', true)
             : '') +
           (r.hosting && waiting && loadProgress(roomSave)
             ? this.ui.button('resume-room', 'Continue saved campaign')
@@ -129,9 +136,36 @@ export class RoomMenu {
       };
       const picker = get('room-difficulty') as HTMLSelectElement | null;
       if (picker) picker.onchange = () => r.setDifficulty(readDifficulty(picker.value));
-      if (r.hosting) get('start-room').onclick = () => r.start();
+      if (r.hosting) {
+        get('start-room').onclick = () => state.phase === 'finished' ? r.returnToLobby() : r.start();
+        if (waiting) {
+          const mode = get('room-mode') as HTMLSelectElement;
+          mode.onchange = () => r.configureHunt(mode.value === 'hunt' ? r.slot : 0);
+          const seat = get('monster-seat') as HTMLSelectElement;
+          seat.onchange = () => r.configureHunt(Number(seat.value));
+        }
+      }
       if (get('resume-room')) get('resume-room').onclick = () => r.start(true);
       get('leave-room').onclick = () => this.leave();
+    }
+    if (state.phase === 'waiting') {
+      const hunt = state.hunt;
+      get('mode-brief').textContent = hunt
+        ? 'Monster Hunt · ' + (hunt.monster === r.slot ? 'You are the Bacteria.' : 'Explorer ' + hunt.monster + ' is the Bacteria.') +
+          ' The monster tracks footsteps and nearby voices and grabs with E. Explorers must unlock the Level 0 service exit.' +
+          (state.players.length < 2 ? ' Waiting for a second player.' : '')
+        : 'Campaign co-op · Everyone plays an explorer.';
+      if (r.hosting) {
+        (get('room-mode') as HTMLSelectElement).value = hunt ? 'hunt' : 'coop';
+        const seat = get('monster-seat') as HTMLSelectElement;
+        const options = state.players.map(p => '<option value="' + p.slot + '">Explorer ' + p.slot + (p.slot === r.slot ? ' (you)' : '') + '</option>').join('');
+        if (seat.innerHTML !== options) seat.innerHTML = options;
+        get('monster-choice').hidden = !hunt;
+        if (hunt) seat.value = String(hunt.monster);
+        (get('start-room') as HTMLButtonElement).disabled = !!hunt && state.players.length < 2;
+        const resume = get('resume-room');
+        if (resume) resume.hidden = !!hunt;
+      }
     }
     const difficulty = readDifficulty(state.journal.difficulty);
     const summary = get('room-difficulty-summary');

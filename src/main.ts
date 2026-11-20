@@ -381,7 +381,7 @@ function pauseMenu() {
   wire('title', titleScreen);
 }
 function showInventory() {
-  if (!game) return;
+  if (!game || voiceRoom?.isMonster) return;
   game.pause();
   showPanel(
     'inventory',
@@ -409,9 +409,15 @@ const callbacks: GameCallbacks = {
   dread: (level) => horror.dread(level),
   scare: (encounter) => horror.scare(encounter),
   message: notify,
+  bearing: angle => {
+    const arrow = el('hunt-bearing');
+    arrow.hidden = angle === undefined;
+    if (angle !== undefined) arrow.style.transform = 'translate(-50%, -50%) rotate(' + angle + 'rad)';
+  },
   hud: (h) => {
+    el('hud-bag').hidden = !!voiceRoom?.isMonster;
     refreshMic(h.voice, h.heardVoice);
-    el('hud-lives').textContent = difficultyName(h.difficulty) + ' · ' + lifeCount(h.lives);
+    el('hud-lives').textContent = voiceRoom?.isMonster ? 'The Bacteria' : difficultyName(h.difficulty) + ' · ' + lifeCount(h.lives);
     el('hud-label').textContent = h.label;
     el('hud-name').textContent = (activeMod?.stages ?? campaign?.stages)?.[h.stage]?.name ?? h.stage;
     el('hud-objective').textContent = h.objective;
@@ -440,7 +446,7 @@ const callbacks: GameCallbacks = {
     }
     if(screen==='spectating'){
       mode='spectating';hidePanel();hud.hidden=false;
-      el('hud-objective').textContent=(detail??'You were caught.')+ ((game?.livesRemaining ?? 0) > 0 ? ' Returning to the level entrance…' : ' Out of lives. You rejoin when a teammate reaches the next level.');
+      el('hud-objective').textContent=(detail??'You were caught.')+ ((game?.livesRemaining ?? 0) > 0 ? ' Returning to the level entrance…' : voiceRoom?.state?.hunt ? ' Out of lives. Watching the remaining explorers.' : ' Out of lives. You rejoin when a teammate reaches the next level.');
       el('interact').hidden=true;
       return;
     }
@@ -711,7 +717,7 @@ document.addEventListener('fullscreenchange', updateFullscreen);
 document.addEventListener(
   'keydown',
   (event) => {
-    if (voiceRoom && mode === 'playing' && event.code === 'KeyV' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    if (voiceRoom && !voiceRoom.isMonster && mode === 'playing' && event.code === 'KeyV' && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();
       if (!event.repeat && !radioHeld) {
         radioHeld = true;

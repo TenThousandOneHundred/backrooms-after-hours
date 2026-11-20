@@ -2,7 +2,8 @@ import type Peer from 'peerjs';
 import type { MediaConnection } from 'peerjs';
 import { stages } from '../campaign.ts';
 import type { Snapshot } from './expedition';
-import { voiceMix } from './voice-range.ts';
+import { monsterVoiceRange } from './hunt.ts';
+import { voiceMix, voiceRange } from './voice-range.ts';
 
 type Mix = ReturnType<typeof voiceMix>;
 type Channel = {
@@ -20,6 +21,7 @@ export class ProximityVoice {
   private outgoing = new Map<string, Channel>();
   private nextDial = new Map<string, number>();
   private nearby = new Map<string, Mix>();
+  private listenersInRange = new Set<string>();
   private stream?: MediaStream;
   private epoch = -1;
   private volume = 1;
@@ -71,13 +73,18 @@ export class ProximityVoice {
       this.epoch = state.epoch;
     }
     this.nearby.clear();
+    this.listenersInRange.clear();
     const self = state.players.find((p) => p.slot === slot);
     if (listening && state.phase === 'playing' && !state.journal.pending && self?.alive) {
       for (const { id, slot: other } of members) {
         if (other === slot) continue;
         const speaker = state.players.find((p) => p.slot === other);
         if (!speaker?.alive) continue;
-        const mix = voiceMix(stages[state.journal.stage], self, speaker);
+        const stage = stages[state.journal.stage];
+        const mix = voiceMix(stage, self, speaker, slot === state.hunt?.monster ? monsterVoiceRange : voiceRange);
+        const reverse = state.hunt && (slot === state.hunt.monster || other === state.hunt.monster)
+          ? voiceMix(stage, speaker, self, other === state.hunt.monster ? monsterVoiceRange : voiceRange) : mix;
+        if (reverse.gain > 0) this.listenersInRange.add(id);
         if (mix.gain > 0) this.nearby.set(id, mix);
       }
     }
@@ -86,16 +93,16 @@ export class ProximityVoice {
       if (mix) channel.apply?.(mix, this.volume);
       else this.drop(this.incoming, channel);
     }
-    for (const [id, channel] of this.outgoing) if (!this.nearby.has(id)) this.drop(this.outgoing, channel);
+    for (const [id, channel] of this.outgoing) if (!this.listenersInRange.has(id)) this.drop(this.outgoing, channel);
     const now = performance.now();
-    for (const [id, next] of this.nextDial) if (!this.nearby.has(id) && next <= now) this.nextDial.delete(id);
+    for (const [id, next] of this.nextDial) if (!this.listenersInRange.has(id) && next <= now) this.nextDial.delete(id);
     this.dialNearby();
   }
 
   private dialNearby() {
     if (!this.stream?.active || this.peer.disconnected || this.peer.destroyed) return;
     const now = performance.now();
-    for (const id of this.nearby.keys()) {
+    for (const id of this.listenersInRange) {
       if (this.outgoing.has(id) || (this.nextDial.get(id) ?? 0) > now) continue;
       this.nextDial.set(id, now + 2200);
       const call = this.peer.call(id, this.stream, { metadata: { purpose: 'proximity', epoch: this.epoch } });

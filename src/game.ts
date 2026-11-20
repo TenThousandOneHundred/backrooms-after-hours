@@ -16,6 +16,7 @@ import { FieldChallenge } from './campaign-challenges';
 import type { ModPack } from './mods';
 import { EndingCinema } from './ending-cinema';
 import './campaign-challenges.css';
+import { soundBearing } from './multiplayer/hunt';
 import { livesPerLevel, lifeCount, readDifficulty, readLives, type Difficulty } from './difficulty';
 import { freshProgress, loadProgress, storeProgress, type Progress } from './game-state';
 
@@ -40,6 +41,7 @@ export type GameHUD = {
 };
 type Screen = 'playing' | 'pause' | 'death' | 'ending' | 'code' | 'spectating';
 export type GameCallbacks = {
+  bearing?: (angle?: number) => void;
   hud: (h: GameHUD) => void;
   message: (s: string) => void;
   screen: (s: Screen, detail?: string) => void;
@@ -166,6 +168,8 @@ export class Game {
   private epoch = -1;
   private revision = -1;
   private poseTime = 0;
+  private nextHeardStep = 0;
+  private lastGrab = -1;
   private frameTime = 0;
   private moving = false;
   private sprinting = false;
@@ -289,6 +293,16 @@ export class Game {
     this.scene = new THREE.Scene();
     this.stage = stage;
     this.world = buildWorld(this.scene, stage, this.mod ? undefined : campaignAtmosphere(stage.id));
+    if (this.room?.state?.hunt) {
+      for (const { mesh } of [...this.world.residents, ...this.world.additionalEntities]) mesh.visible = false;
+      if (this.room.isMonster) {
+        const darkness = new THREE.Color(0x0e1011);
+        this.scene.fog = new THREE.FogExp2(darkness, .20);
+        this.scene.background = darkness;
+        this.camera.far = 13;
+        this.camera.updateProjectionMatrix();
+      }
+    }
     if (this.world.entity) this.entityCenterHeight = new THREE.Box3().setFromObject(this.world.entity).getCenter(this.vector).y;
     this.scene.add(this.camera);
     this.team?.attach(this.scene);
@@ -556,6 +570,11 @@ export class Game {
     return ENDINGS[flag] ?? labelOf(flag);
   }
   private interact() {
+    if (this.room?.isMonster) {
+      this.sendPose();
+      this.room.command(this.epoch, { type: 'grab' });
+      return;
+    }
     if (this.challenge.object) {
       if (this.challenge.object.challenge?.kind === 'entity-photo') {
         this.cameraPose(0, false);
@@ -743,6 +762,7 @@ export class Game {
     this.persist();
   }
   private consume(type: 'almond' | 'bar') {
+    if (this.room?.isMonster) return;
     const entry = Object.entries(this.state.inventory).find(([key, name]) =>
       type === 'almond'
         ? /almond/i.test(key + ' ' + name)
@@ -777,6 +797,7 @@ export class Game {
     this.refreshHUD();
   }
   private findTarget(): GameObject | undefined {
+    if (this.room?.isMonster) return;
     this.camera.getWorldDirection(this.direction);
     let best: GameObject | undefined,
       score = -Infinity;
@@ -822,7 +843,7 @@ export class Game {
       difficulty: this.state.difficulty,
       stage: this.stage.id,
       label: this.stage.label,
-      objective: this.residentHint || this.stage.objective || this.stage.description,
+      objective: this.room?.isMonster ? 'Follow the sound arrow. Face an explorer at arm’s reach and press E to grab.' : this.residentHint || this.stage.objective || this.stage.description,
       prompt,
       stamina: Math.round(this.state.stamina),
       sanity: Math.round(this.state.sanity),
@@ -879,6 +900,7 @@ export class Game {
     return !this.mod && (this.stage.id === 'dark' || /lights out/i.test(this.stage.name));
   }
   private flashlight() {
+    if (this.room?.isMonster) return;
     if (this.isScanner()) {
       if (this.has('lidar')) this.lidar();
       else this.callbacks.message('Find the handheld LiDAR to scan this area.');
@@ -982,7 +1004,8 @@ export class Game {
       beforeZ = this.z;
     if (moving) {
       const norm = Math.hypot(f, s);
-      const speed = crouched ? playerSpeed.crouch : sprint ? playerSpeed.sprint : playerSpeed.walk;
+      const pace = crouched ? playerSpeed.crouch : sprint ? playerSpeed.sprint : playerSpeed.walk;
+      const speed = this.room?.isMonster ? pace * 1.12 : pace;
       const dx = ((Math.sin(this.yaw) * f + Math.cos(this.yaw) * s) * speed * dt) / norm;
       const dz = ((-Math.cos(this.yaw) * f + Math.sin(this.yaw) * s) * speed * dt) / norm;
       if (this.canStand(this.x + dx, this.z)) this.x += dx;
@@ -1027,7 +1050,7 @@ export class Game {
     this.cameraPose(dt, distance > 0.001);
     this.updateChallenge(dt);
     if (this.phone) this.updateExchange();
-    if(this.room && this.encounter)this.closeEncounter(!this.world?.entity?.visible);
+    if(this.room && !this.room.state?.hunt && this.encounter)this.closeEncounter(!this.world?.entity?.visible);
     if (!this.room && this.encounter) {
       const day = this.stage.id === 'village' && (this.time % 80 < 32 || this.time % 80 >= 69);
       if (this.stage.id === 'lobby' && this.lobbyWarning < 0) {
@@ -1082,6 +1105,7 @@ export class Game {
     const infectedWater = tile === '!' && this.stage.theme === 'pool';
     const sanityDelta = this.hidden ? 0.75 : infectedWater ? -28 : tile === '!' ? -11 : danger > 0.56 ? -2.2 * danger : -0.016;
     this.state.sanity = clamp(this.state.sanity + sanityDelta * dt, 0, 100);
+    if (this.room?.isMonster) this.state.sanity = 100;
     if (this.state.sanity === 0) {
       this.die(infectedWater ? 'The Hydrolitis Plague took hold. Stay in the pale water.' : 'You lost your bearings in the dark.');
       return;
@@ -1429,7 +1453,7 @@ export class Game {
         this.moving = this.sprinting = false;
         this.cameraPose(0, false);
         this.change('playing');
-        this.callbacks.message(this.stage.description);
+        this.callbacks.message(snap.hunt ? (room.isMonster ? 'You are the Bacteria. Listen for your prey.' : 'Monster Hunt · Open the service exit before the Bacteria catches everyone.') : this.stage.description);
       } else {
         for (const obj of this.stage.objects) {
           if (!this.done(obj) || before.includes(this.stage.id + '/' + obj.id)) continue;
@@ -1552,8 +1576,31 @@ export class Game {
             ? 'Bellwether listening • hold still or crouch-walk'
             : 'Two knocks • get low before it listens';
     });
-    const watch = this.mode === 'spectating' ? snap.players.find((p) => p.alive) : undefined;
-    this.team?.update(snap.players, room.slot, watch?.slot ?? 0, dt, (x, z) =>
+    if (snap.hunt) {
+      const predator = snap.players.find(p => p.slot === snap.hunt!.monster);
+      const mesh = this.world?.entity;
+      if (predator && mesh) {
+        mesh.visible = !room.isMonster;
+        mesh.position.set(predator.x, terrainHeight(this.stage, predator.x, predator.z) + predator.y, predator.z);
+        mesh.rotation.y = Math.PI - predator.yaw;
+        mesh.userData.pose?.(snap.time, dt, predator.moving ? (predator.sprint ? 12 : 4) : 0, false, snap.time < snap.hunt.strikeUntil);
+      }
+      if (room.isMonster) {
+        if (snap.hunt.strikeUntil > this.lastGrab) {
+          this.lastGrab = snap.hunt.strikeUntil;
+          this.sound.scrape(0);
+        }
+        const cue = this.mode === 'playing' ? soundBearing({ x: this.x, z: this.z, yaw: this.yaw }, snap.players, room.slot) : undefined;
+        this.callbacks.bearing?.(cue?.angle);
+        if (cue?.footsteps && snap.time >= this.nextHeardStep) {
+          this.sound.heardFootstep(Math.sin(cue.angle), cue.strength);
+          this.nextHeardStep = snap.time + .38;
+        }
+      }
+    }
+    const explorers = snap.hunt ? snap.players.filter(p => p.slot !== snap.hunt!.monster) : snap.players;
+    const watch = this.mode === 'spectating' ? explorers.find((p) => p.alive) : undefined;
+    this.team?.update(explorers, room.slot, watch?.slot ?? 0, dt, (x, z) =>
       terrainHeight(this.stage, x, z),
     );
     if (watch) {
@@ -1601,6 +1648,7 @@ export class Game {
     if (this.disposed) return;
     if (this.stage) this.persist();
     this.disposed = true;
+    this.callbacks.bearing?.();
     cancelAnimationFrame(this.frameId);
     this.listeners.abort();
     this.resizeObserver?.disconnect();

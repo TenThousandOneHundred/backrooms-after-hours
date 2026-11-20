@@ -249,7 +249,7 @@ export class Room {
       const state = value.state as Snapshot;
       if (
         !state ||
-        !['waiting', 'playing', 'lost'].includes(state.phase) ||
+        !['waiting', 'playing', 'lost', 'finished'].includes(state.phase) ||
         !Array.isArray(state.players) ||
         state.players.length > capacity ||
         !Array.isArray(state.monsters) ||
@@ -287,6 +287,7 @@ export class Room {
       game.phase !== 'playing' ||
       game.journal.pending ||
       game.epoch !== epoch ||
+      sender === game.hunt?.monster ||
       !game.players.get(sender)?.alive
     )
       return;
@@ -298,7 +299,7 @@ export class Room {
     this.nextRadioPacket.set(sender, Math.max(next, now) + (1000 * radioSamples) / radioRate);
     const loudness = voiceVolume(pcm);
     game.soundRadio(sender, loudness);
-    if (sender !== this.slot && this.listening && game.players.get(this.slot)?.alive) {
+    if (sender !== this.slot && !this.isMonster && this.listening && game.players.get(this.slot)?.alive) {
       this.radio.play(sender, pcm, this.volume);
       game.soundRadio(this.slot, loudness);
     }
@@ -306,7 +307,7 @@ export class Room {
       const slot = this.guests.get(conn);
       if (
         !slot ||
-        slot === sender ||
+        slot === sender || slot === game.hunt?.monster ||
         !conn.open ||
         !game.players.get(slot)?.alive ||
         conn.dataChannel.bufferedAmount >= 16384
@@ -363,7 +364,7 @@ export class Room {
     const state = this.hostGame.snapshot();
     const phaseChanged = state.phase !== this.state?.phase;
     const { journal, ...frame } = state;
-    if (state.phase !== 'waiting' && this.savedRevision !== state.revision) {
+    if (!state.hunt && state.phase !== 'waiting' && this.savedRevision !== state.revision) {
       this.savedRevision = state.revision;
       void storeProgress(journal, roomSave);
     }
@@ -377,6 +378,15 @@ export class Room {
     }
     this.accept(state);
   }
+  get isMonster() { return this.slot > 0 && this.state?.hunt?.monster === this.slot; }
+  configureHunt(monster: number) {
+    this.hostGame?.configureHunt(monster);
+    this.publish();
+  }
+  returnToLobby() {
+    this.hostGame?.returnToLobby();
+    this.publish();
+  }
   setDifficulty(difficulty: Difficulty) {
     this.hostGame?.setDifficulty(difficulty);
     this.publish();
@@ -386,6 +396,7 @@ export class Room {
     clearInterval(this.timer);
     this.hostGame.start(resume ? loadProgress(roomSave) : null);
     this.publish();
+    if (this.hostGame.snapshot().phase !== 'playing') return;
     this.timer = window.setInterval(() => {
       this.hostGame!.step(0.05);
       this.publish();
@@ -407,7 +418,7 @@ export class Room {
   }
   close() {
     if (this.closed) return;
-    if (this.hostGame && this.hostGame.phase !== 'waiting' && this.savedRevision !== this.hostGame.revision)
+    if (this.hostGame && !this.hostGame.hunt && this.hostGame.phase !== 'waiting' && this.savedRevision !== this.hostGame.revision)
       void storeProgress(this.hostGame.journal, roomSave);
     this.closed = true;
     clearInterval(this.timer);

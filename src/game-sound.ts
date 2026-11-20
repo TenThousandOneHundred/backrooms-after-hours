@@ -171,6 +171,11 @@ export class Soundscape {
       this.recordingActive = active;
     }
   }
+  heardFootstep(pan: number, strength: number) {
+    this.sound(118, 48, .16, .06 + strength * .24, pan, 'triangle');
+    this.sound(640, 210, .10, .02 + strength * .08, pan, 'noise');
+  }
+
   step(fast: boolean, crouch: boolean, wet: boolean, highCeiling = false) {
     this.stepSide *= -1;
     const level = crouch ? 0.055 : fast ? 0.19 : 0.13;

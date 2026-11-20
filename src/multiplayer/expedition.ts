@@ -1,3 +1,4 @@
+import type { Hunt, HuntResult } from './hunt.ts';
 import { livesPerLevel, readLives, type Difficulty } from '../difficulty.ts';
 import { START, stages } from '../campaign.ts';
 import { recordObjective } from '../campaign-progress.ts';
@@ -37,6 +38,7 @@ export type Command =
   | { type: 'carry'; id: string }
   | { type: 'use'; id: string; code?: string }
   | { type: 'down'; cause: string; spawnId?: number }
+  | { type: 'grab' }
   | { type: 'continue' }
   | { type: 'consume'; key: string };
 export type Monster = {
@@ -56,7 +58,8 @@ export type Monster = {
 };
 type ResidentFrame = { phase: ResidentBehavior['phase']; time: number; exposure: number; target: number };
 export type Snapshot = {
-  phase: 'waiting' | 'playing' | 'lost';
+  phase: 'waiting' | 'playing' | 'lost' | 'finished';
+  hunt?: Hunt;
   epoch: number;
   revision: number;
   time: number;
@@ -111,6 +114,48 @@ export class Expedition {
   revision = 0;
   time = 0;
   phase: Snapshot['phase'] = 'waiting';
+  hunt?: Hunt;
+
+  configureHunt(monster: number) {
+    if (this.phase !== 'waiting' || (monster !== 0 && !this.players.has(monster))) return;
+    this.hunt = monster ? { monster, strikeUntil: -1 } : undefined;
+    this.revision++;
+  }
+
+  returnToLobby() {
+    if (this.phase !== 'finished' || !this.hunt) return;
+    this.phase = 'waiting';
+    this.journal = freshProgress(START, this.journal.difficulty);
+    this.configureHunt(this.players.has(this.hunt.monster) ? this.hunt.monster : 1);
+    for (const slot of this.players.keys()) this.spawnPlayer(slot);
+  }
+
+  private finishHunt(result: HuntResult) {
+    if (!this.hunt || this.phase !== 'playing') return;
+    this.phase = 'finished';
+    this.hunt.result = result;
+    this.revision++;
+  }
+
+  private grab(monster: Explorer) {
+    const hunt = this.hunt!;
+    if (this.time < hunt.strikeUntil + .65 || !this.fresh.has(monster.slot)) return;
+    hunt.strikeUntil = this.time + .4;
+    const stage = stages[this.journal.stage];
+    let nearest = 2.25;
+    let caught: Explorer | undefined;
+    for (const p of this.players.values()) {
+      if (p === monster || !p.alive || this.time < (this.immunity.get(p.slot) ?? 0)) continue;
+      const dx = p.x - monster.x, dz = p.z - monster.z;
+      const distance = Math.hypot(dx, dz, p.y - monster.y);
+      if (distance > nearest || dx * Math.sin(monster.yaw) - dz * Math.cos(monster.yaw) < distance * .25 ||
+          !clearSight(stage, monster.x / TILE, monster.z / TILE, p.x / TILE, p.z / TILE)) continue;
+      nearest = distance;
+      caught = p;
+    }
+    if (caught) this.loseLife(caught, 'Caught by bacteria.');
+  }
+
   private identities = new Map<number, string>();
   private respawns = new Map<number, number>();
 
@@ -127,7 +172,13 @@ export class Expedition {
   private spawnPlayer(slot: number) {
     const id = this.identities.get(slot)!;
     const lives = readLives(this.journal.teamLives?.[id], this.journal.difficulty);
-    this.players.set(slot, spawn(slot, this.journal.stage, lives));
+    const player = spawn(slot, this.journal.stage, lives);
+    if (slot === this.hunt?.monster) {
+      const lair = stages[this.journal.stage].threat!;
+      player.x = lair.x * TILE;
+      player.z = lair.z * TILE;
+    }
+    this.players.set(slot, player);
     this.immunity.set(slot, this.time + 3);
   }
 
@@ -150,15 +201,21 @@ export class Expedition {
     this.radioNoise.delete(slot);
     this.immunity.delete(slot);
     for (const r of this.residents) r.exposure.delete(slot);
+    if (this.hunt?.monster === slot) {
+      if (this.phase === 'waiting') this.configureHunt(1);
+      else this.finishHunt('abandoned');
+    } else if (this.hunt && this.players.size < 2) this.finishHunt('abandoned');
     this.checkSurvivors();
   }
   private checkSurvivors() {
-    if (this.phase === 'playing' && this.players.size && ![...this.players.values()].some((p) => p.lives > 0))
-      this.phase = 'lost';
+    if (this.phase !== 'playing' || !this.players.size) return;
+    if ([...this.players.values()].some(p => p.slot !== this.hunt?.monster && p.lives > 0)) return;
+    if (this.hunt) this.finishHunt('caught');
+    else this.phase = 'lost';
   }
   start(saved?: Progress | null) {
-    if (this.phase === 'playing') return;
-    const resume = this.phase === 'waiting' && saved && Object.hasOwn(stages, saved.stage);
+    if (this.phase === 'playing' || this.phase === 'finished' || (this.hunt && this.players.size < 2)) return;
+    const resume = this.phase === 'waiting' && !this.hunt && saved && Object.hasOwn(stages, saved.stage);
     if (resume) this.journal = saved;
     this.enter(this.journal.stage, !!resume);
     this.checkSurvivors();
@@ -255,6 +312,10 @@ export class Expedition {
       this.fresh.set(slot, this.time);
       return;
     }
+    if (slot === this.hunt?.monster) {
+      if (action.type === 'grab') this.grab(p);
+      return;
+    }
     if (action.type === 'down') {
       if ((action.spawnId ?? 0) === p.spawnId)
         this.loseLife(p, typeof action.cause === 'string' ? action.cause.slice(0, 120) : 'Lost in the dark.');
@@ -323,7 +384,8 @@ export class Expedition {
       return;
     }
     if (obj.target) {
-      this.enter(obj.target);
+      if (this.hunt) this.finishHunt('escaped');
+      else this.enter(obj.target);
       return;
     }
     if (obj.gives?.includes('archive-alarm')) this.alarm = this.time + 18;
@@ -370,6 +432,7 @@ export class Expedition {
         p.sprint = false;
         p.moving = false;
       }
+    if (this.hunt) return;
     const grace = Math.max(0, (['run', 'hotelchase'].includes(s.id) ? 2.75 : 8) - this.time);
     const active = alive.filter(
       (p) => this.fresh.has(p.slot) && (this.immunity.get(p.slot) ?? 0) <= this.time,
@@ -496,18 +559,19 @@ export class Expedition {
   snapshot(): Snapshot {
     return {
       phase: this.phase,
+      hunt: this.hunt ? { ...this.hunt } : undefined,
       epoch: this.epoch,
       revision: this.revision,
       time: this.time,
       journal: this.journal,
-      residents: this.residents.map(({ behavior: b, target }) => ({
+      residents: this.hunt ? [] : this.residents.map(({ behavior: b, target }) => ({
         phase: b.phase,
         time: b.time,
         exposure: b.exposure,
         target,
       })),
       players: [...this.players.values()].map((p) => ({ ...p })),
-      monsters: this.hunters.map(({ ai: e, speed, target, visible }) => ({
+      monsters: this.hunt ? [] : this.hunters.map(({ ai: e, speed, target, visible }) => ({
         x: e.x * TILE,
         z: e.z * TILE,
         yaw: e.angle,
