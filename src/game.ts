@@ -1,5 +1,6 @@
 import { campaignAtmosphere } from './level-atmosphere';
 import * as THREE from 'three';
+import { createRoomRenderer } from './room-camera';
 export { loadLevelCreatures } from './level-creatures';
 export { loadResidents } from './residents';
 export { loadBacteria } from './bacteria';
@@ -178,7 +179,7 @@ export class Game {
     private room?: Room,
   ) {
     if(room) this.team = new Explorers();
-    this.renderer = new THREE.WebGLRenderer({
+    this.renderer = createRoomRenderer({
       canvas,
       antialias: true,
       alpha: false,

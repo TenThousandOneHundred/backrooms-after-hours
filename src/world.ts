@@ -1,4 +1,6 @@
 import { buildOfficeDecay } from './office-decay';
+import { LooseWallpaper } from './loose-wallpaper';
+import { waterReflection } from './water-reflection';
 import { roomSurfaceScans } from './scanned-surfaces';
 import { roomLightDecals } from './room-light-decals';
 import { stageProjection } from './atmosphere-light';
@@ -38,6 +40,7 @@ function familyLight(stage: Stage) {
 const newSurface = (): SurfaceData => ({ p: [], n: [], u: [], c: [], i: [] });
 
 export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmosphere) {
+  scene.userData.isCampaignRoom = true;
   const projection = profile && stageProjection(profile);
   const style = styleFor(stage.theme, stage.id),
     kit = new ModelKit(),
@@ -51,6 +54,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     textures: THREE.Texture[] = [];
   const scans = roomSurfaceScans();
   const officeCells: [number, number][] = [];
+  let reflection: ReturnType<typeof waterReflection> | undefined;
   const decals = roomLightDecals(profile?.lamp ?? style.lamp);
   geometries.push(decals.plane);
   materials.push(decals.glowMaterial, decals.shadowMaterial);
@@ -103,6 +107,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     (best, row, i, rows) => (row.replace(/#/g, '').length > rows[best].replace(/#/g, '').length ? i : best),
     0,
   );
+  const loosePaper = stage.id !== 'lobby' && (style.wall === 'paper' || style.wall === 'hotel') ? new LooseWallpaper() : undefined;
   const walls = newSurface(),
     floors = newSurface(),
     ceilings = newSurface(),
@@ -283,6 +288,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
           shininess: gloss ? 38 : 9, specular: gloss ? '#474c46' : '#171815' })
       : new THREE.MeshLambertMaterial(surface);
     if (kind && mat instanceof THREE.MeshPhongMaterial) scans.apply(mat, kind, s === floors, col);
+    const m = new THREE.Mesh(geo, mat);
+    if (kind === 'water') reflection = waterReflection(m);
     if (kind === 'water')
       mat.onBeforeCompile = (shader) => {
         shader.uniforms.uWaterTime = clock;
@@ -307,16 +314,17 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         vec2 cell=abs(fract(reflected/6.4+.5)-.5)*6.4;
         float shine=(1.-smoothstep(.25,.46,cell.x))*(1.-smoothstep(.5,.85,cell.y));
         float fresnel=pow(1.-clamp(-eye.y,0.,1.),2.);
-        diffuseColor.rgb+=shine*(.028+.27*fresnel)*vec3(.85,1.,.95)+.052*fresnel*vec3(.65,1.,.96);
+        diffuseColor.rgb+=(1.-uWaterLive)*shine*(.028+.27*fresnel)*vec3(.85,1.,.95)+.052*fresnel*vec3(.65,1.,.96);
       `,
           );
+        reflection!.prepare(shader);
       };
-    const m = new THREE.Mesh(geo, mat);
     m.receiveShadow = true;
     m.castShadow = s === walls;
     if (m.castShadow) mat.shadowSide = THREE.DoubleSide;
     if (s === floors)
-      m.onBeforeRender = (_r, _s, camera) => {
+      m.onBeforeRender = (renderer, scene, camera, _geo, _mat, group) => {
+        reflection?.capture(renderer, scene, camera, group);
         camera.getWorldPosition(eye);
         camera.getWorldDirection(view);
       };
@@ -774,10 +782,13 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         if (family === 'field') height = 0.22;
         if (family === 'sea') height = 0.16;
         quad(walls, orig, U, [0, height, 0], side, 4, 5, style.wall === 'paper' ? 2.35 : TILE, 'wall', x, z);
+        const fixtureRoll = hash(x + dx * 3, z + dz * 2, 3);
+        if (fixtureRoll > .08 && fixtureRoll < .88)
+          loosePaper?.add(wx, wz, dx, dz, x, z, height, shade(wx, h * .55, wz, side, 'wall', x, z));
         const bottom: Vec = [orig[0] - dx * 0.012, 0.002, orig[2] - dz * 0.012];
         if (!isOutdoor)
           quad(trim, bottom, U, [0, family === 'lobby' ? 0.105 : 0.13, 0], side, 4, 1, 1, 'trim', x, z);
-        makeArch(wx, wz, dx, dz, hash(x + dx * 3, z + dz * 2, 3));
+        makeArch(wx, wz, dx, dz, fixtureRoll);
         if (family === 'suburb') {
           b('#625e50', wx, 3.39, wz, dx ? 0.25 : TILE + 0.12, 0.18, dz ? 0.25 : TILE + 0.12);
           const roof = b(
@@ -927,6 +938,18 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     root.add(dome);
     geometries.push(geo);
     materials.push(material);
+  }
+  const paperGeo = loosePaper?.geometry();
+  if (paperGeo) {
+    const fibers = texture('plaster', '#bdb5a5');
+    const paperMat = new THREE.MeshPhongMaterial({ map: fibers, side: THREE.DoubleSide, vertexColors: true,
+      shininess: 4, specular: 0x11100d });
+    const paperMesh = new THREE.Mesh(paperGeo, paperMat);
+    paperMesh.castShadow = paperMesh.receiveShadow = true;
+    root.add(paperMesh);
+    geometries.push(paperGeo);
+    textures.push(fibers);
+    materials.push(paperMat);
   }
   finish(walls, style.wall, style.wc);
   finish(floors, style.floor, style.fc);
@@ -1163,6 +1186,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       scene.remove(root);
       scans.dispose();
       decay?.dispose();
+      reflection?.dispose();
       roof?.dispose();
       for (const lamp of markerLights) lamp.dispose();
       for (const resident of residents) resident.dispose();
