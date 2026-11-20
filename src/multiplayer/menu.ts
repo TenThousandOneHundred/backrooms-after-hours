@@ -1,4 +1,5 @@
 import { loadProgress } from '../game-state';
+import { roomIceServers } from './ice';
 import { Room, newCode } from './room';
 import { capacity, roomSave, type Snapshot } from './expedition';
 import { stages } from '../campaign';
@@ -39,20 +40,25 @@ export class RoomMenu {
       this.connect((get('join-code') as HTMLInputElement).value.trim().toUpperCase(), false);
     };
   }
-  private connect(code: string, hosting: boolean) {
+  private async connect(code: string, hosting: boolean) {
+    const generation = ++this.generation;
     this.ui.panel(
       'coop-connect',
       'Multiplayer',
       hosting ? 'Creating room' : 'Joining room',
-      '<p class="panel-text">Connecting to the room service…</p>',
+      '<p class="panel-text" id="join-progress" role="status">Preparing the connection…</p>',
       () => this.menu(),
     );
     try {
+      const iceServers = await roomIceServers(import.meta.env.VITE_TURN_CREDENTIALS_URL);
+      if (generation !== this.generation) return;
       this.room = new Room(
         code,
         hosting,
         (s) => this.update(s),
-        (m) => this.error(m),
+        (m) => this.error(m, hosting ? undefined : code),
+        (m) => { get('join-progress').textContent = m; },
+        iceServers,
       );
     } catch {
       this.error('This browser could not open a WebRTC connection. Try a current desktop browser.');
@@ -146,17 +152,19 @@ export class RoomMenu {
         this.error('Could not load the multiplayer world. Check graphics acceleration and try again.');
     }
   }
-  private error(message: string) {
+  private error(message: string, code?: string) {
     this.disconnect();
     this.ui.panel(
       'coop-error',
       'Multiplayer',
       'Room unavailable',
       '<p class="panel-text" id="room-error" role="alert"></p>' +
+        (code ? this.ui.button('retry-room', 'Retry this room', 'play', true) : '') +
         this.ui.button('rooms-back', 'Back to multiplayer'),
       () => this.menu(),
     );
     get('room-error').textContent = message;
+    if (code) get('retry-room').onclick = () => void this.connect(code, false);
     get('rooms-back').onclick = () => this.menu();
   }
   disconnect() {

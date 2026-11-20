@@ -9,6 +9,7 @@ import { loadProgress, storeProgress } from '../game-state';
 
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const namespace = 'backrooms-afterhours-campaign-4-';
+const blockedRoute = 'The host answered, but the browsers could not connect. Try the same Wi-Fi or a phone hotspot, then retry.';
 export function newCode() {
   return Array.from(
     crypto.getRandomValues(new Uint8Array(6)),
@@ -33,6 +34,8 @@ export class Room {
   private timer = 0;
   private deadline = 0;
   private reconnectTimer = 0;
+  private lookupRetry = 0;
+  private retriedLookup = false;
   private closed = false;
   slot = 0;
   state?: Snapshot;
@@ -41,23 +44,30 @@ export class Room {
     readonly hosting: boolean,
     private change: (s: Snapshot) => void,
     private failure: (message: string) => void,
+    private progress: (message: string) => void,
+    iceServers: RTCIceServer[],
   ) {
-    this.peer = hosting ? new Peer(namespace + code) : new Peer('explorer-' + crypto.randomUUID());
+    const id = hosting ? namespace + code : 'explorer-' + crypto.randomUUID();
+    this.peer = new Peer(id, { config: { iceServers } });
     this.voice = new ProximityVoice(this.peer);
     this.radio = new RadioAudio(
       () => this.voice.audioContext,
       (packet) => this.sendRadio(packet),
     );
-    this.deadline = window.setTimeout(
-      () =>
-        this.fail(
-          'Connection timed out. Check the code and that the host has the room open. Some networks block peer connections.',
-        ),
-      25000,
-    );
+    this.waitFor('Connecting to the room service…', 'The room service did not answer. Check your connection and retry.', 12000);
     this.peer.on('error', (error) => {
       if (error.type === 'peer-unavailable') {
-        if (!this.hosting && !this.state) this.fail('Room not found. Check the code with the host.');
+        if (!this.hosting && !this.closed && !this.state) {
+          if (this.retriedLookup) this.fail('Room not found. Ask the host to open their room tab and confirm the code.');
+          else {
+            this.retriedLookup = true;
+            const old = this.upstream;
+            this.upstream = undefined;
+            old?.close();
+            this.progress('Waiting for the host to reconnect. Trying the code again…');
+            this.lookupRetry = window.setTimeout(() => this.connectToHost(), 2000);
+          }
+        }
       } else if (error.type === 'unavailable-id')
         this.fail('This room code is already taken. Create a new room.');
       else if (!this.state || this.peer.destroyed)
@@ -69,17 +79,7 @@ export class Room {
         this.hostGame = new Expedition();
         this.slot = this.hostGame.add();
         this.publish();
-      } else {
-        const conn = this.peer.connect(namespace + code, {
-          serialization: 'json',
-          reliable: true,
-          label: 'campaign-v4',
-        });
-        this.upstream = conn;
-        conn.on('data', (value) => this.receive(value));
-        conn.on('close', () => this.fail('The host closed the room or the connection was lost.'));
-        conn.on('error', () => this.fail('Connection to the host was lost.'));
-      }
+      } else this.connectToHost();
     });
     this.peer.on('connection', (conn) => {
       if (!hosting || conn.label !== 'campaign-v4') {
@@ -152,7 +152,39 @@ export class Room {
       }, 2000);
     });
   }
+  private connectToHost() {
+    if (this.closed || this.upstream || this.state || !this.peer.open) return;
+    this.waitFor('Looking for the host…', 'The host did not answer. Ask them to open the room tab and check the code.', 14000);
+    const conn = this.peer.connect(namespace + this.code, {
+      serialization: 'binary',
+      reliable: true,
+      label: 'campaign-v4',
+    });
+    this.upstream = conn;
+    const pc = conn.peerConnection;
+    pc.addEventListener('signalingstatechange', () => {
+      if (this.closed || this.upstream !== conn || conn.open || !pc.remoteDescription || pc.signalingState !== 'stable') return;
+      this.waitFor('Host found. Connecting the two browsers…',
+        blockedRoute, 18000);
+    });
+    conn.once('open', () => this.waitFor('Connected. Receiving the room…',
+      'Connected to the host, but the room data did not arrive. Refresh both games and try again.', 10000));
+    conn.on('data', (value) => this.receive(value));
+    conn.on('close', () => {
+      if (this.upstream === conn) this.fail('The host closed the room or the connection was lost.');
+    });
+    conn.on('error', () => {
+      if (this.upstream === conn) this.fail(!this.state && pc.remoteDescription ? blockedRoute : 'Connection to the host was lost.');
+    });
+  }
+  private waitFor(status: string, timeoutMessage: string, ms: number) {
+    if (this.closed || this.state) return;
+    clearTimeout(this.deadline);
+    this.deadline = window.setTimeout(() => this.fail(timeoutMessage), ms);
+    this.progress(status);
+  }
   private receive(value: unknown) {
+    if (this.closed) return;
     if (!value || typeof value !== 'object' || !('type' in value)) return;
     if (value.type === 'radio' && 'epoch' in value && 'sender' in value && 'packet' in value) {
       const s = this.state;
@@ -358,6 +390,7 @@ export class Room {
       void storeProgress(this.hostGame.journal, roomSave);
     this.closed = true;
     clearInterval(this.timer);
+    clearTimeout(this.lookupRetry);
     clearTimeout(this.deadline);
     clearTimeout(this.reconnectTimer);
     this.radio.reset();
