@@ -25,6 +25,8 @@ export class ProximityVoice {
   private volume = 1;
   private listeners = new AbortController();
 
+  get audioContext() { return this.context; }
+
   private peer: Peer;
 
   constructor(peer: Peer) {

@@ -99,6 +99,7 @@ export class Expedition {
     exposure: Map<number, number>;
   }[] = [];
   private immunity = new Map<number, number>();
+  private radioNoise = new Map<number, { level: number; until: number }>();
   private warning = -1;
   private alarm = 0;
   private fresh = new Map<number, number>();
@@ -119,6 +120,7 @@ export class Expedition {
   remove(slot: number) {
     this.players.delete(slot);
     this.fresh.delete(slot);
+    this.radioNoise.delete(slot);
     this.immunity.delete(slot);
     for (const r of this.residents) r.exposure.delete(slot);
     this.checkSurvivors();
@@ -140,6 +142,7 @@ export class Expedition {
     this.time = 0;
     this.warning = -1;
     this.alarm = 0;
+    this.radioNoise.clear();
     this.fresh.clear();
     this.immunity.clear();
     const s = stages[stage];
@@ -284,6 +287,22 @@ export class Expedition {
       if (phone) this.hunters[0]?.ai.investigate(phone.x, phone.z);
     }
   }
+  soundRadio(slot: number, level: number) {
+    if (this.players.get(slot)?.alive && this.phase === 'playing' && !this.journal.pending && level > 0) {
+      const previous = this.radioNoise.get(slot);
+      this.radioNoise.set(slot, {
+        level: Math.max(level, previous && previous.until > this.time ? previous.level * 0.75 : 0),
+        until: this.time + 0.14,
+      });
+    }
+  }
+  quietRadio(slot: number) {
+    this.radioNoise.delete(slot);
+  }
+  private audibleLevel(p: Explorer) {
+    const radio = this.radioNoise.get(p.slot);
+    return Math.max(p.voice, radio && this.time < radio.until ? radio.level : 0);
+  }
   step(dt: number) {
     if (this.phase !== 'playing' || this.journal.pending) return;
     this.time += dt;
@@ -330,7 +349,8 @@ export class Expedition {
         else
           for (const p of nearby) {
             const range = Math.hypot(p.x - site.x * TILE, p.z - site.z * TILE);
-            if ((p.voice >= 0.1 && range <= 2 + p.voice * 7) || (p.moving && !p.crouch) || p.y > 0.03) {
+            const loudness = this.audibleLevel(p);
+            if ((loudness >= 0.1 && range <= 2 + loudness * 7) || (p.moving && !p.crouch) || p.y > 0.03) {
               const amount = (r.exposure.get(p.slot) ?? 0) + dt;
               r.exposure.set(p.slot, amount);
               if (amount >= 0.48) {
@@ -353,7 +373,7 @@ export class Expedition {
         Math.hypot(e.x - p.x / TILE, e.z - p.z / TILE) +
         (p.hidden ? 30 : 0) +
         (clearSight(s, e.x, e.z, p.x / TILE, p.z / TILE) ? 0 : 8) -
-        (e.canHearVoice(p.voice, p.x / TILE, p.z / TILE, p.hidden) ? 6 : 0) -
+        (e.canHearVoice(this.audibleLevel(p), p.x / TILE, p.z / TILE, p.hidden) ? 6 : 0) -
         (h.target === p.slot ? 0.8 : 0);
       const p = active
         .filter((p) => p.alive)
@@ -368,7 +388,7 @@ export class Expedition {
         this.warning < 0 &&
         (this.time > 42 ||
           flags.some((f) => /^rail\d/.test(f)) ||
-          (this.time > 8 && e.canHearVoice(p.voice, px, pz, p.hidden)))
+          (this.time > 8 && e.canHearVoice(this.audibleLevel(p), px, pz, p.hidden)))
       )
         this.warning = this.time;
       const asleep =
@@ -395,7 +415,7 @@ export class Expedition {
         p.light,
         asleep ? 1 : grace,
         this.time < this.alarm ? s.objects.find((o) => o.gives?.includes('archive-alarm')) : undefined,
-        p.voice,
+        this.audibleLevel(p),
       );
       h.speed = (Math.hypot(e.x - x, e.z - z) * TILE) / dt;
       if (e.contact) {

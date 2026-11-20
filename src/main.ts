@@ -75,6 +75,8 @@ function notify(message: string) {
 }
 let voiceEnabled = false;
 let roomMicEnabled = false;
+let radioHeld = false;
+let liveStream: MediaStream | undefined;
 let voiceRoom: import('./multiplayer/room').Room | undefined;
 const micEnabled = () => voiceRoom ? roomMicEnabled : voiceEnabled;
 function setMicEnabled(value: boolean) {
@@ -83,12 +85,32 @@ function setMicEnabled(value: boolean) {
 }
 const mic = new VoiceInput(message => {
   setMicEnabled(false);
+  radioHeld = false;
   refreshMic();
   notify(message);
-}, stream => voiceRoom?.voice.setStream(stream));
+}, stream => {
+  liveStream = stream;
+  routeRoomMic();
+});
+function routeRoomMic() {
+  const room = voiceRoom;
+  if (!room) return;
+  room.voice.setStream(roomMicEnabled && !radioHeld ? liveStream : undefined);
+  void room.radio.setStream(radioHeld ? liveStream : undefined).catch(() => {
+    if (voiceRoom !== room || !radioHeld) return;
+    radioHeld = false;
+    syncMic();
+    notify('Walkie-talkie audio could not start. Hold V to try again.');
+  });
+}
+function releaseRadio() {
+  if (!radioHeld) return;
+  radioHeld = false;
+  syncMic();
+}
 function refreshMic(volume = 0, heard = false) {
   const live = mic.state === 'live';
-  el('mic-label').textContent = live ? (heard ? 'Heard you' : voiceRoom ? 'Voice chat on' : 'Mic live') :
+  el('mic-label').textContent = live ? (heard ? 'Heard you' : radioHeld ? 'Radio mic' : voiceRoom ? 'Voice chat on' : 'Mic live') :
     mic.state === 'starting' ? 'Connecting…' : 'Mic off';
   const meter = el<HTMLMeterElement>('mic-level');
   meter.value = live ? volume : 0;
@@ -98,7 +120,8 @@ function refreshMic(volume = 0, heard = false) {
 function syncMic() {
   const playing = mode === 'playing' && !document.hidden;
   voiceRoom?.setListening(playing);
-  if (micEnabled() && playing) {
+  if ((micEnabled() || radioHeld) && playing) {
+    routeRoomMic();
     void mic.start().then(() => refreshMic());
   } else mic.stop();
   refreshMic();
@@ -125,7 +148,7 @@ function persistSettings() {
   }
   horror.setVolume(settings.volume);
   game?.applySettings({ ...settings });
-  voiceRoom?.voice.setVolume(settings.volume);
+  voiceRoom?.setVolume(settings.volume);
   updateSound();
 }
 function refreshHome() {
@@ -207,6 +230,7 @@ const controls = [
   ['Interact / read', ['E']],
   ['Flashlight / lidar', ['F']],
   ['Toggle mic for monsters and nearby teammates', ['M']],
+  ['Hold to use the co-op walkie-talkie', ['V']],
   ['Sprint / crouch', ['Shift', 'C']],
   ['Jump', ['Space']],
   ['Field inventory', ['Tab']],
@@ -291,7 +315,7 @@ function settingsMenu() {
       '></div><div class="setting"><label for="voice-enabled">' + (voiceRoom ? 'Speak to nearby teammates and monsters' : 'Monsters hear my microphone') + '</label>' +
       '<input type="checkbox" id="voice-enabled" aria-describedby="voice-help"' + (micEnabled() ? ' checked' : '') + '></div>' +
       '<p class="panel-text" id="voice-help">' + (voiceRoom
-        ? 'Press M to share your voice with nearby explorers. Monsters can hear you too. Pausing mutes your mic.'
+        ? 'Press M for proximity chat. Hold V to broadcast to the team. Monsters can hear both ends of a radio call.'
         : 'Press M during play to let monsters hear you. In single player your audio stays on this device.') + '</p>' +
       '<div class="panel-buttons">' +
       actions('settings-done', 'Done', 'check', true) +
@@ -392,6 +416,7 @@ const callbacks: GameCallbacks = {
     inventory = h.items;
   },
   screen: (screen, detail) => {
+    radioHeld = false;
     if (screen !== 'playing') {
       voiceRoom?.setListening(false);
       mic.stop();
@@ -539,13 +564,13 @@ async function multiplayer() {
       panel:showPanel,button:actions,exit:titleScreen,
       prepare:async()=>{await Promise.all([loadRuntime(), (await import('./multiplayer/explorers')).loadExplorer()]);},
       enter:room=>{
-        roomMicEnabled=false; voiceRoom=room; room.voice.setVolume(settings.volume);
+        roomMicEnabled=false; radioHeld=false; voiceRoom=room; room.setVolume(settings.volume);
         activeMod=undefined; horror.unlock(); horror.preload(); horror.clear();
         game=new runtime!.Game(el<HTMLCanvasElement>('world'), callbacks, undefined, room);
         game.applySettings(settings); game.start(false);
       },
       stop:()=>{
-        voiceRoom?.setListening(false); mic.stop(); voiceRoom=undefined; roomMicEnabled=false;
+        radioHeld=false; voiceRoom?.setListening(false); mic.stop(); voiceRoom=undefined; roomMicEnabled=false;
         game?.dispose();game=null;horror.clear();hud.hidden=true;
       },
     });
@@ -670,11 +695,22 @@ wire('fullscreen', () => {
 });
 wire('hud-bag', showInventory);
 wire('hud-pause', () => game?.pause());
-window.addEventListener('pagehide', () => mic.stop());
+window.addEventListener('pagehide', () => { radioHeld=false; mic.stop(); });
+window.addEventListener('keyup', e => { if(e.code==='KeyV') releaseRadio(); }, true);
+window.addEventListener('blur', releaseRadio);
+document.addEventListener('visibilitychange', () => { if(document.hidden) releaseRadio(); });
 document.addEventListener('fullscreenchange', updateFullscreen);
 document.addEventListener(
   'keydown',
   (event) => {
+    if (voiceRoom && mode === 'playing' && event.code === 'KeyV' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      if (!event.repeat && !radioHeld) {
+        radioHeld = true;
+        syncMic();
+      }
+      return;
+    }
     if (mode === 'playing' && event.code === 'KeyM' && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();
       if (!event.repeat) {

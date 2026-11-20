@@ -68,6 +68,10 @@ export class RoomMenu {
         void this.play(r);
       }
       get('coop-count').textContent = state.players.length + ' / ' + capacity;
+      const radio = get('radio-state'), receiving = r.radio.receiving;
+      const label = r.radio.transmitting ? 'Radio · Transmitting' : receiving.length ?
+        'Radio · Explorer ' + receiving.join(' + ') : 'Hold V · Radio';
+      if (radio.textContent !== label) radio.textContent = label;
       get('coop-status').textContent = stages[state.journal.stage]?.name ?? '';
       return;
     }
@@ -80,7 +84,7 @@ export class RoomMenu {
       get('coop-hud').hidden = true;
       const waiting = state.phase === 'waiting';
       const text = waiting
-        ? 'Any explorer can lead the team through an exit. During play, press M to talk to nearby teammates. Monsters can hear you too.'
+        ? 'Any explorer can lead the team through an exit. Press M for proximity chat or hold V to radio the whole team. Monsters can hear both ends.'
         : 'Everyone was caught. Retry this level with your shared objectives intact.';
       this.ui.panel(
         'coop-room',

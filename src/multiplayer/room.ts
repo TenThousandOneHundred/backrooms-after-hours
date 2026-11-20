@@ -2,10 +2,13 @@ import Peer, { type DataConnection } from 'peerjs';
 import { capacity, Expedition, roomSave, type Command, type Snapshot } from './expedition';
 
 import { ProximityVoice, type VoiceMember } from './proximity-voice';
+import { RadioAudio } from './radio-audio';
+import { readRadioPacket, radioRate, radioSamples } from './radio-packet';
+import { voiceVolume } from '../voice-input';
 import { loadProgress, storeProgress } from '../game-state';
 
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const namespace = 'backrooms-afterhours-campaign-3-';
+const namespace = 'backrooms-afterhours-campaign-4-';
 export function newCode() {
   return Array.from(
     crypto.getRandomValues(new Uint8Array(6)),
@@ -16,6 +19,9 @@ export function newCode() {
 export class Room {
   private peer: Peer;
   readonly voice: ProximityVoice;
+  readonly radio: RadioAudio;
+  private volume = 1;
+  private nextRadioPacket = new Map<number, number>();
   private listening = false;
   private guestListeners = new Set<DataConnection>();
   private voiceMembers: VoiceMember[] = [];
@@ -38,6 +44,10 @@ export class Room {
   ) {
     this.peer = hosting ? new Peer(namespace + code) : new Peer('explorer-' + crypto.randomUUID());
     this.voice = new ProximityVoice(this.peer);
+    this.radio = new RadioAudio(
+      () => this.voice.audioContext,
+      (packet) => this.sendRadio(packet),
+    );
     this.deadline = window.setTimeout(
       () =>
         this.fail(
@@ -63,7 +73,7 @@ export class Room {
         const conn = this.peer.connect(namespace + code, {
           serialization: 'json',
           reliable: true,
-          label: 'campaign-v3',
+          label: 'campaign-v4',
         });
         this.upstream = conn;
         conn.on('data', (value) => this.receive(value));
@@ -72,7 +82,7 @@ export class Room {
       }
     });
     this.peer.on('connection', (conn) => {
-      if (!hosting || conn.label !== 'campaign-v3') {
+      if (!hosting || conn.label !== 'campaign-v4') {
         conn.close();
         return;
       }
@@ -94,6 +104,11 @@ export class Room {
       });
       conn.on('data', (value) => {
         const slot = this.guests.get(conn);
+        if (slot && value && typeof value === 'object' && 'type' in value && value.type === 'radio') {
+          if (this.guestListeners.has(conn) && 'epoch' in value && 'packet' in value)
+            this.relayRadio(slot, value.epoch, value.packet);
+          return;
+        }
         if (
           slot &&
           value &&
@@ -105,7 +120,10 @@ export class Room {
         ) {
           if (this.guestListeners.has(conn) === value.listening) return;
           if (value.listening) this.guestListeners.add(conn);
-          else this.guestListeners.delete(conn);
+          else {
+            this.guestListeners.delete(conn);
+            this.hostGame?.quietRadio(slot);
+          }
           this.publishVoiceRoster();
           return;
         }
@@ -116,6 +134,7 @@ export class Room {
         const slot = this.guests.get(conn);
         if (!slot || this.closed) return;
         this.guests.delete(conn);
+        this.nextRadioPacket.delete(slot);
         if (this.guestListeners.delete(conn)) this.publishVoiceRoster();
         this.hostGame?.remove(slot);
         this.publish();
@@ -135,6 +154,22 @@ export class Room {
   }
   private receive(value: unknown) {
     if (!value || typeof value !== 'object' || !('type' in value)) return;
+    if (value.type === 'radio' && 'epoch' in value && 'sender' in value && 'packet' in value) {
+      const s = this.state;
+      if (
+        this.listening &&
+        s?.phase === 'playing' &&
+        !s.journal.pending &&
+        value.epoch === s.epoch &&
+        value.sender !== this.slot &&
+        s.players.some((p) => p.slot === this.slot && p.alive) &&
+        s.players.some((p) => p.slot === value.sender && p.alive)
+      ) {
+        const pcm = readRadioPacket(value.packet);
+        if (pcm) this.radio.play(Number(value.sender), pcm, this.volume);
+      }
+      return;
+    }
     if (value.type === 'voice-roster' && this.slot && 'members' in value && Array.isArray(value.members)) {
       if (
         value.members.length <= capacity &&
@@ -177,9 +212,68 @@ export class Room {
       this.accept(state);
     }
   }
+  setVolume(volume: number) {
+    this.volume = volume;
+    this.voice.setVolume(volume);
+    this.radio.setVolume(volume);
+  }
+  private sendRadio(packet: string) {
+    const s = this.state;
+    if (
+      !this.listening ||
+      !s ||
+      s.phase !== 'playing' ||
+      s.journal.pending ||
+      !s.players.some((p) => p.slot === this.slot && p.alive)
+    )
+      return;
+    if (this.hosting) this.relayRadio(this.slot, s.epoch, packet);
+    else if (this.upstream?.open && this.upstream.dataChannel.bufferedAmount < 8192)
+      this.upstream.send({ type: 'radio', epoch: s.epoch, packet });
+  }
+  private relayRadio(sender: number, epoch: unknown, packet: unknown) {
+    const game = this.hostGame;
+    if (
+      !game ||
+      game.phase !== 'playing' ||
+      game.journal.pending ||
+      game.epoch !== epoch ||
+      !game.players.get(sender)?.alive
+    )
+      return;
+    const now = performance.now(),
+      next = this.nextRadioPacket.get(sender) ?? 0;
+    if (next > now + 180) return;
+    const pcm = readRadioPacket(packet);
+    if (!pcm) return;
+    this.nextRadioPacket.set(sender, Math.max(next, now) + (1000 * radioSamples) / radioRate);
+    const loudness = voiceVolume(pcm);
+    game.soundRadio(sender, loudness);
+    if (sender !== this.slot && this.listening && game.players.get(this.slot)?.alive) {
+      this.radio.play(sender, pcm, this.volume);
+      game.soundRadio(this.slot, loudness);
+    }
+    for (const conn of this.guestListeners) {
+      const slot = this.guests.get(conn);
+      if (
+        !slot ||
+        slot === sender ||
+        !conn.open ||
+        !game.players.get(slot)?.alive ||
+        conn.dataChannel.bufferedAmount >= 16384
+      )
+        continue;
+      conn.send({ type: 'radio', epoch, sender, packet });
+      game.soundRadio(slot, loudness);
+    }
+  }
   setListening(listening: boolean) {
     if (this.closed || this.listening === listening) return;
     this.listening = listening;
+    if (!listening) {
+      this.radio.reset();
+      this.hostGame?.quietRadio(this.slot);
+    }
     if (this.hosting) this.publishVoiceRoster();
     else {
       if (this.upstream?.open) this.upstream.send({ type: 'voice-ready', listening });
@@ -201,6 +295,16 @@ export class Room {
   }
   private accept(state: Snapshot) {
     clearTimeout(this.deadline);
+    if (
+      state.epoch !== this.state?.epoch ||
+      state.phase !== 'playing' ||
+      state.journal.pending ||
+      !state.players.some((p) => p.slot === this.slot && p.alive)
+    )
+      this.radio.reset();
+    else
+      for (const id of this.radio.receiving)
+        if (!state.players.some((p) => p.alive && p.slot === id)) this.radio.silence(id);
     this.state = state;
     this.updateVoice();
     this.change(state);
@@ -256,6 +360,7 @@ export class Room {
     clearInterval(this.timer);
     clearTimeout(this.deadline);
     clearTimeout(this.reconnectTimer);
+    this.radio.reset();
     this.voice.dispose();
     this.guestListeners.clear();
     this.peer.destroy();

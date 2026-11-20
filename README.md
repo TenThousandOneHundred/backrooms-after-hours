@@ -22,6 +22,7 @@ In the Lobby, the Bacteria shares its hunting ground with two other creatures. T
 | Interact, pick up, or hide | E |
 | Flashlight or lidar in Lights Out | F |
 | Toggle mic for monsters and nearby teammates | M |
+| Hold to transmit on the co-op walkie-talkie | V |
 | Almond water / energy bar | 1 / 2 |
 | Inventory / pause | Tab / Esc |
 
@@ -39,9 +40,11 @@ If you die, you watch a surviving teammate and rejoin at the next level. If ever
 
 The host's browser runs the room. Keep that tab active while playing. Closing it ends the room. Each device renders its own view. Explorer poses, microphone loudness and game state travel over the WebRTC data channels. [PeerJS Cloud](https://peerjs.com/server/getting-started) provides room discovery and connection signaling. Some networks restrict peer connections. No installation or account is required. Standard graphics caps multiplayer rendering at 30 FPS to reduce battery use. [Networking library licenses](public/licenses/Multiplayer.txt).
 
-## Proximity voice chat and monster hearing
+## Proximity chat, walkie-talkies and monster hearing
 
 In multiplayer, press **M** during play and allow microphone access to talk. You can listen with your own mic off. Friends sound loudest within two metres, fade to silence at twenty metres, and sound muffled through walls or lockers. Their voices pan left or right as you turn. Voice travels directly between nearby players over WebRTC.
+
+**Hold V** to use your walkie-talkie, and release it to stop. It works with proximity chat switched off. Every living teammate in play can hear the broadcast anywhere on the level. The HUD shows who is transmitting. Radio audio passes through the host. Nearby monsters can hear your key-up chirp and speech at your position and at each teammate’s receiving radio.
 
 Monsters hear the loudness of the same microphone in both multiplayer and single player. The HUD meter shows your volume. **Heard you** means a nearby creature picked it up. Loud sounds reach farther, walls and lockers muffle them, and a roaming hunter can follow your last audible position even when you stand still. Stay quiet after the Bellwether’s warning knocks.
 
