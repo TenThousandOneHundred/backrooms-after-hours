@@ -60,3 +60,30 @@ test('every Level 0 objective is reachable through the finished rooms', () => {
       assert.ok(seen.has([obj.x,obj.z].join(',')), room.id + ' ' + obj.name);
   }
 });
+
+test('the first corner opens onto a yellow room hidden from the approach', () => {
+  const inside = [12, 14.5];
+  assert.equal(clearSight(stage, 7, 12, ...inside), false);
+  assert.ok(clearSight(stage, 9.35, 13.68, ...inside));
+  const path = [stage.spawn, [6.6, 12], [7.7, 13.1], [8.45, 13.55], [9.35, 13.68]];
+  for (let i = 1; i < path.length; i++) {
+    const [x, z] = path[i-1], [tx, tz] = path[i];
+    assert.equal(crossesPartition('lobby', x, z, tx, tz, .27/TILE), false);
+    for (let j = 0; j <= 20; j++) assert.ok(walk(x+(tx-x)*j/20, z+(tz-z)*j/20));
+  }
+});
+
+test('walls interrupt long views throughout the west, middle, east and records rooms', () => {
+  for (const [left, right, top, bottom] of [[1,29,1,22], [30,59,1,22], [60,88,1,22], [3,88,33,45]]) {
+    let visible = 0, samples = 0;
+    for (let z = top; z <= bottom; z += 2) for (let x = left; x <= right; x += 2) {
+      if (!walk(x,z)) continue;
+      for (let i = 0; i < 24; i++) {
+        const angle = i * Math.PI/12;
+        if (clearSight(stage,x,z,x+11*Math.cos(angle),z+11*Math.sin(angle))) visible++;
+        samples++;
+      }
+    }
+    assert.ok(visible < samples * .05, 'long sightlines near ' + [left,top]);
+  }
+});
