@@ -1,3 +1,5 @@
+import { stageProjection } from './atmosphere-light';
+import type { LevelAtmosphere } from './level-atmosphere';
 import { makeResident } from './residents';
 import * as THREE from 'three';
 import type { Stage } from './campaign';
@@ -32,7 +34,8 @@ function familyLight(stage: Stage) {
 }
 const newSurface = (): SurfaceData => ({ p: [], n: [], u: [], c: [], i: [] });
 
-export function buildWorld(scene: THREE.Scene, stage: Stage) {
+export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmosphere) {
+  const projection = profile && stageProjection(profile);
   const style = styleFor(stage.theme, stage.id),
     kit = new ModelKit(),
     root = new THREE.Group(),
@@ -49,33 +52,36 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
   const roof = monitor && buildRoofMonitor(kit, statics, root, monitor.x, monitor.z, h,
     style.family === 'garage' ? '#abcdd1' : style.family === 'hotel' ? '#efd1ae' : '#d7e4c8');
   const color = (s: string) => new THREE.Color(s);
-  const fog = color(style.fog).multiplyScalar(style.open ? 0.84 : 0.57),
+  const fog = color(profile?.haze ?? style.fog).multiplyScalar(style.open ? 0.84 : 0.57),
     nightFog = color('#263642'),
     nightSky = color('#141e30');
   let domeHorizon: THREE.Color | undefined, domeTop: THREE.Color | undefined;
   scene.background = fog.clone();
   scene.fog = new THREE.FogExp2(fog, style.open ? 0.018 : style.family === 'blackout' ? 0.063 : 0.033);
   const ambience = new THREE.AmbientLight(
-    style.family === 'alarm' ? '#ffc7b5' : '#fff8e9',
+    profile?.fill ?? (style.family === 'alarm' ? '#ffc7b5' : '#fff8e9'),
     familyLight(stage) * (style.open ? 0.84 : 0.61),
   );
   const sky = new THREE.HemisphereLight(
-    style.open ? '#e2ebe7' : '#fff9df',
-    style.open ? '#b2a888' : '#b4ac93',
+    profile?.lamp ?? (style.open ? '#e2ebe7' : '#fff9df'),
+    profile?.fill ?? (style.open ? '#b2a888' : '#b4ac93'),
     style.open ? 1.46 : 0.83,
   );
   const directional = new THREE.DirectionalLight(
-    style.open ? '#d8dfcb' : '#e9dabe',
+    profile?.lamp ?? (style.open ? '#d8dfcb' : '#e9dabe'),
     style.open ? 0.65 : 0.47,
   );
-  directional.position.set(-7, 8, 4);
+  if (profile) {
+    const angle = profile.bearing * Math.PI / 180;
+    directional.position.set(8 * Math.cos(angle), 5, 8 * Math.sin(angle));
+  } else directional.position.set(-7, 8, 4);
   root.add(ambience, sky, directional);
   const tile = (x: number, z: number) => stage.map[z]?.[x] ?? '#';
   // Solid furnishings occupy navigation cells but still need a floor and ceiling.
   const landmarks = stage.props.filter(p => p.solid);
   const furnitureCells = new Set(landmarks.map(p => p.z * stage.map[0].length + p.x));
   const markerLights = landmarks.map(p => {
-    const lamp = new THREE.PointLight(p.color, style.family === 'blackout' ? 1.5 : 12, 6.2, 2);
+    const lamp = new THREE.PointLight(profile?.lamp ?? p.color, style.family === 'blackout' ? 1.5 : 12, 6.2, 2);
     lamp.position.set(p.x * TILE, terrainHeight(stage, p.x * TILE, p.z * TILE) + .42, p.z * TILE - 1.58);
     root.add(lamp);
     return lamp;
@@ -815,12 +821,12 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
       l = family === 'alarm' ? 1.91 : compact ? 0.88 : 1.46,
       side = compact ? 0.045 : 0.025,
       hh = h + (underMonitor(x / TILE, z / TILE) ? roofRise : 0) - 0.041;
-    const glow = off ? '#75776a' : style.lamp;
+    const glow = off ? '#75776a' : (profile?.lamp ?? style.lamp);
     b('#716f60', x, hh, z, w + 0.069, 0.052, l + 0.063);
     b(glow, x, hh - 0.035, z, w, 0.024, l, !off);
     if (!compact) {
       for (let j = 0; j < 3; j++) {
-        b(off ? '#858779' : '#fffce6', x + (j - 1) * 0.212, hh - 0.053, z, 0.069, 0.012, l - 0.06, !off);
+        b(off ? '#858779' : (profile?.lamp ?? '#fffce6'), x + (j - 1) * 0.212, hh - 0.053, z, 0.069, 0.012, l - 0.06, !off);
       }
       for (let j = -2; j <= 2; j++)
         b(off ? '#64685c' : '#bdbda5', x, hh - 0.06, z + j * 0.265, w - 0.03, 0.009, 0.012);
@@ -862,7 +868,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
       uniforms = {
         top: {
           value: color(
-            family === 'suburb' && style.level < 1 ? '#27353f' : family === 'sea' ? '#728e9a' : '#8bafb3',
+            profile?.fill ?? (family === 'suburb' && style.level < 1 ? '#27353f' : family === 'sea' ? '#728e9a' : '#8bafb3'),
           ),
         },
         horizon: { value: fog },
@@ -975,7 +981,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     if (!(mat instanceof THREE.MeshLambertMaterial || mat instanceof THREE.MeshPhongMaterial || mat instanceof THREE.MeshBasicMaterial)) continue;
     const original = mat.onBeforeCompile.bind(mat);
     const originalKey = mat.customProgramCacheKey();
-    mat.customProgramCacheKey = () => originalKey + '|local-circuit';
+    const projectSurface = projection && materials.includes(mat) && !(mat instanceof THREE.MeshBasicMaterial);
+    mat.customProgramCacheKey = () => originalKey + '|local-circuit|' + (projectSurface ? profile!.pattern : '');
     mat.onBeforeCompile = (shader, renderer) => {
       original(shader, renderer);
       shader.uniforms.uCircuit = circuit;
@@ -1003,6 +1010,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
         #include <opaque_fragment>
       `,
         );
+      if (projectSurface) projection.apply(shader);
     };
   }
   const apparition = stage.threat?.kind === 'bacteria' ? makeLevelCreature('bacteria') : null;
@@ -1057,7 +1065,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     dayFog = fog.clone(),
     dayAmbience = ambience.intensity,
     dayDirectional = directional.intensity,
-    daySky = color('#8bafb3');
+    daySky = color(profile?.fill ?? '#8bafb3');
   return {
     objects,
     residents,
@@ -1067,6 +1075,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     haunt,
     update(t: number, dt: number) {
       clock.value = t;
+      projection?.update(t);
       roof?.update(t);
       circuitAge += dt;
       apparitionAge += dt;

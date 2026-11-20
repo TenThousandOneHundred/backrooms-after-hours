@@ -1,3 +1,4 @@
+import { campaignAtmosphere } from './level-atmosphere';
 import * as THREE from 'three';
 export { loadLevelCreatures } from './level-creatures';
 export { loadResidents } from './residents';
@@ -268,7 +269,7 @@ export class Game {
     this.world?.dispose();
     this.scene = new THREE.Scene();
     this.stage = stage;
-    this.world = buildWorld(this.scene, stage);
+    this.world = buildWorld(this.scene, stage, this.mod ? undefined : campaignAtmosphere(stage.id));
     if (this.world.entity) this.entityCenterHeight = new THREE.Box3().setFromObject(this.world.entity).getCenter(this.vector).y;
     this.scene.add(this.camera);
     this.team?.attach(this.scene);
@@ -336,7 +337,7 @@ export class Game {
       }
       if (this.done(obj)) this.placeCompleted(obj);
     });
-    this.sound.ambience(`${stage.theme} ${stage.id}`.toLowerCase());
+    this.sound.ambience(`${stage.theme} ${stage.id}`.toLowerCase(), this.mod ? undefined : stage.id);
     this.lastHUD = '';
     this.cameraPose(0, false);
     this.refreshHUD();
@@ -377,7 +378,7 @@ export class Game {
     this.keys.clear();
     this.dragging = false;
     if (next !== 'playing' && document.pointerLockElement === this.canvas) document.exitPointerLock();
-    this.sound.pause(next !== 'playing');
+    this.sound.pause(next !== 'playing' && next !== 'spectating');
     if (next !== 'playing') this.callbacks.dread?.(0);
     this.callbacks.screen(next, detail);
     if (next === 'playing') {
@@ -1058,6 +1059,7 @@ export class Game {
         dz = this.encounter.z - this.z / TILE;
       pan = (dx * Math.cos(this.yaw) + dz * Math.sin(this.yaw)) / Math.max(1, Math.hypot(dx, dz));
     }
+    this.sound.syncStage(this.time, danger);
     this.sound.tick(dt, danger, pan, this.stage.threat?.kind === 'farmer' && this.has('wind-east'), highCeiling);
     this.world?.update(this.time, dt);
     this.tension = THREE.MathUtils.damp(
@@ -1516,6 +1518,7 @@ export class Game {
       this.pitch = 0;
       this.state.flashlight = watch.light;
       this.cameraPose(dt, false);
+      this.sound.syncStage(this.time, 0);
       this.world?.update(this.time, dt);
       this.renderer.render(this.scene, this.camera);
     }

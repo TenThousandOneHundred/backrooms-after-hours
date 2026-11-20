@@ -1,3 +1,6 @@
+import { campaignAtmosphere } from './level-atmosphere';
+import { StageLoop } from './stage-loop';
+
 const limit = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 export class Soundscape {
@@ -7,6 +10,9 @@ export class Soundscape {
   private bg: AudioScheduledSourceNode[] = [];
   private buffers = new Map<string, AudioBuffer>();
   private theme = '';
+  private stageId?: string;
+  private stageLoop?: StageLoop;
+  private recordingActive = false;
   private volume = 0.65;
   private nextDetail = 3;
   private nextRoomSound = 2;
@@ -22,7 +28,7 @@ export class Soundscape {
         this.master = this.context.createGain();
         this.master.gain.value = this.volume * 0.52;
         this.master.connect(this.context.destination);
-        this.ambience(this.theme);
+        this.ambience(this.theme, this.stageId);
       }
       if (this.context.state === 'suspended') void this.context.resume().catch(() => {});
     } catch {
@@ -98,8 +104,12 @@ export class Soundscape {
     source.start(at);
     source.stop(at + duration + 0.02);
   }
-  ambience(theme: string) {
+  ambience(theme: string, stageId?: string) {
     this.theme = theme;
+    this.stageId = stageId;
+    this.stageLoop?.dispose();
+    this.stageLoop = undefined;
+    this.recordingActive = false;
     const ac = this.context;
     if (!ac || !this.master) return;
     for (const s of this.bg) {
@@ -147,8 +157,19 @@ export class Soundscape {
     gain.connect(this.bed);
     wind.start();
     this.bg.push(wind);
+    const profile = stageId && campaignAtmosphere(stageId);
+    if (profile) this.stageLoop = new StageLoop(ac, this.master,
+      import.meta.env.BASE_URL + 'ambience/' + stageId + '.mp3', profile.period);
     this.nextDetail = 3.5;
     this.nextRoomSound = 2;
+  }
+  syncStage(time: number, danger: number) {
+    if (!this.stageLoop || this.paused || this.volume === 0) return;
+    const active = this.stageLoop.sync(time, danger);
+    if (active !== this.recordingActive && this.context && this.bed) {
+      this.bed.gain.setTargetAtTime(active ? .16 : 1, this.context.currentTime, .14);
+      this.recordingActive = active;
+    }
   }
   step(fast: boolean, crouch: boolean, wet: boolean, highCeiling = false) {
     this.stepSide *= -1;
@@ -189,6 +210,8 @@ export class Soundscape {
       this.sound(62, 32, 0.2, 0.045 + danger * 0.1, pan * 0.3, 'sine', 0.18);
       if (danger > 0.6) this.sound(480, 125, 0.42, 0.042 * danger, pan, 'noise');
       this.nextDetail = 1.18 - danger * 0.52;
+    } else if (this.recordingActive) {
+      this.nextDetail = .7;
     } else {
       const side = Math.random() * 1.7 - 0.85;
       if (/pool|water|cave|sea|ocean|depth/.test(this.theme)) {
@@ -259,6 +282,7 @@ export class Soundscape {
   }
   pause(paused: boolean) {
     this.paused = paused;
+    if (paused) this.stageLoop?.stop();
     if (!this.master || !this.context) return;
     this.master.gain.setTargetAtTime(
       this.volume * 0.52 * (paused ? 0.22 : 1),
@@ -268,6 +292,7 @@ export class Soundscape {
   }
   dispose() {
     this.closed = true;
+    this.stageLoop?.dispose();
     for (const s of this.bg) {
       try {
         s.stop();
