@@ -1,3 +1,4 @@
+import { buildOfficeDecay } from './office-decay';
 import { roomSurfaceScans } from './scanned-surfaces';
 import { roomLightDecals } from './room-light-decals';
 import { stageProjection } from './atmosphere-light';
@@ -49,6 +50,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     geometries: THREE.BufferGeometry[] = [],
     textures: THREE.Texture[] = [];
   const scans = roomSurfaceScans();
+  const officeCells: [number, number][] = [];
   const decals = roomLightDecals(profile?.lamp ?? style.lamp);
   geometries.push(decals.plane);
   materials.push(decals.glowMaterial, decals.shadowMaterial);
@@ -638,6 +640,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         tileType = tile(x, z),
         beam = tileType === '|',
         pit = tileType === 'X' || beam;
+      if (stage.id === 'lobby' && tileType === '.' && !underMonitor(x, z)) officeCells.push([x, z]);
       if (!pit)
         quad(
           floors,
@@ -989,6 +992,9 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     entity.position.set(stage.threat.x * TILE, 0, stage.threat.z * TILE);
     root.add(entity);
   }
+  const decay = officeCells.length
+    ? buildOfficeDecay(stage, officeCells, kit, statics, root, h, decals.shadowMaterial)
+    : undefined;
   // Repeated architectural details and loose furniture share a small number of draw calls.
   for (const node of statics.children)
     node.position.y += terrainHeight(stage, node.position.x, node.position.z);
@@ -1156,6 +1162,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     dispose() {
       scene.remove(root);
       scans.dispose();
+      decay?.dispose();
       roof?.dispose();
       for (const lamp of markerLights) lamp.dispose();
       for (const resident of residents) resident.dispose();
