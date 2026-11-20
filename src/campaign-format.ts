@@ -19,7 +19,7 @@ export type GameObject = {
   color?: number;
   challenge?: Challenge;
 };
-export type Prop = { x: number; z: number; model: string; color?: number; label?: string; rotation?: number };
+export type Prop = { x: number; z: number; model: string; color?: number; label?: string; rotation?: number; solid?: boolean };
 export type Threat = { kind: string; x: number; z: number; speed?: number };
 export type Stage = {
   additionalThreats?: Threat[];
@@ -101,6 +101,7 @@ export function stage(
           objects.push({ ...action, x, z, id: id + '-' + (token ?? tile) + (count > 1 ? '-' + count : '') });
         } else {
           props.push({ ...marker, x, z });
+          if (marker.solid) return '#';
         }
         return 'model' in marker && marker.model === 'pit' ? 'X' : '.';
       })
@@ -192,3 +193,17 @@ export const noteKeys = (labels: string[], prefix: string, model: string, start 
   );
 
 export const challenge = (action: Action, spec: Challenge): Action => ({ ...action, challenge: spec });
+
+
+// Map legend for the larger campaign rooms. Landmarks block movement and sight.
+// Each shelter has its own interaction ID even when several players take cover.
+export function roomDetails(name: string, shape: string, accent: number, furniture: string,
+  cover: string, shelter: string, secondCover: string, secondModel: string): Markers {
+  return {
+    '^': { model: 'landmark-' + shape, color: accent, label: name, solid: true, rotation: Math.PI },
+    ',': prop(furniture, accent),
+    '{': { ...hide(cover, shelter), color: accent },
+    '}': { ...hide(secondCover, secondModel), color: accent },
+    ':': prop('room-directory', accent, name),
+  };
+}

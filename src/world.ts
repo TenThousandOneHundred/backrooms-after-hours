@@ -71,7 +71,17 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
   directional.position.set(-7, 8, 4);
   root.add(ambience, sky, directional);
   const tile = (x: number, z: number) => stage.map[z]?.[x] ?? '#';
-  const open = (x: number, z: number) => tile(x, z) !== '#';
+  // Solid furnishings occupy navigation cells but still need a floor and ceiling.
+  const landmarks = stage.props.filter(p => p.solid);
+  const furnitureCells = new Set(landmarks.map(p => p.z * stage.map[0].length + p.x));
+  const markerLights = landmarks.map(p => {
+    const lamp = new THREE.PointLight(p.color, style.family === 'blackout' ? 1.5 : 12, 6.2, 2);
+    lamp.position.set(p.x * TILE, terrainHeight(stage, p.x * TILE, p.z * TILE) + .42, p.z * TILE - 1.58);
+    root.add(lamp);
+    return lamp;
+  });
+  const open = (x: number, z: number) => tile(x, z) !== '#' ||
+    (x >= 0 && x < stage.map[0].length && furnitureCells.has(z * stage.map[0].length + x));
   const isOutdoor = !!style.open,
     family = style.family;
   const hotelAisle = stage.map.reduce(
@@ -899,7 +909,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     if (spec.model === 'pit' || spec.model === 'roof-monitor') continue;
     const group = makeModel(kit, spec);
     const pos = alignment(spec.x, spec.z);
-    group.position.set(spec.x * TILE + pos.dx * 0.2, 0, spec.z * TILE + pos.dz * 0.2);
+    group.position.set(spec.x * TILE + (spec.solid ? 0 : pos.dx * 0.2), 0, spec.z * TILE + (spec.solid ? 0 : pos.dz * 0.2));
     group.rotation.y = spec.rotation ?? pos.angle;
     statics.add(group);
   }
@@ -1098,6 +1108,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage) {
     dispose() {
       scene.remove(root);
       roof?.dispose();
+      for (const lamp of markerLights) lamp.dispose();
       for (const resident of residents) resident.dispose();
       apparition?.userData.release();
       entity?.userData.release?.();

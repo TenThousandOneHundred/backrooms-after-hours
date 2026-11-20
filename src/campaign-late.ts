@@ -1,4 +1,4 @@
-import { stage, item, act, code, exit, note, hide, prop, rangeFlags, challenge } from './campaign-format.ts';
+import { roomDetails, stage, item, act, code, exit, note, hide, prop, rangeFlags, challenge } from './campaign-format.ts';
 
 export const late = [
   stage(
@@ -7,18 +7,29 @@ export const late = [
     'Hotel Chase',
     'chase',
     'The service bell keeps ringing after you take your hand away. At the end of the hall a blue room glows.',
-    'Release the gate, follow the blue safe rooms and take the cutter to the boarded fire exit.',
+    'Release the gate, follow the blue safe rooms and take the cutter to the boarded fire exit. The cutters are in the freight elevator hall.',
     `
 ##############################
-#@...S.....#.......#..B..H...#
+#@...S.....#.......#.....H...#
 ########...#..###.....#####..#
 #.....H.......#....#.........#
 #.#############..##########..#
 #.........!...#.........E....#
 ####.######...######.#..#.#..#
 #.........#..........#..#....#
+######.###############.#######
+######.:...#.......B.#.#######
+######.....^....,....,.#######
+######...#...##...##...#######
+######....}............#######
+######.....###...###...#######
+######....,....^.......#######
+######....##..,..##..{.#######
+######.................#######
 ##############################`,
     {
+      ...roomDetails("Freight elevator hall", "gantry", 0xae7059, "linen-rack",
+        "Get behind the laundry screen", "shelter-drape", "Hide inside the freight booth", "shelter-booth"),
       S: act(
         'Release the gate magnet',
         'chase-release',
@@ -38,7 +49,7 @@ export const late = [
     'Windows to the Soul',
     'courtyard',
     'Eight hands tap the glass in the east wing. Break the Aranea Membri’s line of sight at a corner before it closes the distance.',
-    'Recover the three CRT carts, connect them at reception, and descend to the pools.',
+    'Recover the three CRT carts, connect them at reception, and descend to the pools. The guest-feed cart was wheeled into the broadcast exchange.',
     `
 #########################
 #A..#....#....B.#....H..#
@@ -46,11 +57,22 @@ export const late = [
 ##.##..............#.##.#
 #........#....##...#.!..#
 #.######.#..#.##...#....#
-#....#C.....#.....##....#
+#....#......#.....##....#
 ###..#####..###.####..###
 #@...L..G....D......T..E#
+####.##############.#####
+####.:..............#####
+####..{.###......,..#####
+####..##.....^..###.#####
+####....,.....,.....#####
+####....###....###..#####
+#####.....,.....}..######
+######.C.....^...#.######
+#######......###...######
 #########################`,
     {
+      ...roomDetails("Broadcast exchange", "signal", 0x789eaa, "terminal",
+        "Hide in the announcer's booth", "shelter-booth", "Close the sound curtain", "shelter-drape"),
       A: challenge(
         item('Cart A • reception feed', 'crt1', 'trolley', 'The wheels squeak as you move the cart.'),
         { kind: 'haul', destination: 'court-monitors', delivery: 'reception’s monitor strip' },
@@ -86,7 +108,7 @@ export const late = [
     'Dark Poolrooms',
     'pool',
     'A life raft scrapes against the bottom of the reservoir. The stairs beside it are stained at last year’s waterline.',
-    'Prime the reservoir valves and launch the raft into the stagnant pools.',
+    'Prime the reservoir valves and launch the raft into the stagnant pools. The south inlet is in the sluice hall.',
     `
 ########################
 #...V...#.....W.....#..#
@@ -94,10 +116,21 @@ export const late = [
 #..##....~~~~..##......#
 #..##..~~~~~~..##...#..#
 #......~~~~~~.......#..#
-#..R...~~~~~~...X.....E#
+#..R...~~~~~~.........E#
 #@.......P......#......#
+####.############.######
+####.:..,.........######
+####}.......^..X..######
+#####..####.......######
+###.............###.####
+###....^......,,..#.####
+###.......###.......####
+###.....,,.....#.{..####
+###............###..####
 ########################`,
     {
+      ...roomDetails("Sluice hall", "wheel", 0x72bdc5, "valve",
+        "Hide in the lockkeeper's booth", "shelter-booth", "Close the maintenance locker", "bay-locker"),
       V: challenge(
         act('Open north inlet', 'pool-inlet-n', 'valve', 'A column of water rises from the drain.'),
         { kind: 'wind' },
@@ -123,18 +156,29 @@ export const late = [
     'Stagnant Pools',
     'pool',
     'The float gauge sticks halfway up. Black filaments move beneath the dark water. Follow the pale tiles around them.',
-    'Turn four pump valves, then drain the lock and take the flume.',
+    'Turn four pump valves, then drain the lock and take the flume. The fourth pump serves the settling tanks.',
     `
 #######################
-#1..#.~~~.#......#...4#
+#1..#.~~~.#......#....#
 #.#.#.#~~.#.####.#.#..#
 #.#...#...#..H.#...#..#
 #.#####.######.#.###..#
 #2...~...~~~...#.3....#
 ###..~.#####..#######.#
 #@.......P..........E.#
+###.##############.####
+###.:..............####
+###..,#...^..,..#..####
+###..##.........##.####
+###......4..##.....####
+###...,.....#....{.####
+###....#........^..####
+###..}.##....#.....####
+###........##..,...####
 #######################`,
     {
+      ...roomDetails("Settling tanks", "organ", 0x9fa96c, "barrel",
+        "Duck into the filter blind", "shelter-blind", "Shelter inside the pump kiosk", "shelter-booth"),
       ...Object.fromEntries(
         rangeFlags('pump', 4).map((f, i) => [
           String(i + 1),
@@ -160,10 +204,10 @@ export const late = [
     'The Party Continues',
     'party',
     'Four strings of lights meet above a mechanical claw. A blue host guards the firework table. In the red wing, a yellow guest listens beneath the balloons.',
-    'Clear the pink, blue, red and cloud wings. Fit their keys into the mechanical arm.',
+    'Clear the pink, blue, red and cloud wings. Fit their keys into the mechanical arm. Look for the party popper in the paper crown theatre.',
     `
 #########################
-#..V....P..#..F....!B...#
+#..V....P..#.......!B...#
 #..##......#....##......#
 #...##..##.#.##..##.....#
 #####...##...##...#######
@@ -171,8 +215,20 @@ export const late = [
 #.####...#...#...####...#
 #..G..R.*#...#..L...C...#
 #........#.@.#....H.....#
+####.##############.#####
+####.:..............#####
+####..#......^....#.#####
+####..}#....,....#{.#####
+####....#.......#...#####
+####.....#..^..#....#####
+####..,...........,.#####
+####...##.......##..#####
+####.....F.....,....#####
+#######.........#########
 #########################`,
     {
+      ...roomDetails("Paper crown theatre", "marquee", 0xbd78a5, "toy",
+        "Hide behind the puppet curtain", "shelter-drape", "Duck into the ticket booth", "shelter-booth"),
       V: note(
         'Pink hall • play the VHS',
         'The colors flash pink, yellow, blue, pink. Under the screen: PINK 1, BLUE 2, YELLOW 3.',
@@ -230,17 +286,29 @@ export const late = [
     'The School Halls',
     'school',
     'A figure in a blue mask stands beneath the exit sign. It raises a finger to its lips.',
-    'Follow the blue guide lights from classroom to classroom. Stay low near the party.',
+    'Follow the blue guide lights from classroom to classroom. Stay low near the party. The exit is on the far side of the assembly hall.',
     `
 ########################
-#@..g..#....H..#.....E.#
+#@..g..#....H..#.......#
 ###....#.#####.#.###.#.#
 #.....g...#..g....#g.#.#
 #..####.###.#.#####..#.#
 #.....#...g.#..g.....#.#
 #..H..#.....#...!...H..#
+#######.######.#########
+######:........#########
+###......,.....,....####
+###....##.......##..####
+###...,...........,.####
+###......#..^..#....####
+###.....#.......#...####
+###...{#....,....#}.####
+###...#....^......#.####
+###E................####
 ########################`,
     {
+      ...roomDetails("Assembly hall", "bleachers", 0x799987, "chair",
+        "Hide beneath the scoring desk", "desk", "Draw the costume curtain", "shelter-drape"),
       g: prop('light', 0x4e9de9),
       H: hide('Hide under a school desk', 'desk'),
       E: exit('Use the final stairwell', 'slides'),
@@ -254,16 +322,28 @@ export const late = [
     'The Photographic Annex',
     'slides',
     'Two still frames are taped to the elevator panel. A smile lights up the far end of the loading floor. Hold your beam on it to make it retreat.',
-    'Take the survey camera and photograph the graffiti and the opening to Level 0.',
+    'Take the survey camera and photograph the graffiti and the opening to Level 0. The graffiti is in the contact sheet darkroom.',
     `
 #####################
-#....G..#.........!.#
+#.......#.........!.#
 #.###...#...##......#
 #...#.......##.L....#
 #...#..###..........#
 #@..C...#......E....#
+###.#############.###
+###.:.....^.......###
+###..,........,##.###
+###.###..###..###.###
+###..}....G...,...###
+###.###..###..###.###
+###........^......###
+####......,#..{.#.###
+###.###..###..###.###
+###...............###
 #####################`,
     {
+      ...roomDetails("Contact sheet darkroom", "projector", 0xac575d, "desk",
+        "Duck behind the darkroom curtain", "shelter-drape", "Hide inside the film booth", "shelter-booth"),
       C: item('Survey camera', 'camera', 'camera', 'The exposure counter reads 06.'),
       G: challenge(
         act('Photograph the graffiti', 'photo1', 'portrait', 'A white flash freezes the wall markings.', [
@@ -292,16 +372,27 @@ export const late = [
     'The Empty Motor Pool',
     'slides',
     'The next photos show an abandoned van and a nest of black wires. The wires move.',
-    'Photograph the van and the Bacteria sighting, then return to the lift.',
+    'Photograph the van and the Bacteria sighting, then return to the lift. The van is on the vehicle inspection floor.',
     `
 #####################
-#..V....#....H......#
+#.......#....H......#
 #.##..#...#...##.B..#
 #.....###.#......!..#
 #..##...#...##......#
 #@..E...............#
+###.#############.###
+###.#:V.......#...###
+###.,....,....^...###
+###...##...##...#.###
+###............}..###
+###...###...###...###
+###.......^....,..###
+###.{..##..,..##..###
+###...............###
 #####################`,
     {
+      ...roomDetails("Vehicle inspection bay", "gantry", 0xc49152, "car",
+        "Hide in the inspection booth", "shelter-booth", "Close the mechanic's locker", "bay-locker"),
       V: challenge(
         act('Photograph the service van', 'photo3', 'car', 'The van develops without a driver.', ['camera']),
         { kind: 'photo' },
@@ -328,18 +419,29 @@ export const late = [
     'The Wrong Door',
     'slides',
     'The lift deposits you among a field of stone faces. The last two negatives are already warm.',
-    'Photograph the stone heads and Skin-Stealer sighting, then open the white door.',
+    'Photograph the stone heads and Skin-Stealer sighting, then open the white door. The stone heads are in the plaster cast gallery.',
     `
 #######################
-#...S.....#.....D....E#
+#.........#.....D....E#
 #..###..#...##....#...#
 #......##....##..#....#
 #.#....#.........#..!.#
 #@....H..##...........#
+######.######.#########
+######.:.S....#########
+###...##...^.....##.###
+###...#...........#.###
+###.......,.,.,.....###
+###....##.......##..###
+###...{#.........#}.###
+###....#.,..^..,.#..###
+###....#.........#..###
 #######################`,
     {
+      ...roomDetails("Plaster cast gallery", "faces", 0x9c9a8b, "cast-bust",
+        "Hide behind the dust sheets", "shelter-drape", "Duck into the packing blind", "shelter-blind"),
       S: challenge(
-        act('Photograph the stone heads', 'photo5', 'portrait', 'Their faces all turn out black.', [
+        act('Photograph the stone heads', 'photo5', 'cast-bust', 'Their faces all turn out black.', [
           'camera',
         ]),
         { kind: 'photo' },

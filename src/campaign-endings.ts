@@ -1,4 +1,5 @@
 import {
+  roomDetails,
   stage,
   item,
   act,
@@ -34,18 +35,29 @@ export const endingStages = [
     'The Bunker',
     'bunker',
     'A folded suit waits on your cot. There are four empty frames on the operations board.',
-    'Use the bunker routes to recover the other endings. Return to the arcade with all four.',
+    'Use the bunker routes to recover the other endings. Return to the arcade with all four. The spare water is in the operations theatre.',
     `
 #########################
 #..S....#..P....#..O....#
 #.......#.......#.......#
 ###..#######.#######.####
 #.......................#
-#...Q..##....##...A.....#
+#......##....##...A.....#
 #......##....##.........#
 #@.b.........N........G.#
+####.############.#######
+####.:...###......#######
+####...#...^.....Q.######
+####....}.....,.....#####
+####....###....###...####
+####.......,.....,...####
+####...###..^.....##.####
+####....,......###.{.####
+####.................####
 #########################`,
     {
+      ...roomDetails("Operations theatre", "signal", 0x709e8f, "desk",
+        "Hide in the radio booth", "shelter-booth", "Draw the medic's curtain", "shelter-drape"),
       b: prop('bed'),
       N: note(
         'Operations board',
@@ -67,7 +79,7 @@ export const endingStages = [
     'The Endless Stairwell',
     'stair',
     'The stairs seem familiar on every landing. On the painted plates the numbers advance in impossible jumps.',
-    'Follow the numbered landings to Floor 94 and step into the center of the shaft.',
+    'Follow the numbered landings to Floor 94 and step into the center of the shaft. Look for the last marker on the clock landing.',
     `
 #######################
 #@..A...............#.#
@@ -76,9 +88,21 @@ export const endingStages = [
 #..##################.#
 #..................C..#
 ####################..#
-#E........D...........#
+#E....................#
+###.###############.###
+###.:..##.......##..###
+###....#}....,..,#..###
+###............^....###
+###...##..#...#..##.###
+###....,....D....,..###
+###...##..#...#..##.###
+###........^........###
+###....#,.......{#..###
+###....##.......##..###
 #######################`,
     {
+      ...roomDetails("The clock landing", "wheel", 0xb4a17f, "bench",
+        "Duck inside the liftman's booth", "shelter-booth", "Hide behind the service screen", "shelter-blind"),
       A: act('Pass landing 01', 'floor1', 'light', 'The next visible landing is marked 32.'),
       B: act('Pass landing 32', 'floor32', 'light', 'Four flights later, the number reads 64.', ['floor1']),
       C: act('Pass landing 64', 'floor64', 'light', 'The next rail bears wet paint.', ['floor32']),
@@ -106,7 +130,7 @@ export const endingStages = [
     'Kitty’s House',
     'pink',
     'Twelve circles have been drawn on a tiny theatre stage. Your host stands just outside the lamplight.',
-    'Collect twelve lost toys and return them to the little theatre. Keep Kitty in sight.',
+    'Collect twelve lost toys and return them to the little theatre. Keep Kitty in sight. The little drum was left in the dollhouse theatre.',
     `
 #########################
 #a...#.b..#....c..#..d.E#
@@ -115,10 +139,21 @@ export const endingStages = [
 #...#.##.####.#.###.#..g#
 ###...#...!....h..#...###
 #i....#.####.#.#..##...j#
-#..##.#...k..#....l.#...#
+#..##.#...k..#......#...#
 #.....@....H....t...#...#
+#######.#######.#########
+#######.:.......#########
+#####...,....,....#######
+####...###.....###..#####
+####..}..........{..#####
+####..,...^...^...,.#####
+####....#.......#...#####
+#####..l.......,..#######
+#######.........#########
 #########################`,
     {
+      ...roomDetails("Dollhouse matinee", "marquee", 0xdb90a8, "toy",
+        "Draw the nursery curtain", "shelter-drape", "Hide inside the doll kiosk", "shelter-booth"),
       ...Object.fromEntries(
         toys.map((name, i) => [
           String.fromCharCode(97 + i),
@@ -146,7 +181,7 @@ export const endingStages = [
     'The Containment Wing',
     'bunker',
     'Plastic balls float in four glass cells. A faded diagram describes a color-mixing experiment.',
-    'Decode the containment labels, then calibrate the flower lights to open the hospital.',
+    'Decode the containment labels, then calibrate the flower lights to open the hospital. The third specimen is in the conservatory.',
     `
 #######################
 #..C......#..P...#...E#
@@ -154,9 +189,20 @@ export const endingStages = [
 #..##...#...##.....#..#
 #....F..###..#..G..#..#
 ###..##.......####.#..#
-#@...K...H..!..Y......#
+#@...K...H..!.........#
+###.##############.####
+###.:..............####
+###...}.........{..####
+###..#..##...##..#.####
+###..,..^.....^..,.####
+###......#...#.....####
+###...,..#...#..,..####
+###..#...........#.####
+###.....Y.....,....####
 #######################`,
     {
+      ...roomDetails("Specimen conservatory", "glass", 0xadba79, "flower",
+        "Draw the specimen curtain", "shelter-drape", "Hide inside the observation booth", "shelter-booth"),
       C: note(
         'Containment cells',
         'Cells 1, 2, 3 contain red, yellow and blue. The door expects the cell numbers needed to make green, then red.',
@@ -182,7 +228,7 @@ export const endingStages = [
     'Plastic Mariana',
     'plastic',
     'Millions of faded play balls roll against an invisible tide. Lone lighthouse beams sweep the dark.',
-    'Ignite the three beacons in sequence. Follow the white balls to the gym.',
+    'Ignite the three beacons in sequence. Follow the white balls to the gym. The last beacon sits among the sunken diving bells.',
     `
 ##########################
 #@...#......1...#........#
@@ -190,11 +236,22 @@ export const endingStages = [
 #....#...#..##..#....#...#
 ###....#....##....2..#...#
 #...#####.....####.###...#
-#...3....#..........#....#
+#........#..........#....#
 #.#####..#..##...!..#..E.#
 #...........##...........#
+####.###############.#####
+####.:...,..##.......#####
+####.......#....##.}.#####
+####....^........#...#####
+####...{....#.....,..#####
+####.......##..3.....#####
+####...##.........##.#####
+####....#..,..^...#,.#####
+####.................#####
 ##########################`,
     {
+      ...roomDetails("Sunken diving bells", "bell", 0x6da8ce, "toy",
+        "Hide in the lifeguard booth", "shelter-booth", "Slip into the striped cabana", "shelter-drape"),
       '1': act(
         'Light the hospital beacon',
         'beacon1',
@@ -222,16 +279,27 @@ export const endingStages = [
     'The Four Hoops',
     'plastic',
     'The gym clock has no hands. Balls collect under the four nets in colors that match the floor.',
-    'Score a plastic ball through each of the four nets to unlatch the exit.',
+    'Score a plastic ball through each of the four nets to unlatch the exit. The fourth hoop faces the visitor grandstand.',
     `
 ####################
 #..1............2..#
 #.....o....o.......#
 #..................#
 #E....o....o.......#
-#..3.....@......4..#
+#..3.....@.........#
+#####.##########.###
+#####.:....###...###
+####.4.....^...#.###
+###.....,.....}..###
+##...###....###..###
+##...,.....,.....###
+##.##.....^..###.###
+##.{.###......,..###
+##...............###
 ####################`,
     {
+      ...roomDetails("Visitor grandstand", "bleachers", 0xc68955, "hoop",
+        "Hide inside the scorer's booth", "shelter-booth", "Crouch beneath the team bench", "bench"),
       o: prop('toy'),
       ...Object.fromEntries(
         rangeFlags('hoop', 4).map((f, i) => [
@@ -250,7 +318,7 @@ export const endingStages = [
     'Overgrowth',
     'overgrowth',
     'Vines knot around the slide entrances. Black wire snags on the slide controls. Something pale reaches from a hole near the orange chute.',
-    'Restore the slide controls and send each stranded wanderer through an evacuation chute.',
+    'Restore the slide controls and send each stranded wanderer through an evacuation chute. The second patient is inside the root house.',
     `
 ########################
 #..V.#.....A...#.....E.#
@@ -258,9 +326,20 @@ export const endingStages = [
 #..###.###.###...##....#
 #..p.....#...p.....!..##
 ###..###.#.#####.###...#
-#@...P...#.....B...Y...#
+#@...P...#.........Y...#
+######.#######.#########
+######.:.......#########
+###....,....##...,}.####
+###....^..#.........####
+###...#........#....####
+###.....,..B..#.....####
+###....#.....#..^...####
+###....{..###....,..####
+###.................####
 ########################`,
     {
+      ...roomDetails("Root house", "trellis", 0x859669, "plant",
+        "Hide in the woven root blind", "shelter-blind", "Draw the gardener's canvas", "shelter-drape"),
       '*': { monster: 'bonethief' },
       p: prop('plant'),
       P: note(
@@ -297,7 +376,7 @@ export const endingStages = [
     'The Grassrooms',
     'grass',
     'Yellow sunlight fills an enclosed lawn. A pair of wooden platforms hangs from frayed ropes.',
-    'Position both platforms, cut loose the plank and spool, then release the four garden locks.',
+    'Position both platforms, cut loose the plank and spool, then release the four garden locks. Look for the spool in the seed drying court.',
     `
 ##########################
 #..P...#..K.....#.....1..#
@@ -305,11 +384,22 @@ export const endingStages = [
 #...#..#....R...#...#....#
 #.@.#....p..##....#....2.#
 #...###..##.####..#####..#
-#....Q...#..S....#.......#
+#....Q...#.......#.......#
 #.##...#.#.#####.#.###...#
 #..4....p......E......3..#
+####.###############.#####
+####.:....,.....S....#####
+####...#...........#.#####
+####....,..#...#..,..#####
+####.......#...#.....#####
+####...,..^.....^..,.#####
+####...#..##...##..#.#####
+####....{.........}..#####
+####.................#####
 ##########################`,
     {
+      ...roomDetails("Seed drying court", "trellis", 0xb0a565, "spool",
+        "Hide behind the reed screen", "shelter-blind", "Duck inside the potting booth", "shelter-booth"),
       p: prop('plant'),
       P: act(
         'Swing the near platform',

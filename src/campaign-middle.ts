@@ -1,4 +1,5 @@
 import {
+  roomDetails,
   stage,
   item,
   act,
@@ -32,7 +33,7 @@ export const middle = [
     'The End',
     'library',
     'THE END hangs above the shelves in crooked letters. A single terminal is still indexing the returns.',
-    'Recover all sixteen reels and mount the archive. The blind Scratcher follows sound.',
+    'Recover all sixteen reels and mount the archive. The blind Scratcher follows sound. The last tape went to the magnetic tape vault.',
     `
 ###########################
 #..a...b...c...d...A......#
@@ -41,10 +42,21 @@ export const middle = [
 #..#####..#####..#####....#
 #j......k....!.....l...m..#
 #..#####..#####..#####....#
-#n....o.........p.....E...#
+#n....o...............E...#
 #.....H....K.....@........#
+######.#############.######
+######.:.............######
+######.,..,..,..,..,.######
+######.##..##..##..#.######
+######.{....^.....p..######
+######.##..##..##..#.######
+######..,..,..,..,.,.######
+######.....^......}..######
+######...###...###...######
 ###########################`,
     {
+      ...roomDetails("Magnetic tape vault", "stacks", 0x928a69, "records-rack",
+        "Hide behind the listening booth grille", "shelter-booth", "Climb into the catalog locker", "archive-locker"),
       ...tapes,
       K: {
         ...act(
@@ -73,10 +85,10 @@ export const middle = [
     'Motion',
     'village',
     'Painted clouds hang low over the hills. A tinny nursery tune drifts from an ice-cream van.',
-    'Follow the road to the floating castle. Hide in the cottages when the Animations close in.',
+    'Follow the road to the floating castle. Hide in the cottages when the Animations close in. The castle road leaves from the bus terminus.',
     `
 ########################
-#...........#........E.#
+#...........#..........#
 #..###..#...#..###.....#
 #..#H...#.........##...#
 #.....####....##.......#
@@ -85,8 +97,19 @@ export const middle = [
 #..#.H..#..#..#..###...#
 #..###..#.....#........#
 #@........##.....v.....#
+####.#############.#####
+####.:.............#####
+####..{..###....,..#####
+####..#.....#..^...#####
+####...,..,..#.....#####
+####.#........#....#####
+####..^..#.........#####
+####..,....##...,}.#####
+#######E........########
 ########################`,
     {
+      ...roomDetails("Bus terminus", "pavilion", 0xcaa365, "car",
+        "Wait inside the ticket booth", "shelter-booth", "Duck into the roadside blind", "shelter-blind"),
       H: hide('Shelter in a cottage wardrobe'),
       v: prop('car', 0xc7a780),
       E: exit('Climb the hanging castle rope', 'castle', [], 'ladder'),
@@ -99,17 +122,28 @@ export const middle = [
     'The Animated King',
     'castle',
     'A cardboard sun is nailed to the rafters. The monarch on the stage seems to be painted on both sides.',
-    'Set the three matching crates on their marks and restart the coaster. Keep the King in your light.',
+    'Set the three matching crates on their marks and restart the coaster. Keep the King in your light. Look for the moon crest in the chapel.',
     `
 ###################
 #..C..I.#......E..#
 #.......#..T......#
 #..##.......#.....#
-#S....!.....#...M.#
+#S....!.....#.....#
 #..##.J.##...O....#
 #.......#..@......#
+##.#############.##
+##.:#.........#..##
+##..#.,..^..,.#..##
+##.{#.........#}.##
+##..##.......##..##
+##.....,.,.,.....##
+##.#...........#.##
+##.##...^.....##.##
+#####...M....######
 ###################`,
     {
+      ...roomDetails("Chapel of the wooden king", "glass", 0xb27373, "bench",
+        "Draw the confessional curtain", "shelter-drape", "Shelter behind the choir screen", "shelter-blind"),
       C: challenge(
         {
           ...act('Move the circle crate', 'crest-circle', 'crate', 'The round seal lights up.'),
@@ -149,10 +183,10 @@ export const middle = [
     'Lights Out',
     'dark',
     'Your torch beam stops at the lens. A survey unit rattles quietly against the workbench.',
-    'Collect the LiDAR unit. Pulse it in the dark and follow the main hall past the Wretch.',
+    'Collect the LiDAR unit. Pulse it in the dark and follow the main hall past the Wretch. The flooded door is beyond the dead antenna array.',
     `
 #######################
-#....#..#....#..#....E#
+#....#..#....#..#.....#
 #.##.#..#.##.#..#.#.###
 #.#P....#.#.....#.#...#
 #.#####.#.####..#.#.#.#
@@ -161,8 +195,20 @@ export const middle = [
 #.......#...#...!..H..#
 #.#####.###.###.###.#.#
 #.....#.........#.....#
+####.#############.####
+####.:##.......##..####
+####..#,.......{#..####
+####......^........####
+####.##..#...#..##.####
+####..,....,....,..####
+####.##..#...#..##.####
+####..........^....####
+####..#}....,..,#..####
+####E.##.......##..####
 #######################`,
     {
+      ...roomDetails("Dead antenna array", "signal", 0x49625e, "terminal",
+        "Enter the signal booth", "shelter-booth", "Climb into the grounding cabinet", "bay-locker"),
       L: item('Handheld LiDAR', 'lidar', 'flashlight', 'Press F to send a ranging pulse across the walls.'),
       P: exit('Open the pink service hatch', 'pink', ['wrong', 'lidar'], 'vent'),
       E: exit('Find the flooded door', 'ocean', ['lidar']),
@@ -177,7 +223,7 @@ export const middle = [
     'Thalassophobia',
     'ocean',
     'The rooflines of a village stand just above the water. The dive cage hangs from an unmanned crane.',
-    'Take the skiff to the dive equipment and lower the cage.',
+    'Take the skiff to the dive equipment and lower the cage. The air tank is on the salvage jetty.',
     `
 #######################
 #..H......#...........#
@@ -186,9 +232,20 @@ export const middle = [
 #..##......#....###...#
 #..##.....#.....###...#
 #......##......#......#
-#@.B...##...G....S....#
+#@.B...##...G.........#
+###.##############.####
+###.:.###..........####
+###...{.#.....,,...####
+###........###.....####
+###..#..,,......^..####
+###..###...........####
+###........####..######
+###...S..^.......}#####
+###..........,....#####
 #######################`,
     {
+      ...roomDetails("Salvage jetty", "gantry", 0xba8652, "boat",
+        "Hide inside the dive tender's shed", "shelter-blind", "Duck under the rigging bench", "bench"),
       B: act('Untie the skiff', 'skiff', 'boat', 'The mooring rope falls away.'),
       G: item('Diving mask', 'mask', 'mask', 'The seal holds.', ['skiff']),
       S: item('Air cylinder', 'air-tank', 'bottle', 'The pressure gauge reads full.', ['skiff']),
@@ -208,7 +265,7 @@ export const middle = [
     'Below the Village',
     'ocean',
     'The wire snaps. Your cage hits silt and a shadow larger than the village passes overhead.',
-    'Follow the guide lights past the damaged cage. The big shadow turns toward a lit torch.',
+    'Follow the guide lights past the damaged cage. The big shadow turns toward a lit torch. The guide route surfaces past the bell graveyard.',
     `
 ####################
 #@..l....##...H....#
@@ -216,9 +273,20 @@ export const middle = [
 #....##.###.##...#.#
 #..l....#........#.#
 #.####..#.##..#....#
-#....l..!.#...#...E#
+#....l..!.#...#....#
+##.#############.###
+##.:.............###
+##..#..,..^...#,.###
+##.##.........##.###
+##.....##..,.....###
+##.{....#.....,..###
+##..^........#...###
+##.....#....##.}.###
+##E..,..##.......###
 ####################`,
     {
+      ...roomDetails("Bell graveyard", "bell", 0x7da19b, "cage",
+        "Slip into the broken observation pod", "shelter-booth", "Hide behind the salvage screen", "shelter-blind"),
       l: prop('light', 0x61c8de),
       H: hide('Shelter inside the wrecked dive cage', 'cage'),
       E: exit('Swim into the limestone crack', 'cave', [], 'vent'),
@@ -232,7 +300,7 @@ export const middle = [
     'Cave System',
     'cave',
     'Pale fungi cling to the wet rock. A narrow bridge bends above a fissure.',
-    'Follow the fungus through the moth cavern, cross the old bridge and find the survey camp.',
+    'Follow the fungus through the moth cavern, cross the old bridge and find the survey camp. The survey camp entrance is in the amethyst grotto.',
     `
 #########################
 #@..f..##....f....##....#
@@ -240,9 +308,20 @@ export const middle = [
 #....#....##...###..#.###
 #..###.f.##..B......f...#
 #...###....##.####.###..#
-###...!..#..#....#.....E#
+###...!..#..#....#......#
+####.##############.#####
+####.:..............#####
+####...,....###..{..#####
+####....^..#.....#..#####
+####......#..,..,...#####
+####.....#........#.#####
+####..........#..^..#####
+####..},...##....,..#####
+#######.E.......#########
 #########################`,
     {
+      ...roomDetails("Amethyst grotto", "crystals", 0xaa81a4, "lamp",
+        "Take cover in the survey blind", "shelter-blind", "Draw the bivouac flap", "shelter-drape"),
       f: prop('plant', 0x72d2a6),
       B: act('Cross the survey bridge', 'cave-bridge', 'ladder', 'The old bridge swings behind you.'),
       H: hide('Take shelter beneath the ledge', 'crate'),
@@ -257,17 +336,29 @@ export const middle = [
     'Shifting Shadows',
     'lobby',
     'The projector points at a blank wall. Chalk circles mark the feet of the missing furniture.',
-    'Read the projected shapes, open the tool locker and trip all four shutter releases.',
+    'Read the projected shapes, open the tool locker and trip all four shutter releases. The fourth shutter release is in the double exposure studio.',
     `
 #######################
 #..P.....#...3.......E#
 #.###..#.#.#####..#...#
 #1....K#...#..L#...H..#
 ####..####.#...#..##..#
-#..2.......#...4......#
+#..2.......#..........#
 #.@...#..##.....#..!..#
+###.##############.####
+###.:..............####
+###..###..###..###.####
+####......,#..{.#.#####
+###.........^......####
+###..###..###..###.####
+###...}....4...,...####
+###..###..###..###.####
+###...,........,##.####
+###........^.......####
 #######################`,
     {
+      ...roomDetails("Double exposure studio", "projector", 0xb28a65, "chair",
+        "Hide in the projection booth", "shelter-booth", "Slip behind the blackout drape", "shelter-drape"),
       H: hide('Shelter inside the projection booth', 'locker'),
       P: note(
         'Turn the projector',
@@ -300,15 +391,27 @@ export const middle = [
     'Courtyard Windows',
     'courtyard',
     'Five columns of identical windows look onto the empty court. Six floors still have a lamp burning.',
-    'Read the lit window columns from the top floor down, then open the bridge gate.',
+    'Read the lit window columns from the top floor down, then open the bridge gate. The bridge gate opens from the glass cloister.',
     `
 ####################
 #..A..B..C..D..F..G#
 #..................#
 #######...###..#####
-#@......#.###...K.E#
+#@......#.###...K..#
+##.##############.##
+##.:.##.......##..##
+##...#{.......,#..##
+##.........^......##
+##..##..#...#..##.##
+##...,....,....,..##
+##..##..#...#..##.##
+##.....^..........##
+##...#,..,....}#..##
+##E..##.......##..##
 ####################`,
     {
+      ...roomDetails("Leaded glass cloister", "glass", 0x739b94, "bench",
+        "Close the porter booth shutter", "shelter-booth", "Hide behind the trellis blind", "shelter-blind"),
       A: note('Sixth floor', 'Column 4 is lit on the sixth floor.', 'light'),
       B: note('Fifth floor', 'Column 1 is lit on the fifth floor.', 'light'),
       C: note('Fourth floor', 'Column 5 is lit on the fourth floor.', 'light'),
@@ -327,19 +430,30 @@ export const middle = [
     'Darkened Suburbs',
     'suburbs',
     'The neighborhood map marks three houses with the same red circle. The Neighborhood Watch sees down the street. Stop beneath a lit porch until the eye passes.',
-    'Activate the three home terminals. The outpost holds the administrator card for the field gate.',
+    'Activate the three home terminals. The outpost holds the administrator card for the field gate. The bus loop has a notice for the neighbourhood.',
     `
 #########################
 #1...#....2..#...#.H....#
 #....#.......#...#......#
 ###=#####=######=###=####
 #...................!...#
-#@......T.........E.....#
+#@................E.....#
 ###=#####=#####=#####=###
 #...#.......#...#.......#
 #3..#...O...#...#.......#
+#####.#############.#####
+#####.:.............#####
+#####..{.........}..#####
+#####.#..##...##..#.#####
+#####.,..^.....^..,.#####
+#####.....#...#.....#####
+#####..,..#...#..,..#####
+#####.#...........#.#####
+#####T...,.....,....#####
 #########################`,
     {
+      ...roomDetails("Neighbourhood bus loop", "signal", 0xd29a68, "car",
+        "Hide in the bus dispatch booth", "shelter-booth", "Duck behind the fence blind", "shelter-blind"),
       ...Object.fromEntries(
         rangeFlags('home', 3).map((f, i) => [
           String(i + 1),
@@ -363,16 +477,28 @@ export const middle = [
     'Abandoned Outpost',
     'bunker',
     'The recorder repeats an unfinished instruction. The decontamination shower is the only operational unit.',
-    'Prime the shower and use it on the infected agent to retrieve the field gate card.',
+    'Prime the shower and use it on the infected agent to retrieve the field gate card. The administrator card was taken to decontamination.',
     `
 ###################
 #....V.#..H.#....E#
 #.##...#....#.##..#
 #.##.#####..#..#..#
-#......Q..!...C...#
+#......Q..!.......#
 #@..A.........#...#
+#.###############.#
+#.:.......^.......#
+#...##,........,..#
+#...###..###..###.#
+#.....,...C....}..#
+#...###..###..###.#
+#........^........#
+#...#.{..#,......##
+#...###..###..###.#
+#.................#
 ###################`,
     {
+      ...roomDetails("Decontamination ward", "organ", 0x92af92, "bed",
+        "Draw the isolation curtain", "shelter-drape", "Hide in the kit locker", "bay-locker"),
       A: note(
         'Incident recorder',
         'Prime the decontamination valve. The infected agent still has the administrator card.',
@@ -400,7 +526,7 @@ export const middle = [
     'Bountiful Harvest',
     'field',
     'Rows of wheat disappear into the dusk. The first windmill is silent. So is the engine somewhere in the wheat.',
-    'Follow the fence breaks and wake the three wind turbines in sequence.',
+    'Follow the fence breaks and wake the three wind turbines in sequence. The south turbine can be reached from the threshing yard.',
     `
 #########################
 #@..#...###...#......A..#
@@ -409,9 +535,20 @@ export const middle = [
 #.###.....#.#####.#....!#
 #...#####.#...B...#.###.#
 ###....##...#######.#...#
-#C..##..............#.E.#
+#...##..............#.E.#
+######.############.#####
+#####:..............#####
+#####..,......###.{.#####
+#####.###..^.....##.#####
+#####.....,.....,...#####
+#####..###....###...#####
+#####..}.....,.....######
+#####.#...^.....C.#######
+#####...###......########
 #########################`,
     {
+      ...roomDetails("Threshing yard", "wheel", 0xb69859, "barrel",
+        "Hide in the straw blind", "shelter-blind", "Duck inside the weigh booth", "shelter-booth"),
       A: act('Start the east turbine', 'wind-east', 'turbine', 'The blades swing toward the central tower. A chainsaw starts in the wheat.'),
       B: act('Start the central turbine', 'wind-center', 'turbine', 'A beacon appears at the south fence.', [
         'wind-east',
@@ -430,7 +567,7 @@ export const middle = [
     'The Arcade',
     'arcade',
     'All the scoreboards read zero. The central cabinet has sockets for four save cartridges.',
-    'Find the elevator ticket. The central machine starts when all four other endings are recorded.',
+    'Find the elevator ticket. The central machine starts when all four other endings are recorded. Check the prize exchange for the ticket clue.',
     `
 #######################
 #..a..a..#....a..a..E.#
@@ -438,10 +575,21 @@ export const middle = [
 #..............##.....#
 #..a..a.....F..##.a...#
 #..a..a..##.......a...#
-#........##....T......#
+#........##...........#
 #..@.............B....#
+#######.#######.#######
+#######.:.......#######
+#####....,....,...#####
+####..###.....###..####
+####..{..........}.####
+####.,...^...^...,.####
+####...#.......#...####
+#####..,.......,..#####
+#######.T.......#######
 #######################`,
     {
+      ...roomDetails("Prize exchange", "marquee", 0xc26d9c, "arcade",
+        "Crouch inside the token booth", "shelter-booth", "Hide behind the velvet curtain", "shelter-drape"),
       a: prop('arcade'),
       T: note('Discarded lift ticket', 'Three floors are punched into the ticket: 9, 3, 1.'),
       K: code(
@@ -467,18 +615,29 @@ export const middle = [
     'The Red Rooms',
     'lobby',
     'Five breakers are visible through locked service doors. Red light leaks around the baseboards.',
-    'Cross into the red side to release the locks, return, and seal the Bone Thief tunnel.',
+    'Cross into the red side to release the locks, return, and seal the Bone Thief tunnel. The fifth relay feeds the switchyard.',
     `
 ########################
 #..1..#..2..#..3..#...E#
 #.....#.....#.....#....#
 #......................#
 ###.######..#####..##..#
-#..4...#..5.#..B...##..#
+#..4...#....#..B...##..#
 #......#....#..........#
 #@..R.........T........#
+####.##############.####
+####.:..............####
+####..{..##..,..##..####
+####........^....,..####
+####....###...###...####
+####.............}..####
+####....##...##...#.####
+####..,....,....^...####
+####..#.5.......#...####
 ########################`,
     {
+      ...roomDetails("Relay switchyard", "organ", 0xa47e67, "breaker",
+        "Hide in the linesman's cabinet", "bay-locker", "Duck behind the meter booth", "shelter-booth"),
       R: exit('Step through the flickering wall', 'redrooms', [], 'vent'),
       ...Object.fromEntries(
         rangeFlags('res-relay', 5).map((f, i) => [
@@ -509,16 +668,27 @@ export const middle = [
     'Through the Wall',
     'chase',
     'A ring of finger marks surrounds a black hole in the plaster floor. A knuckle shifts inside it.',
-    'Give the Bone Thief’s hole a wide berth. Release the locks and return through the broken wall.',
+    'Give the Bone Thief’s hole a wide berth. Release the locks and return through the broken wall. The release mechanism is in the rehearsal room.',
     `
 #####################
-#@....#...#........K#
+#@....#...#.........#
 #.##..#.#.#.##.###..#
 #..#....#...#..#....#
 ##.########.#..#.##.#
 #E.....H.......!..#.#
+##.##############.###
+##.:.#.........#..###
+##...#.,..^..,.#..###
+##..}#.........#{.###
+##...##.......##..###
+##......,.,.,.....###
+##..#...........#.###
+##..##.....^...##.###
+######....K...#######
 #####################`,
     {
+      ...roomDetails("The red rehearsal", "marquee", 0xad4141, "chair",
+        "Close the wings around you", "shelter-drape", "Hide in the prompter's box", "shelter-booth"),
       K: act(
         'Release the five service locks',
         'red-locks',
@@ -537,15 +707,26 @@ export const middle = [
     'The Snackrooms',
     'snack',
     'Coffee drips into an empty pot. The counter is clean except for a typewriter and a paper placemat.',
-    'Read the marked keys on the placemat and type their sequence.',
+    'Read the marked keys on the placemat and type their sequence. Someone left a wrapped bar at the midnight lunch counter.',
     `
-#################
-#A...t...t....E.#
-#.............K.#
-#..t...t...t....#
-#@..P....B......#
-#################`,
+##################
+#A...t...t....E.##
+#.............K.##
+#..t...t...t....##
+#@..P...........##
+#.#############.##
+#.:..............#
+#..,..,..,..,..,.#
+#..#..##..##..##.#
+#...B.....^....{.#
+#..#..##..##..##.#
+#..,.,..,..,..,..#
+#...}......^.....#
+#....###...###...#
+##################`,
     {
+      ...roomDetails("Midnight lunch counter", "pavilion", 0xcc866f, "table",
+        "Slide behind the service hatch", "shelter-booth", "Pull the pantry curtain", "shelter-drape"),
       t: prop('table'),
       A: item('Cold almond water', 'almond-snack', 'bottle', 'A cold bottle from the diner refrigerator.'),
       B: item('Wrapped energy bar', 'bar-snack', 'bar', 'A sealed bar from the till.'),

@@ -1,4 +1,5 @@
 import * as T from 'three';
+import { makeLandmark, makeShelter } from './room-landmarks';
 import type { GameObject } from './campaign';
 
 export class ModelKit {
@@ -197,6 +198,36 @@ export function makeModel(k: ModelKit, s: Spec) {
     b('#929b88', 0, 1.43, 0.246, 0.57, 0.63, 0.08);
     b('#35403e', 0, 1.48, 0.298, 0.45, 0.36, 0.045);
   };
+  if (model.startsWith('landmark-')) return makeLandmark(k, model.slice(9), col, s.label ?? '');
+  if (model.startsWith('shelter-')) return makeShelter(k, model.slice(8), col);
+  if (model === 'cast-bust') {
+    b('#77756d', 0, .51, 0, .65, 1.02, .64);
+    b('#aaa79a', 0, 1.04, 0, .74, .09, .72);
+    a(col, 0, 1.21, 0, .61, .34, .40);
+    a(col, 0, 1.56, .02, .47, .63, .45);
+    for (const side of [-1, 1]) {
+      a('#55554e', side * .105, 1.61, .213, .09, .038, .045);
+      a(col, side * .21, 1.56, .024, .091, .15, .10);
+    }
+    a(col, 0, 1.54, .246, .085, .14, .105);
+    return g;
+  }
+  if (model === 'room-directory') {
+    for (const x of [-.63, .63]) {
+      b(steel, x, .87, 0, .065, 1.74, .07);
+      b(dark, x, .045, 0, .37, .09, .34);
+    }
+    b(dark, 0, 1.57, 0, 1.73, .48, .09);
+    for (const side of [-1, 1]) {
+      const face = new T.Group();
+      face.position.set(0, 1.57, side * .062);
+      face.rotation.y = side < 0 ? Math.PI : 0;
+      k.label(face, s.label ?? '', 0, 0, 0, 1.63, .40, '#34403c', '#e1d9bb');
+      g.add(face);
+    }
+    b(col, 0, 1.86, 0, 1.77, .075, .12);
+    return g;
+  }
   if (model === 'pit') {
     return g;
   }

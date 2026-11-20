@@ -1,4 +1,4 @@
-import { stage, item, act, code, exit, note, hide, prop, noteKeys, rangeFlags } from './campaign-format.ts';
+import { roomDetails, stage, item, act, code, exit, note, hide, prop, noteKeys, rangeFlags } from './campaign-format.ts';
 
 export const opening = [
   stage(
@@ -496,16 +496,29 @@ export const opening = [
     'The Other Branch',
     'pipes',
     'The STATION arrow points back the way you came. Someone has painted FUN on the other wall.',
-    'Follow the FUN branch and sprint for the side door.',
+    'Follow the FUN branch and sprint for the side door. The side door is in the boiler bypass.',
     `
 ##########################
 #@......................##
 ####################.##.##
-#E...................##..#
+#....................##..#
 ############.##########..#
 #...............!........#
+#####.#############.######
+#####.:.............######
+#####..##..,..##..{.######
+#####..,....^.......######
+#####...###...###...######
+#####..}............######
+#####.#...##...##...######
+#####...^....,....,.######
+#####E..#.......,.#.######
 ##########################`,
-    { E: exit('Push through the party door', 'fun') },
+    {
+      ...roomDetails("Boiler bypass", "wheel", 0xbb713f, "valve",
+        "Crouch behind the steam blind", "shelter-blind", "Slip into the fitter's booth", "shelter-booth"),
+      E: exit('Push through the party door', 'fun'),
+    },
     'smiler',
     Math.PI / 2,
   ),
@@ -515,18 +528,30 @@ export const opening = [
     'Party Rooms',
     'party',
     'The song skips every time you move. The figures at the tables never blink.',
-    'Cross the party rooms. Tables provide cover when the Partygoer turns.',
+    'Cross the party rooms. Tables provide cover when the Partygoer turns. The tiled doorway is behind the birthday bandstand.',
     `
 #######################
-#..T..t.#...t...#....E#
+#..T..t.#...t...#.....#
 #....t..#...T...#..t..#
 #..###..###..##.#.##..#
 #..#.....t....#.......#
 #..#..T.......###.....#
 #....###..t...#T...!..#
 #@.....t....#.....t...#
+####.#############.####
+####.:.............####
+####.#....^......#.####
+####.{#....,....#}.####
+####...#.......#...####
+####....#..^..#....####
+####.,...........,.####
+####..##.......##..####
+####....,.....,....####
+#######E........#######
 #######################`,
     {
+      ...roomDetails("Birthday bandstand", "marquee", 0xe6a45f, "chair",
+        "Duck under the cake table", "table", "Draw the stage curtain", "shelter-drape"),
       T: hide('Hide under the party table', 'table'),
       t: prop('table', 0xe6bb92),
       E: exit('Slip through the tiled doorway', 'pool'),
@@ -539,10 +564,10 @@ export const opening = [
     'Poolrooms',
     'pool',
     'A room full of daylight, with no sky beyond the windows. Black filaments drift in a few pools. The pale water is still.',
-    'Follow the white tiles and the sunken columns toward the red exit lamp.',
+    'Follow the white tiles and the sunken columns toward the red exit lamp. The fire door opens off the bathing pavilion.',
     `
 #######################
-#........#......L...E.#
+#........#......L.....#
 #..##.~~.#..##.....#..#
 #..##.~.....##..##.#..#
 #.....####......##....#
@@ -550,8 +575,20 @@ export const opening = [
 #..#..##....#.###...#.#
 #.....##....#..~~..L..#
 #..@......#...........#
+####.#############.####
+####.:........###..####
+####...,,.....#.{..####
+####.....###.......####
+####..^......,,..#.####
+####...........###.####
+######..####.......####
+#####}.......^..,..####
+#####.E..,.........####
 #######################`,
-    { L: prop('light', 0xbceef3), E: exit('Open the red-lit fire door', 'run') },
+    {
+      ...roomDetails("Bathing pavilion", "pavilion", 0x7ebeb4, "bench",
+        "Pull the changing curtain", "shelter-drape", "Hide in the towel booth", "shelter-booth"),
+      L: prop('light', 0xbceef3), E: exit('Open the red-lit fire door', 'run') },
   ),
   stage(
     'run',
@@ -559,14 +596,28 @@ export const opening = [
     'Run For Your Life',
     'chase',
     'The alarm starts as you clear the doorway. The beds in the corridor are on their sides.',
-    'Sprint down the red corridor. Use the gaps beside the overturned beds.',
+    'Sprint down the red corridor. Use the gaps beside the overturned beds. The triage ward loops back onto the emergency corridor.',
     `
 #####################################
 #!..@.........##........#..........E#
 #......##.....##...##...#...##...#..#
 #......##..........##.......##...#..#
+###########.#############.###########
+###########.:.............###########
+###########.###..###..###.###########
+###########.#.{..#,......############
+###########......^........###########
+###########.###..###..###.###########
+###########...,...,....}..###########
+###########.###..###..###.###########
+###########.##,........,..###########
+###########.......^.......###########
 #####################################`,
-    { E: exit('Push the emergency bar', 'library') },
+    {
+      ...roomDetails("Emergency triage", "gantry", 0xbf5249, "bed",
+        "Close the triage curtain", "shelter-drape", "Crawl behind the dispatch counter", "shelter-booth"),
+      E: exit('Push the emergency bar', 'library'),
+    },
     'clump',
     Math.PI / 2,
   ),
