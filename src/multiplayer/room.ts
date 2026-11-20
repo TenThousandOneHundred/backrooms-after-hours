@@ -21,7 +21,6 @@ function explorerIdentity() {
 
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const namespace = 'backrooms-afterhours-campaign-4-';
-const blockedRoute = 'The host answered, but the browsers could not connect. Try the same Wi-Fi or a phone hotspot, then retry.';
 export function newCode() {
   return Array.from(
     crypto.getRandomValues(new Uint8Array(6)),
@@ -48,6 +47,8 @@ export class Room {
   private reconnectTimer = 0;
   private lookupRetry = 0;
   private retriedLookup = false;
+  private retriedRoute = false;
+  private hasRelay: boolean;
   private closed = false;
   slot = 0;
   state?: Snapshot;
@@ -60,6 +61,7 @@ export class Room {
     iceServers: RTCIceServer[],
   ) {
     const id = hosting ? namespace + code : 'explorer-' + crypto.randomUUID();
+    this.hasRelay = iceServers.some(server => [server.urls].flat().some(url => /^turns?:/i.test(url)));
     this.peer = new Peer(id, { config: { iceServers } });
     this.voice = new ProximityVoice(this.peer);
     this.radio = new RadioAudio(
@@ -165,35 +167,65 @@ export class Room {
     });
   }
   private connectToHost() {
-    if (this.closed || this.upstream || this.state || !this.peer.open) return;
-    this.waitFor('Looking for the host…', 'The host did not answer. Ask them to open the room tab and check the code.', 14000);
-    const conn = this.peer.connect(namespace + this.code, {
-      serialization: 'binary',
-      reliable: true,
-      label: 'campaign-v4',
-      metadata: { explorerId: explorerIdentity() },
-    });
+    if (this.closed || this.upstream || this.state) return;
+    if (!this.peer.open) {
+      this.waitFor('Reconnecting to the room service…', 'The room service could not reconnect. Retry with the same code.', 12000);
+      return;
+    }
+    const tryingRelay = this.retriedRoute && this.hasRelay;
+    const routeError = this.hasRelay
+      ? 'The host answered, but the connection still failed. Try another network and rejoin with the same code.'
+      : 'The host answered, but these networks could not connect directly. No relay is available. Try the same Wi-Fi or a phone hotspot.';
+    this.waitFor(tryingRelay ? 'Trying the relay…' : this.retriedRoute ? 'Retrying the host connection…' : 'Looking for the host…',
+      'The host did not answer. Ask them to open the room tab and check the code.', 14000);
+    let conn: DataConnection;
+    try {
+      conn = this.peer.connect(namespace + this.code, {
+        serialization: 'binary', reliable: true, label: 'campaign-v4',
+        metadata: { explorerId: explorerIdentity() },
+      });
+      // PeerJS creates the connection synchronously. ICE gathering starts when its offer is applied.
+      if (tryingRelay) conn.peerConnection.setConfiguration({
+        ...conn.peerConnection.getConfiguration(), iceTransportPolicy: 'relay',
+      });
+    } catch {
+      this.fail('The browser could not start a connection to the host.');
+      return;
+    }
     this.upstream = conn;
     const pc = conn.peerConnection;
+    const routeFailed = () => {
+      if (this.closed || this.upstream !== conn) return;
+      if (this.state || conn.open || !pc.remoteDescription) {
+        this.fail('The host closed the room or the connection was lost.');
+        return;
+      }
+      if (this.retriedRoute) {
+        this.fail(routeError);
+        return;
+      }
+      this.retriedRoute = true;
+      this.upstream = undefined;
+      conn.close();
+      this.connectToHost();
+    };
     pc.addEventListener('signalingstatechange', () => {
       if (this.closed || this.upstream !== conn || conn.open || !pc.remoteDescription || pc.signalingState !== 'stable') return;
-      this.waitFor('Host found. Connecting the two browsers…',
-        blockedRoute, 18000);
+      this.waitFor(tryingRelay ? 'Host found. Connecting through the relay…' : 'Host found. Connecting the two browsers…',
+        routeError, this.retriedRoute ? 22000 : 12000, routeFailed);
     });
-    conn.once('open', () => this.waitFor('Connected. Receiving the room…',
-      'Connected to the host, but the room data did not arrive. Refresh both games and try again.', 10000));
-    conn.on('data', (value) => this.receive(value));
-    conn.on('close', () => {
-      if (this.upstream === conn) this.fail('The host closed the room or the connection was lost.');
+    conn.once('open', () => {
+      if (this.upstream === conn) this.waitFor('Connected. Receiving the room…',
+        'Connected to the host, but the room data did not arrive. Refresh both games and try again.', 10000);
     });
-    conn.on('error', () => {
-      if (this.upstream === conn) this.fail(!this.state && pc.remoteDescription ? blockedRoute : 'Connection to the host was lost.');
-    });
+    conn.on('data', (value) => { if (this.upstream === conn) this.receive(value); });
+    conn.on('close', routeFailed);
+    conn.on('error', routeFailed);
   }
-  private waitFor(status: string, timeoutMessage: string, ms: number) {
+  private waitFor(status: string, timeoutMessage: string, ms: number, onTimeout = () => this.fail(timeoutMessage)) {
     if (this.closed || this.state) return;
     clearTimeout(this.deadline);
-    this.deadline = window.setTimeout(() => this.fail(timeoutMessage), ms);
+    this.deadline = window.setTimeout(onTimeout, ms);
     this.progress(status);
   }
   private receive(value: unknown) {
