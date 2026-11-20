@@ -1,3 +1,4 @@
+import { AdaptiveResolution, pixelRatio, type GraphicsQuality } from './render-quality';
 import { ClosetDoors, coverFits, coverZone, reachableDoor, headroom, standingHeight, crouchingHeight } from './concourse-cover';
 import { FilmCamera } from './film-camera';
 import { campaignAtmosphere } from './level-atmosphere';
@@ -26,7 +27,7 @@ export type GameSettings = {
   sensitivity: number;
   volume: number;
   headBob: boolean;
-  quality: 'standard' | 'high';
+  quality: GraphicsQuality;
 };
 export type GameHUD = {
   lives: number;
@@ -92,7 +93,7 @@ const controls = new Set([
   'Digit2',
 ]);
 export { playerSpeed };
-const defaultSettings: GameSettings = { sensitivity: 1, volume: 0.65, headBob: true, quality: 'high' };
+const defaultSettings: GameSettings = { sensitivity: 1, volume: 0.65, headBob: true, quality: 'auto' };
 
 export class Game {
   private renderer: THREE.WebGLRenderer;
@@ -186,7 +187,7 @@ export class Game {
   private poseTime = 0;
   private nextHeardStep = 0;
   private lastGrab = -1;
-  private frameTime = 0;
+  private resolution = new AdaptiveResolution();
   private moving = false;
   private sprinting = false;
   private restoredSupply = 0;
@@ -242,21 +243,22 @@ export class Game {
     this.resize();
   }
   applySettings(settings: GameSettings) {
+    const qualityChanged = this.settings.quality !== settings.quality;
     this.settings = {
       sensitivity: clamp(settings.sensitivity, 0.25, 2),
       volume: clamp(settings.volume, 0, 1),
       headBob: settings.headBob,
       quality: settings.quality,
     };
-    this.renderer.shadowMap.enabled = this.settings.quality === 'high';
+    if (qualityChanged) this.resolution = new AdaptiveResolution();
+    this.renderer.shadowMap.enabled = this.settings.quality === 'high' || this.settings.quality === 'auto';
     this.sound.setVolume(this.settings.volume);
-    this.resize();
+    if (qualityChanged) this.resize();
   }
   private resize = () => {
     const w = this.canvas.clientWidth || innerWidth,
       h = this.canvas.clientHeight || innerHeight;
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, this.settings.quality === 'high' ? 1.65 : 1));
-    this.renderer.setSize(w, h, false);
+    this.renderer.setDrawingBufferSize(w, h, pixelRatio(this.settings.quality, devicePixelRatio || 1, this.resolution.scale));
     this.camera.aspect = w / Math.max(1, h);
     this.camera.updateProjectionMatrix();
     if (this.cinema) this.cinema.render(this.renderer, this.camera.aspect, 0);
@@ -440,6 +442,7 @@ export class Game {
     this.callbacks.screen(next, detail);
     if (next === 'playing') {
       this.refreshHUD();
+      this.resolution.resetTiming();
       this.lastFrame = performance.now();
     }
   }
@@ -1681,7 +1684,7 @@ export class Game {
   }
   private renderView(dt: number) {
     if (dt > 0) this.sound.listener(this.x,this.z,this.yaw,dt);
-    this.film.render(this.renderer,this.scene,this.camera,dt,this.settings.quality === 'high');
+    this.film.render(this.renderer,this.scene,this.camera,dt,this.renderer.shadowMap.enabled);
   }
   private run() {
     if (this.frameId) return;
@@ -1690,10 +1693,10 @@ export class Game {
   }
   private frame = (now: number) => {
     if (this.disposed) return;
-    if(this.room && this.settings.quality==='standard' && now-this.frameTime<1000/31){
-      this.frameId=requestAnimationFrame(this.frame);return;
+    if (this.settings.quality === 'auto' && this.mode === 'playing' && !document.hidden &&
+        this.resolution.sample(now - this.lastFrame)) {
+      this.renderer.setPixelRatio(pixelRatio('auto', devicePixelRatio || 1, this.resolution.scale));
     }
-    this.frameTime=now;
     const elapsed = clamp((now - this.lastFrame) / 1000, 0, 0.14);
     this.lastFrame = now;
     if(this.room)this.syncTeam(elapsed);

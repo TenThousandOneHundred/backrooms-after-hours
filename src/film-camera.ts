@@ -52,38 +52,45 @@ export class FilmCamera {
       vec4 p=inverseProjection*vec4(uv*2.-1.,texture2D(depthMap,uv).r*2.-1.,1.);
       return p.xyz/p.w;
     }
+    float depthAt(vec2 uv){
+      float z=texture2D(depthMap,uv).r*2.-1.;
+      return (inverseProjection[2].z*z+inverseProjection[3].z) /
+             (inverseProjection[2].w*z+inverseProjection[3].w);
+    }
     vec2 screenPoint(vec3 p){
       vec4 clip=projection*vec4(p,1.);
       return clip.xy/clip.w*.5+.5;
     }
     void main(){
       vec4 base=texture2D(frame,vUv);
-      vec3 p=positionAt(vUv), normal=normalize(cross(dFdx(p),dFdy(p)));
-      float wet=1.-base.a;
       vec3 light=base.rgb;
-      if(reflections && wet>.025 && -p.z<45.){
-        if(dot(normal,-p)<0.) normal=-normal;
-        vec3 view=normalize(p), ray=reflect(view,normal);
-        float prev=.085, travel=.12;
-        for(int j=0;j<35;j++){
-          vec3 probe=p+normal*.045+ray*travel;
-          vec2 uv=screenPoint(probe);
-          if(probe.z>-.07 || any(lessThan(uv,pixel)) || any(greaterThan(uv,1.-pixel))) break;
-          float gap=positionAt(uv).z-probe.z;
-          if(gap>=0. && gap<.16+.085*travel){
-            float lo=prev,hi=travel;
-            for(int k=0;k<4;k++){
-              float mid=(lo+hi)*.5;vec3 q=p+normal*.045+ray*mid;
-              if(positionAt(screenPoint(q)).z>=q.z)hi=mid;else lo=mid;
+      if(reflections){
+        vec3 p=positionAt(vUv), normal=normalize(cross(dFdx(p),dFdy(p)));
+        float wet=1.-base.a;
+        if(wet>.025 && -p.z<45.){
+          if(dot(normal,-p)<0.) normal=-normal;
+          vec3 view=normalize(p), ray=reflect(view,normal);
+          float prev=.085, travel=.12;
+          for(int j=0;j<35;j++){
+            vec3 probe=p+normal*.045+ray*travel;
+            vec2 uv=screenPoint(probe);
+            if(probe.z>-.07 || any(lessThan(uv,pixel)) || any(greaterThan(uv,1.-pixel))) break;
+            float gap=depthAt(uv)-probe.z;
+            if(gap>=0. && gap<.16+.085*travel){
+              float lo=prev,hi=travel;
+              for(int k=0;k<4;k++){
+                float mid=(lo+hi)*.5;vec3 q=p+normal*.045+ray*mid;
+                if(depthAt(screenPoint(q))>=q.z)hi=mid;else lo=mid;
+              }
+              uv=screenPoint(p+normal*.045+ray*hi);
+              vec2 edge=min(uv,1.-uv);
+              float weight=smoothstep(0.,.085,min(edge.x,edge.y))*(1.-smoothstep(16.,32.,travel));
+              float fresnel=.085+.74*pow(1.-clamp(dot(normal,-view),0.,1.),3.);
+              light=mix(light,texture2D(frame,uv).rgb,wet*weight*fresnel);
+              break;
             }
-            uv=screenPoint(p+normal*.045+ray*hi);
-            vec2 edge=min(uv,1.-uv);
-            float weight=smoothstep(0.,.085,min(edge.x,edge.y))*(1.-smoothstep(16.,32.,travel));
-            float fresnel=.085+.74*pow(1.-clamp(dot(normal,-view),0.,1.),3.);
-            light=mix(light,texture2D(frame,uv).rgb,wet*weight*fresnel);
-            break;
+            prev=travel; travel+=.12+travel*.105;
           }
-          prev=travel; travel+=.12+travel*.105;
         }
       }
       light*=dot(texture2D(meter,vec2(.5)).rg,vec2(2.,2./255.));

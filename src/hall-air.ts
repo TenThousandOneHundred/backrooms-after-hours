@@ -94,6 +94,8 @@ export function hallAir(root: T.Group, stage: Stage, open: (x: number,z: number)
         float transmittance=1.; vec3 scatter=vec3(0.);
         for(int k=0;k<6;k++) {
           vec2 air=texture2D(uHallMask,(samplePos.xz+vec2(${TILE*.5}))/uHallSize).rg;
+          // Outside the hall mask this sample contributes exactly zero scattering.
+          if(air.r==0.) { samplePos+=stride; continue; }
           float height=abs(samplePos.y-uHallBed.x-air.g*uHallBed.y);
           float drift=.82+.18*sin(samplePos.x*.69+sin(samplePos.z*.44+uHallTime*.13));
           float beam=lampDust(samplePos);

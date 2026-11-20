@@ -1,3 +1,4 @@
+import { graphicsQuality } from './render-quality';
 import { difficultyName, difficultyPicker, lifeCount, readDifficulty } from './difficulty';
 import './style.css';
 import { icon } from './icons';
@@ -18,14 +19,14 @@ function selectedDifficulty(id: string) {
 }
 const enter = el<HTMLButtonElement>('enter');
 const settingsKey = 'backrooms-after-hours:settings';
-const defaults: GameSettings = { volume: 0.65, sensitivity: 1, quality: 'high', headBob: true };
+const defaults: GameSettings = { volume: 0.65, sensitivity: 1, quality: 'auto', headBob: true };
 function readSettings(): GameSettings {
   try {
     const data = JSON.parse(localStorage.getItem(settingsKey) || '{}');
     return {
       volume: typeof data.volume === 'number' ? Math.min(1, Math.max(0, data.volume)) : defaults.volume,
       sensitivity: typeof data.sensitivity === 'number' ? Math.min(2, Math.max(0.25, data.sensitivity)) : 1,
-      quality: data.quality === 'standard' ? 'standard' : 'high',
+      quality: graphicsQuality(data.quality),
       headBob:
         typeof data.headBob === 'boolean'
           ? data.headBob
@@ -315,7 +316,7 @@ function settingsMenu() {
       '<div class="setting"><label for="sensitivity">Mouse sensitivity</label><div><input id="sensitivity" type="range" min="25" max="200" step="5" value="' +
       Math.round(settings.sensitivity * 100) +
       '"><output id="sens-out"></output></div></div>' +
-      '<div class="setting"><label for="quality">Graphics quality</label><select id="quality"><option value="high">High</option><option value="standard">Standard</option></select></div>' +
+      '<div class="setting"><label for="quality">Graphics quality</label><select id="quality"><option value="auto">Auto (adaptive resolution)</option><option value="high">High</option><option value="standard">Standard</option><option value="performance">Performance</option></select></div>' +
       '<div class="setting"><label for="head-bob">Head movement</label><input type="checkbox" id="head-bob" ' +
       (settings.headBob ? 'checked' : '') +
       '></div><div class="setting"><label for="voice-enabled">' + (voiceRoom ? 'Speak to nearby teammates and monsters' : 'Monsters hear my microphone') + '</label>' +
@@ -349,7 +350,7 @@ function settingsMenu() {
     outputs();
   };
   quality.onchange = () => {
-    settings.quality = quality.value === 'standard' ? 'standard' : 'high';
+    settings.quality = graphicsQuality(quality.value);
     persistSettings();
   };
   bob.onchange = () => {
