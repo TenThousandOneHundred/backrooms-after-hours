@@ -20,6 +20,7 @@ export class RoomMenu {
   private rendering = false;
   private generation = 0;
   private phase = '';
+  private panelHost = false;
   constructor(private ui: UI) {}
   menu(invitedCode?: string) {
     this.disconnect();
@@ -79,7 +80,7 @@ export class RoomMenu {
         this.ui.panel('coop-loading', 'Co-op expedition', 'Entering the campaign', '', () => this.leave());
         void this.play(r);
       }
-      const count = get('coop-count'), roster = state.players.length + ' / ' + capacity;
+      const count = get('coop-count'), roster = r.migrating ? 'Finding the next host…' : state.players.length + ' / ' + capacity + (r.hosting ? ' · Hosting' : ' · Host ' + r.hostSeat);
       if (count.textContent !== roster) count.textContent = roster;
       const radio = get('radio-state'), receiving = r.radio.receiving;
       const label = r.isMonster ? 'E · Grab' : r.radio.transmitting ? 'Radio · Transmitting' : receiving.length ?
@@ -89,7 +90,8 @@ export class RoomMenu {
       if (status.textContent !== stage) status.textContent = stage;
       return;
     }
-    if (this.phase !== state.phase) {
+    if (this.phase !== state.phase || this.panelHost !== r.hosting) {
+      this.panelHost = r.hosting;
       this.phase = state.phase;
       this.generation++;
       if (this.inGame) this.ui.stop();
@@ -129,7 +131,7 @@ export class RoomMenu {
           (r.hosting && waiting && loadProgress(roomSave)
             ? this.ui.button('resume-room', 'Continue saved campaign')
             : '') +
-          this.ui.button('leave-room', r.hosting ? 'Close room' : 'Leave room') +
+          this.ui.button('leave-room', 'Leave room') +
           '</div>',
       );
       get('room-code').textContent = r.code;
@@ -169,7 +171,7 @@ export class RoomMenu {
         if (seat.innerHTML !== options) seat.innerHTML = options;
         get('monster-choice').hidden = !hunt;
         if (hunt) seat.value = String(hunt.monster);
-        (get('start-room') as HTMLButtonElement).disabled = !!hunt && state.players.length < 2;
+        (get('start-room') as HTMLButtonElement).disabled = !!hunt && (state.players.length < 2 || !state.players.some(p => p.slot === hunt.monster));
         const resume = get('resume-room');
         if (resume) resume.hidden = !!hunt;
       }
@@ -178,7 +180,7 @@ export class RoomMenu {
     const summary = get('room-difficulty-summary');
     if (summary) summary.textContent = difficultyName(difficulty) + ' · ' + lifeCount(livesPerLevel[difficulty]) + ' per explorer per level';
     get('room-roster').textContent =
-      state.players.length + ' / ' + capacity + ' explorers · You are Explorer ' + r.slot;
+      r.migrating ? 'Finding the next host…' : state.players.length + ' / ' + capacity + ' explorers · You are Explorer ' + r.slot + ' · Host ' + r.hostSeat;
   }
   private async play(r: Room) {
     if (this.rendering) return;
@@ -192,7 +194,7 @@ export class RoomMenu {
       get('coop-hud').hidden = false;
       get('coop-code').textContent = r.code;
       get('coop-count').textContent = r.state.players.length + ' / ' + capacity;
-      get('coop-leave').textContent = r.hosting ? 'Close room' : 'Leave room';
+      get('coop-leave').textContent = 'Leave room';
       get('coop-leave').onclick = () => this.leave();
       (get('world') as HTMLCanvasElement).focus();
     } catch {

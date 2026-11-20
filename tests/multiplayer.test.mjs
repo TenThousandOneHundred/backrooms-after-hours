@@ -263,3 +263,41 @@ test('a disconnected hunt monster can return to its role before the seat expires
   room.remove(2,true); now+=121000; room.step(.05);
   assert.equal(room.hunt.result,'abandoned');
 });
+
+test('host handoff keeps campaign state, roles, return seats and the pending ending', () => {
+  const room = new Expedition(), guest = crypto.randomUUID(), other = crypto.randomUUID();
+  room.add(); room.add(guest); room.add(other); room.start();
+  room.command(3,room.epoch,{type:'down',cause:'Caught.'});
+  room.journal.flags.push('rail1');
+  room.journal.inventory.rail1 = 'Left rail';
+  room.journal.pending = {ending:'wrong',target:'garage'};
+  const copy = structuredClone(room.checkpoint()), next = Expedition.takeOver(copy,2);
+  assert.equal(next.hostSlot,2); assert.equal(next.epoch,room.epoch);
+  assert.equal(next.journal.inventory.rail1,'Left rail');
+  assert.deepEqual(next.snapshot().monsters,room.snapshot().monsters);
+  assert.equal(next.add(other,true),3); assert.equal(next.players.get(3).alive,false);
+  assert.equal(next.add('host',true),1);
+  next.command(1,next.epoch,{type:'continue'}); assert.equal(next.journal.stage,'lobby');
+  next.command(2,next.epoch,{type:'continue'}); assert.equal(next.journal.stage,'garage');
+  assert.equal(room.journal.stage,'lobby');
+});
+
+test('a second host can take over a hunt with the same monster, lives and clock', () => {
+  const room = new Expedition(), a=crypto.randomUUID(), b=crypto.randomUUID();
+  room.add();room.add(a);room.add(b);room.configureHunt(2);room.start();room.step(.5);
+  const second=Expedition.takeOver(structuredClone(room.checkpoint()),2);
+  assert.equal(second.add(b,true),3);
+  const third=Expedition.takeOver(structuredClone(second.checkpoint()),3);
+  assert.equal(third.phase,'playing');assert.equal(third.hunt.monster,2);
+  assert.equal(third.time,.5);assert.equal(third.add(a,true),2);
+  assert.deepEqual(third.players.get(2),room.players.get(2));
+  assert.equal(third.add('host',true),1);
+});
+
+test('a lobby successor can start the game with the original explorer slots', () => {
+  const room = new Expedition();room.add();room.add();
+  const next=Expedition.takeOver(structuredClone(room.checkpoint()),2);
+  assert.equal(next.phase,'waiting');
+  assert.equal(next.add('host',true),1);
+  next.start(); assert.equal(next.phase,'playing');assert.equal(next.hostSlot,2);
+});

@@ -190,6 +190,17 @@ export class Encounter {
     if (this.kind === 'smiler' && stage.id === 'slides') this.profile.gaze = 'retreat';
     if (threat.speed) this.profile.speed = threat.speed;
   }
+  checkpoint() {
+    const {x,z,angle,danger,contact,contactPose,heardVoice,heldByGaze,stalkClock,pursuitSeconds,
+      recovery,memory,pause,attack,reach,lastSeen} = this;
+    return {x,z,angle,danger,contact,contactPose,heardVoice,heldByGaze,stalkClock,pursuitSeconds,
+      recovery,memory,pause,attack,reach,lastSeen};
+  }
+  restore(checkpoint: ReturnType<Encounter['checkpoint']>) {
+    Object.assign(this, checkpoint);
+    this.path = [];
+    this.repath = 0;
+  }
   releaseContact() {
     this.attack = 0;
     this.contact = false;

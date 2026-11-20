@@ -50,7 +50,32 @@ function answersProbe(conn: DataConnection): Promise<boolean> {
   });
 }
 
+type Backup = { session: string; owner: number; game: ReturnType<Expedition['checkpoint']>; tokens: [string,string][] };
+
+// The accompanying normal state frame already carries positions and journal changes.
+type WireBackup = Omit<Backup, 'game'> & {
+  game: Omit<Backup['game'], 'state'>;
+  teamLives?: Snapshot['journal']['teamLives'];
+};
+
+async function fingerprint(token: string) {
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2,'0')).join('');
+}
+
 export class Room {
+  private session = crypto.randomUUID() as string;
+  private backup?: Backup;
+  private claim?: Peer;
+  private monitor = 0;
+  private nextElection = 0;
+  private electionStarted = 0;
+  private dialStarted = 0;
+  private lastContact = performance.now();
+  private lastBackup = -Infinity;
+  private rosterKey = '';
+  migrating = false;
+  hostSeat = 1;
   private peer: Peer;
   readonly voice: ProximityVoice;
   readonly radio: RadioAudio;
@@ -68,7 +93,6 @@ export class Room {
   private upstream?: DataConnection;
   private timer = 0;
   private deadline = 0;
-  private reconnectTimer = 0;
   private lookupRetry = 0;
   private retriedLookup = false;
   private retriedRoute = false;
@@ -78,14 +102,14 @@ export class Room {
   state?: Snapshot;
   constructor(
     readonly code: string,
-    readonly hosting: boolean,
+    public hosting: boolean,
     private change: (s: Snapshot) => void,
     private failure: (message: string) => void,
     private progress: (message: string) => void,
-    iceServers: RTCIceServer[],
+    private iceServers: RTCIceServer[],
   ) {
     this.resumeKey = 'backrooms-after-hours.rejoin.' + code;
-    const id = hosting ? namespace + code : 'explorer-' + crypto.randomUUID();
+    const id = 'explorer-' + crypto.randomUUID();
     this.hasRelay = iceServers.some(server => [server.urls].flat().some(url => /^turns?:/i.test(url)));
     this.peer = new Peer(id, { config: { iceServers } });
     this.voice = new ProximityVoice(this.peer);
@@ -95,6 +119,7 @@ export class Room {
     );
     this.waitFor('Connecting to the room service…', 'The room service did not answer. Check your connection and retry.', 12000);
     this.peer.on('error', (error) => {
+      if (this.migrating && error.type === 'peer-unavailable') return;
       if (error.type === 'peer-unavailable') {
         if (!this.hosting && !this.closed && !this.state) {
           if (this.retriedLookup) this.fail('Room not found. Ask the host to open their room tab and confirm the code.');
@@ -114,14 +139,65 @@ export class Room {
     });
     this.peer.on('open', () => {
       if (this.closed || this.state || this.upstream) return;
-      if (hosting) {
-        this.hostGame = new Expedition();
-        this.slot = this.hostGame.add();
-        this.publish();
-      } else this.connectToHost();
+      if (this.hosting) this.createRoom();
+      else this.connectToHost();
     });
-    this.peer.on('connection', (conn) => {
-      if (!hosting || conn.label !== 'campaign-v4') {
+    this.maintainSignaling(this.peer);
+    this.monitor = window.setInterval(() => {
+      if (this.hosting && this.hostGame?.phase !== 'playing') {
+        for (const conn of this.guests.keys()) if (conn.open) conn.send({type:'heartbeat'});
+      } else if (!this.hosting && !this.migrating && this.backup && performance.now()-this.lastContact > 9000) {
+        this.recover();
+      }
+    }, 2000);
+  }
+
+  private createRoom() {
+    if (this.claim) return;
+    const endpoint = new Peer(namespace + this.code, {config:{iceServers:this.iceServers}});
+    this.claim = endpoint;
+    endpoint.on('error', error => {
+      if (!this.state) this.fail(error.type === 'unavailable-id' ? 'This room code is already taken. Create a new room.' : 'Could not register the room code.');
+    });
+    endpoint.once('open', async () => {
+      const token = crypto.randomUUID(), digest = await fingerprint(token);
+      if (this.closed) return;
+      this.hostGame = new Expedition();
+      this.slot = this.hostGame.add();
+      this.resumeTokens.set(digest, 'host');
+      this.rememberToken(token);
+      this.serve(endpoint);
+      this.publish();
+    });
+  }
+
+  private recoveryCopy(): Backup {
+    return {session:this.session, owner:this.slot, game:this.hostGame!.checkpoint(), tokens:[...this.resumeTokens]};
+  }
+
+  private serve(endpoint: Peer) {
+    this.listen(endpoint);
+    // Losing the signaling registration releases our claim to the code even if
+    // some WebRTC channels survive. Stop the old simulation before electing.
+    endpoint.on('disconnected', () => {
+      if (this.closed || this.claim !== endpoint || !this.hostGame) return;
+      this.backup = this.recoveryCopy();
+      clearInterval(this.timer);
+      this.claim = undefined;
+      this.hosting = false;
+      this.hostGame = undefined;
+      this.notifyHandoff();
+      this.guests.clear();
+      this.guestListeners.clear();
+      this.nextRadioPacket.clear();
+      endpoint.destroy();
+      this.recover();
+    });
+  }
+
+  private listen(endpoint: Peer) {
+    endpoint.on('connection', (conn) => {
+      if (!this.hosting || conn.label !== 'campaign-v4') {
         conn.close();
         return;
       }
@@ -131,8 +207,9 @@ export class Room {
           conn.close();
           return;
         }
+        if (conn.metadata?.session && conn.metadata.session !== this.session) { conn.close(); return; }
         const token = conn.metadata?.resumeToken;
-        const returningId = typeof token === 'string' ? this.resumeTokens.get(token) : undefined;
+        const returningId = typeof token === 'string' ? this.resumeTokens.get(await fingerprint(token)) : undefined;
         // A reload can reconnect before WebRTC reports the old channel closed.
         // Only a token from a previous welcome may take over that connection.
         if (returningId) for (const [old, seat] of this.guests) {
@@ -156,7 +233,12 @@ export class Room {
           this.publishVoiceRoster();
           break;
         }
-        const slot = this.hostGame.add(returningId ?? conn.metadata?.explorerId);
+        const resumeToken = returningId ? token : crypto.randomUUID();
+        const digest = await fingerprint(resumeToken);
+        if (this.closed || !conn.open) return;
+        const proposed = conn.metadata?.explorerId;
+        const used = [...this.resumeTokens.values()].includes(proposed);
+        const slot = this.hostGame.add(returningId ?? (used ? undefined : proposed), !!returningId);
         if (!slot) {
           conn.send({ type: 'full' });
           conn.close({ flush: true });
@@ -175,9 +257,8 @@ export class Room {
           }, 5000);
         }
         const explorerId = this.hostGame.identityOf(slot)!;
-        const resumeToken = returningId ? token : crypto.randomUUID();
-        this.resumeTokens.set(resumeToken, explorerId);
-        conn.send({ type: 'welcome', slot, explorerId, resumeToken });
+        this.resumeTokens.set(digest, explorerId);
+        conn.send({ type: 'welcome', session:this.session, slot, explorerId, resumeToken });
         conn.send({ type: 'voice-roster', members: this.voiceMembers });
         this.publish();
       });
@@ -231,13 +312,95 @@ export class Room {
         conn.close();
       });
     });
-    this.peer.on('disconnected', () => {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = window.setTimeout(() => {
-        if (!this.closed && !this.peer.destroyed && this.peer.disconnected) this.peer.reconnect();
-      }, 2000);
+  }
+
+  private maintainSignaling(endpoint: Peer) {
+    endpoint.on('disconnected', () => {
+      window.setTimeout(() => {
+        if (!this.closed && !endpoint.destroyed && endpoint.disconnected) endpoint.reconnect();
+      }, 1500);
     });
   }
+
+  private rememberToken(token: string) {
+    try {
+      sessionStorage.setItem(this.resumeKey, token);
+      localStorage.setItem(this.resumeKey, token);
+    } catch { /* Browser storage is optional. */ }
+  }
+
+  private notifyHandoff() {
+    for (const conn of this.guests.keys()) {
+      if (conn.open) try { conn.send({type:'host-leaving'}); } catch { /* Channel already lost. */ }
+    }
+  }
+
+  private recover() {
+    if (this.closed || this.hosting || this.migrating || !this.backup) return;
+    this.migrating = true;
+    this.electionStarted = performance.now();
+    const old = this.upstream;
+    this.upstream = undefined;
+    old?.close();
+    this.radio.reset();
+    this.voiceMembers = [];
+    this.updateVoice();
+    if (this.state) this.change(this.state);
+    const eligible = this.backup.game.state.players.map(p => p.slot).filter(n => n !== this.hostSeat).sort((a,b)=>a-b);
+    this.nextElection = window.setTimeout(() => this.tryElection(), 200 + (this.hostSeat === this.slot ? eligible.length : Math.max(0,eligible.indexOf(this.slot)))*1100);
+  }
+
+  private tryElection() {
+    if (!this.migrating || this.closed) return;
+    if (performance.now()-this.electionStarted > 95000) { this.fail('Host handoff timed out. Rejoin with the same room code.'); return; }
+    if (!this.peer.open) {
+      this.nextElection = window.setTimeout(() => this.tryElection(), 1500);
+      return;
+    }
+    // The signaling service grants the original room ID to only one browser.
+    // Keep our explorer peer for voice while this separate endpoint accepts guests.
+    const candidate = new Peer(namespace + this.code, {config:{iceServers:this.iceServers}});
+    this.claim = candidate;
+    const retry = () => {
+      if (this.claim !== candidate || !this.migrating) return;
+      this.claim = undefined;
+      candidate.destroy();
+      // Leave a slow ICE negotiation running alongside the election.
+      if (!this.upstream || (!this.upstream.open && performance.now()-this.dialStarted > 18000)) {
+        const old = this.upstream;
+        if (old?.peerConnection?.remoteDescription && this.hasRelay) this.retriedRoute = true;
+        this.upstream = undefined;
+        old?.close();
+        this.connectToHost();
+      }
+      this.nextElection = window.setTimeout(() => this.tryElection(), 3500 + this.slot*100);
+    };
+    const timeout = window.setTimeout(retry, 6500);
+    candidate.on('error', (error) => {
+      clearTimeout(timeout);
+      if (this.hosting && this.claim === candidate && error.type === 'unavailable-id')
+        this.fail('Another explorer is hosting now. Rejoin with the same code.');
+      else retry();
+    });
+    candidate.once('open', () => {
+      clearTimeout(timeout);
+      if (!this.migrating || this.claim !== candidate || this.closed) { candidate.destroy(); return; }
+      const backup = this.backup!;
+      this.hostGame = Expedition.takeOver(backup.game, this.slot);
+      this.hosting = true;
+      this.hostSeat = this.slot;
+      this.migrating = false;
+      this.resumeTokens = new Map(backup.tokens);
+      const old = this.upstream;
+      this.upstream = undefined;
+      old?.close();
+      this.serve(candidate);
+      this.publishVoiceRoster();
+      this.publish();
+      this.runHost();
+    });
+  }
+
   private resumeToken() {
     try {
       const session = sessionStorage.getItem(this.resumeKey);
@@ -245,7 +408,7 @@ export class Room {
     } catch { return {}; }
   }
   private connectToHost() {
-    if (this.closed || this.upstream || this.state) return;
+    if (this.closed || this.upstream || (this.state && !this.migrating)) return;
     if (!this.peer.open) {
       this.waitFor('Reconnecting to the room service…', 'The room service could not reconnect. Retry with the same code.', 12000);
       return;
@@ -260,7 +423,7 @@ export class Room {
     try {
       conn = this.peer.connect(namespace + this.code, {
         serialization: 'binary', reliable: true, label: 'campaign-v4',
-        metadata: { explorerId: explorerIdentity(), canProbe: true, ...this.resumeToken() },
+        metadata: { session:this.migrating ? this.session : undefined, explorerId: explorerIdentity(), canProbe: true, ...this.resumeToken() },
       });
       // PeerJS creates the connection synchronously. ICE gathering starts when its offer is applied.
       if (tryingRelay) conn.peerConnection.setConfiguration({
@@ -271,9 +434,17 @@ export class Room {
       return;
     }
     this.upstream = conn;
+    this.dialStarted = performance.now();
     const pc = conn.peerConnection;
     const routeFailed = () => {
       if (this.closed || this.upstream !== conn) return;
+      if (this.migrating) {
+        if (pc.remoteDescription && this.hasRelay) this.retriedRoute = true;
+        this.upstream = undefined;
+        conn.close();
+        return;
+      }
+      if (this.state && this.backup) { this.recover(); return; }
       if (this.state || conn.open || !pc.remoteDescription) {
         this.fail('The host closed the room or the connection was lost.');
         return;
@@ -309,6 +480,8 @@ export class Room {
   private receive(value: unknown) {
     if (this.closed) return;
     if (!value || typeof value !== 'object' || !('type' in value)) return;
+    this.lastContact = performance.now();
+    if (value.type === 'host-leaving') { this.recover(); return; }
     if (value.type === 'radio' && 'epoch' in value && 'sender' in value && 'packet' in value) {
       const s = this.state;
       if (
@@ -355,16 +528,12 @@ export class Room {
       'slot' in value &&
       typeof value.slot === 'number' &&
       Number.isInteger(value.slot) &&
-      value.slot >= 2 &&
+      value.slot >= 1 &&
       value.slot <= capacity
     ) {
       this.slot = value.slot;
-      if ('resumeToken' in value && typeof value.resumeToken === 'string') {
-        try {
-          sessionStorage.setItem(this.resumeKey, value.resumeToken);
-          localStorage.setItem(this.resumeKey, value.resumeToken);
-        } catch { /* Storage is unavailable in this browser. */ }
-      }
+      if ('session' in value && typeof value.session === 'string') this.session = value.session;
+      if ('resumeToken' in value && typeof value.resumeToken === 'string') this.rememberToken(value.resumeToken);
       if ('explorerId' in value && typeof value.explorerId === 'string') {
         try { sessionStorage.setItem('backrooms-after-hours.explorer', value.explorerId); } catch { /* Private session. */ }
       }
@@ -382,6 +551,21 @@ export class Room {
         return;
       if (!state.journal && (!this.state || this.state.revision !== state.revision)) return;
       state.journal ??= this.state!.journal;
+      if ('backup' in value && value.backup) {
+        const backup = value.backup as WireBackup;
+        if (backup.session === this.session) {
+          this.backup = {session:backup.session, owner:backup.owner, tokens:backup.tokens,
+            game:{...backup.game, state:{...state, journal:{...state.journal, teamLives:backup.teamLives}}}};
+          this.hostSeat = backup.owner;
+        }
+      }
+      if (this.migrating) {
+        this.migrating = false;
+        clearTimeout(this.nextElection);
+        this.claim?.destroy();
+        this.claim = undefined;
+        if (this.listening) this.upstream?.send({type:'voice-ready', listening:true});
+      }
       this.accept(state);
     }
   }
@@ -492,11 +676,22 @@ export class Room {
       this.savedRevision = state.revision;
       void storeProgress(journal, roomSave);
     }
+    const roster = state.players.map(p => p.slot).join(',');
+    const refresh = this.guests.size > 0 && ([...this.guests.keys()].some(c => !this.sentRevision.has(c)) || roster !== this.rosterKey || phaseChanged ||
+      this.state?.revision !== state.revision || performance.now()-this.lastBackup >= 800);
+    let backup: WireBackup | undefined;
+    if (refresh) {
+      const copy = this.recoveryCopy();
+      const {state: checkpoint, ...simulation} = copy.game;
+      backup = {session:copy.session, owner:copy.owner, tokens:copy.tokens, game:simulation, teamLives:checkpoint.journal.teamLives};
+      this.lastBackup = performance.now();
+    }
+    this.rosterKey = roster;
     for (const conn of this.guests.keys()) {
       if (!conn.open) continue;
       const changed = this.sentRevision.get(conn) !== state.revision;
       if (phaseChanged || changed || conn.dataChannel.bufferedAmount < 32768) {
-        conn.send({ type: 'state', state: changed ? { ...frame, journal: { ...journal, teamLives: undefined } } : frame });
+        conn.send({ type: 'state', backup, state: changed ? { ...frame, journal: { ...journal, teamLives: undefined } } : frame });
         this.sentRevision.set(conn, state.revision);
       }
     }
@@ -520,7 +715,11 @@ export class Room {
     clearInterval(this.timer);
     this.hostGame.start(resume ? loadProgress(roomSave) : null);
     this.publish();
-    if (this.hostGame.snapshot().phase !== 'playing') return;
+    this.runHost();
+  }
+  private runHost() {
+    if (this.hostGame?.phase !== 'playing') return;
+    clearInterval(this.timer);
     this.timer = window.setInterval(() => {
       this.hostGame!.step(0.05);
       this.publish();
@@ -545,13 +744,16 @@ export class Room {
     if (this.hostGame && !this.hostGame.hunt && this.hostGame.phase !== 'waiting' && this.savedRevision !== this.hostGame.revision)
       void storeProgress(this.hostGame.journal, roomSave);
     this.closed = true;
+    if (this.hosting) this.notifyHandoff();
+    clearInterval(this.monitor);
+    clearTimeout(this.nextElection);
+    this.claim?.destroy();
     if (this.upstream?.open) {
       try { this.upstream.send({type: 'depart'}); } catch { /* Channel already dropped. */ }
     }
     clearInterval(this.timer);
     clearTimeout(this.lookupRetry);
     clearTimeout(this.deadline);
-    clearTimeout(this.reconnectTimer);
     this.radio.reset();
     this.voice.dispose();
     this.guestListeners.clear();

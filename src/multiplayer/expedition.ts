@@ -103,6 +103,7 @@ const spawn = (slot: number, stage: string, lives: number): Explorer => {
 };
 
 export class Expedition {
+  hostSlot = 1;
   private doors = new ClosetDoors();
   readonly players = new Map<number, Explorer>();
   private hunters: { ai: Encounter; target: number; speed: number; visible: boolean }[] = [];
@@ -134,7 +135,7 @@ export class Expedition {
     if (this.phase !== 'finished' || !this.hunt) return;
     this.phase = 'waiting';
     this.journal = freshProgress(START, this.journal.difficulty);
-    this.configureHunt(this.players.has(this.hunt.monster) ? this.hunt.monster : 1);
+    this.configureHunt(this.players.has(this.hunt.monster) ? this.hunt.monster : this.hostSlot);
     for (const slot of this.players.keys()) this.spawnPlayer(slot);
   }
 
@@ -218,9 +219,9 @@ export class Expedition {
     return false;
   }
 
-  add(identity?: string) {
+  add(identity?: string, verified = false) {
     if (this.hunt && this.phase === 'playing') this.checkSurvivors();
-    const id = !this.players.size ? 'host' : typeof identity === 'string' && /^[a-f0-9-]{36}$/i.test(identity)
+    const id = !this.players.size ? 'host' : typeof identity === 'string' && (verified && identity === 'host' || /^[a-f0-9-]{36}$/i.test(identity))
       && ![...this.identities.values()].includes(identity) ? identity : crypto.randomUUID();
     const saved = this.disconnected.get(id);
     let slot = 0;
@@ -244,7 +245,7 @@ export class Expedition {
           && ![...this.players.values()].some(p => p.cargo === old.cargo) ? old.cargo : '';
         const position = fits ? {} : {x: player.x, z: player.z, y: 0, hidden: false, crouch: false};
         Object.assign(player, old, position, { slot, cargo, voice: 0, sprint: false, moving: false, gaze: 0, beam: 0, watching: 0 });
-        if (saved.respawnAt !== undefined) this.respawns.set(slot, saved.respawnAt);
+        if (saved.respawnAt != null) this.respawns.set(slot, saved.respawnAt);
       } else if (player.alive && !this.hunt && !this.journal.pending) this.joinTeam(player);
       if (player.alive) this.immunity.set(slot, Infinity);
     }
@@ -253,7 +254,7 @@ export class Expedition {
   remove(slot: number, holdSeat = false) {
     const id = this.identities.get(slot), player = this.players.get(slot);
     if (!id || !player) return;
-    if (this.phase === 'playing' && slot !== 1) {
+    if (this.phase === 'playing') {
       this.disconnected.set(id, { player: { ...player }, epoch: this.epoch,
         holdUntil: holdSeat ? Date.now() + 120_000 : 0, respawnAt: this.respawns.get(slot) });
     }
@@ -265,7 +266,7 @@ export class Expedition {
     this.immunity.delete(slot);
     for (const r of this.residents) r.exposure.delete(slot);
     if (this.hunt?.monster === slot) {
-      if (this.phase === 'waiting') this.configureHunt(1);
+      if (this.phase === 'waiting') this.configureHunt(this.hostSlot);
       else if (!holdSeat) this.finishHunt('abandoned');
     } else if (this.hunt && this.players.size < 2 && !holdSeat) this.finishHunt('abandoned');
     this.checkSurvivors();
@@ -283,7 +284,7 @@ export class Expedition {
     else this.phase = 'lost';
   }
   start(saved?: Progress | null) {
-    if (this.phase === 'playing' || this.phase === 'finished' || (this.hunt && this.players.size < 2)) return;
+    if (this.phase === 'playing' || this.phase === 'finished' || (this.hunt && (this.players.size < 2 || !this.players.has(this.hunt.monster)))) return;
     const resume = this.phase === 'waiting' && !this.hunt && saved && Object.hasOwn(stages, saved.stage);
     if (resume) this.journal = saved;
     this.enter(this.journal.stage, !!resume);
@@ -344,7 +345,7 @@ export class Expedition {
     if (this.phase !== 'playing' || epoch !== this.epoch || !p || !action || typeof action !== 'object')
       return;
     if (action.type === 'continue') {
-      if (slot === 1 && j.pending) {
+      if (slot === this.hostSlot && j.pending) {
         const target = j.pending.target;
         j.pending = null;
         this.enter(target);
@@ -658,6 +659,60 @@ export class Expedition {
     const zone=this.journal.stage==='lobby' && coverZone(p.x,p.z,p.crouch,this.doors.travel,p.y);
     return !!zone && zone!=='cubicle';
   }
+  checkpoint() {
+    return { savedAt: Date.now(), previousHost: this.hostSlot, state: this.snapshot(), identities: [...this.identities], disconnected: [...this.disconnected],
+      respawns: [...this.respawns], immunity: [...this.immunity].map(([slot,until]) => [slot, Number.isFinite(until) ? until : -1] as const),
+      warning: this.warning, alarm: this.alarm, hunters: this.hunters.map(h => h.ai.checkpoint()),
+      exposures: this.residents.map(r => [...r.exposure]) };
+  }
+
+  static takeOver(copy: ReturnType<Expedition['checkpoint']>, hostSlot: number) {
+    const game = new Expedition(), s = copy.state;
+    game.hostSlot = hostSlot;
+    game.journal = structuredClone(s.journal);
+    if (s.phase !== 'waiting') game.enter(s.journal.stage, true);
+    game.epoch = s.epoch;
+    game.revision = s.revision;
+    game.time = s.time;
+    game.phase = s.phase;
+    game.hunt = s.hunt ? {...s.hunt} : undefined;
+    game.identities = new Map(copy.identities);
+    // Reservations use wall time locally. Translate their remaining duration
+    // when moving between computers whose clocks can differ.
+    const clockOffset = Date.now() - copy.savedAt;
+    game.disconnected = new Map(copy.disconnected.map(([id,entry]) => [id,{...entry, holdUntil:entry.holdUntil + clockOffset}]));
+    game.respawns = new Map(copy.respawns);
+    game.immunity = new Map(copy.immunity.map(([slot,until]) => [slot, until < 0 ? Infinity : until]));
+    game.warning = copy.warning;
+    game.alarm = copy.alarm;
+    if (s.closets) { game.doors.open = s.closets.open; game.doors.travel = [...s.closets.travel]; }
+    game.hunters.forEach((h,i) => {
+      h.ai.restore(copy.hunters[i]);
+      const frame = s.monsters[i];
+      if (frame) { h.target = frame.target; h.speed = frame.speed; h.visible = frame.visible; }
+    });
+    game.residents.forEach((r,i) => {
+      const frame = s.residents[i];
+      if (frame) {
+        Object.assign(r.behavior, {phase:frame.phase, time:frame.time, exposure:frame.exposure});
+        r.target = frame.target;
+      }
+      r.exposure = new Map(copy.exposures[i]);
+    });
+    for (const player of s.players) game.players.set(player.slot, {...player});
+    // Park the other browsers until their replacement data channels arrive.
+    // This also reserves their original seats in a lobby or on the results screen.
+    for (const p of s.players) if (p.slot !== hostSlot) {
+      const id = game.identityOf(p.slot)!;
+      game.disconnected.set(id, {player:{...p}, epoch:s.epoch, holdUntil:Date.now()+120000, respawnAt:game.respawns.get(p.slot)});
+      game.players.delete(p.slot);
+      game.identities.delete(p.slot);
+      game.respawns.delete(p.slot);
+    }
+    if (game.hunt && game.phase === 'waiting' && game.hunt.monster === copy.previousHost) game.hunt.monster = hostSlot;
+    return game;
+  }
+
   snapshot(): Snapshot {
     return {
       phase: this.phase,

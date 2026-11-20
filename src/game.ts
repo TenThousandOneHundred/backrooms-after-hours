@@ -1480,12 +1480,18 @@ export class Game {
     mesh.userData.setContactPose?.(dt, m.contactPose);
     mesh.userData.pose?.(this.time, dt, m.speed, m.wind, m.strike, m.heard, m.reach, m.frozen, turn);
   }
+  private teamHost?: boolean;
   private syncTeam(dt: number) {
     const room = this.room!,
       snap = room.state;
     if (!snap || snap.phase !== 'playing') return;
     const self = snap.players.find((p) => p.slot === room.slot);
     if (!self) return;
+    if (this.teamHost !== room.hosting) {
+      this.teamHost = room.hosting;
+      if (this.mode === 'ending' && snap.journal.pending)
+        this.callbacks.screen('ending', snap.journal.pending.ending);
+    }
     const transition = this.epoch !== snap.epoch;
     if (this.revision !== snap.revision || transition) {
       const j = snap.journal,
@@ -1709,6 +1715,10 @@ export class Game {
     }
     const elapsed = clamp((now - this.lastFrame) / 1000, 0, 0.14);
     this.lastFrame = now;
+    if (this.room?.migrating) {
+      this.frameId = requestAnimationFrame(this.frame);
+      return;
+    }
     if(this.room)this.syncTeam(elapsed);
     if (this.mode === 'playing') {
       this.voice = this.callbacks.microphone?.(elapsed) ?? 0;
