@@ -21,7 +21,7 @@ export class RoomMenu {
   private generation = 0;
   private phase = '';
   constructor(private ui: UI) {}
-  menu() {
+  menu(invitedCode?: string) {
     this.disconnect();
     const button = this.ui.button;
     this.ui.panel(
@@ -30,11 +30,16 @@ export class RoomMenu {
       'Multiplayer',
       '<p class="panel-text">Play the campaign together, or hunt your friends as the Bacteria. Rooms hold up to eight players.</p>' +
         button('host-room', 'Create room', 'play', true) +
-        '<form id="join-form" class="join-room"><label for="join-code">Join with a room code</label>' +
+        '<form id="join-form" class="join-room"><label for="join-code">Join a lobby or an active game</label>' +
         '<div><input class="code-input" id="join-code" maxlength="6" autocomplete="off" spellcheck="false" required pattern="[A-Za-z2-9]{6}" placeholder="ABC234">' +
         '<button class="secondary" type="submit">Join room</button></div></form>',
       () => this.leave(),
     );
+    if (invitedCode) {
+      const field = get('join-code') as HTMLInputElement;
+      field.value = invitedCode;
+      get('join-form').querySelector('button')?.focus();
+    }
     get('host-room').onclick = () => this.connect(newCode(), true);
     get('join-form').onsubmit = (e) => {
       e.preventDefault();

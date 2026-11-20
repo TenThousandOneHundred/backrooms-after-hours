@@ -4,7 +4,7 @@ import type { Hunt, HuntResult } from './hunt.ts';
 import { livesPerLevel, readLives, type Difficulty } from '../difficulty.ts';
 import { START, stages } from '../campaign.ts';
 import { recordObjective } from '../campaign-progress.ts';
-import { canStandAt, clearSight, Encounter, TILE } from '../game-entity.ts';
+import { canStandAt, clearSight, Encounter, TILE, tileAt } from '../game-entity.ts';
 import { ResidentBehavior, type ResidentSite } from '../resident-behavior.ts';
 import { freshProgress, type Progress } from '../game-state.ts';
 
@@ -187,6 +187,27 @@ export class Expedition {
     this.immunity.set(slot, this.time + 3);
   }
 
+  private joinTeam(player: Explorer) {
+    const stage = stages[this.journal.stage];
+    for (const teammate of this.players.values()) {
+      if (!this.fresh.has(teammate.slot) || !teammate.alive || teammate.hidden || teammate.crouch || teammate.y !== 0) continue;
+      const tx = teammate.x / TILE, tz = teammate.z / TILE;
+      if (tileAt(stage, tx, tz) !== '.') continue;
+      for (const [dx, dz] of [[.9,0], [-.9,0], [0,.9], [0,-.9]]) {
+        const x = teammate.x + dx, z = teammate.z + dz;
+        // Stay on the same floor tile so an offset cannot cross a pit or beam.
+        if (Math.round(x/TILE) !== Math.round(tx) || Math.round(z/TILE) !== Math.round(tz) ||
+          !canStandAt(stage, x, z, false, 0, this.doors.travel) ||
+          !clearSight(stage, tx, tz, x/TILE, z/TILE, 1.58, 1.58, this.doors.travel)) continue;
+        if ([...this.players.values()].some(p => p !== player && p.alive && Math.hypot(x-p.x,z-p.z) < .65)) continue;
+        player.x = x;
+        player.z = z;
+        player.yaw = teammate.yaw;
+        return;
+      }
+    }
+  }
+
   add(identity?: string) {
     for (let i = 1; i <= capacity; i++)
       if (!this.players.has(i)) {
@@ -194,6 +215,12 @@ export class Expedition {
           && ![...this.identities.values()].includes(identity) ? identity : crypto.randomUUID();
         this.identities.set(i, id);
         this.spawnPlayer(i);
+        const player = this.players.get(i)!;
+        if (this.phase === 'playing' && player.alive) {
+          if (!this.hunt && !this.journal.pending) this.joinTeam(player);
+          // A slow world download must not consume a late arrival's spawn protection.
+          this.immunity.set(i, Infinity);
+        }
         return i;
       }
     return 0;
@@ -325,6 +352,7 @@ export class Expedition {
         watching: q.watching,
         voice: Math.max(0, Math.min(1, q.voice)),
       });
+      if (this.immunity.get(slot) === Infinity) this.immunity.set(slot, this.time + 3);
       this.fresh.set(slot, this.time);
       return;
     }

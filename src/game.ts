@@ -1504,6 +1504,7 @@ export class Game {
         this.restoredSupply = self.supplies;
         this.spawnId = self.spawnId;
         this.enter(j.stage);
+        this.yaw = self.yaw;
         this.x = self.x;
         this.z = self.z;
         this.moving = this.sprinting = false;

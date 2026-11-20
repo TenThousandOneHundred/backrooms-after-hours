@@ -172,3 +172,32 @@ test('two players hear the same Bellwether warning; only the one who makes noise
   assert.equal(r.players.get(2).cause, 'Caught by bellwether.');
   assert.ok(r.players.get(1).alive);
 });
+
+test('a late arrival joins a teammate in the current level with its shared progress', () => {
+  const game = new Expedition();
+  const host = game.add();
+  const journal = {...game.journal, stage: 'garage', flags: ['lift-ready'], completed: ['lobby/rail']};
+  game.start(journal);
+  const epoch = game.epoch;
+  const pose = { ...game.players.get(host), x: 5*TILE, z: 2*TILE, yaw: 1.3 };
+  game.command(host, epoch, { type: 'pose', pose });
+  const guest = game.players.get(game.add());
+  assert.ok(Math.abs(Math.hypot(guest.x-pose.x, guest.z-pose.z)-.9) < 1e-6);
+  assert.equal(guest.yaw, pose.yaw);
+  assert.equal(game.epoch, epoch);
+  assert.deepEqual(game.snapshot().journal.completed, ['lobby/rail']);
+  assert.equal(game.snapshot().journal.stage, 'garage');
+  assert.equal(game.players.get(host).x, pose.x);
+});
+
+test('a late arrival uses the level entrance when the team is on the broken floor', () => {
+  const game = new Expedition();
+  const host = game.add();
+  game.start({...game.journal, stage:'pitwalk'});
+  const pose = { ...game.players.get(host), x: 3*TILE, z: 3*TILE };
+  game.command(host, game.epoch, { type:'pose', pose });
+  assert.equal(game.players.get(host).x, pose.x);
+  const guest = game.players.get(game.add());
+  const [sx,sz] = stages.pitwalk.spawn;
+  assert.ok(Math.hypot(guest.x-sx*TILE, guest.z-sz*TILE)<1);
+});

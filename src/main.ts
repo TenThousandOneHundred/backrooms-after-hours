@@ -370,6 +370,7 @@ function pauseMenu() {
     'Paused',
     '<div class="panel-buttons">' +
       actions('resume', 'Resume', 'play', true) +
+      (voiceRoom ? actions('invite-room', 'Copy room invite') : '') +
       actions('pause-manual', 'Field manual', 'book') +
       actions('pause-settings', 'Settings', 'settings') +
       actions('title', 'Title screen', 'exit') +
@@ -377,6 +378,22 @@ function pauseMenu() {
     () => game?.resume(),
   );
   wire('resume', () => game?.resume());
+  if (voiceRoom) {
+    const invite = new URL(location.pathname, location.origin);
+    invite.hash = 'room=' + voiceRoom.code;
+    wire('invite-room', async () => {
+      try {
+        await navigator.clipboard.writeText(invite.href);
+        notify('Room invite copied');
+      } catch {
+        showPanel('room-invite', 'Multiplayer', 'Invite a friend',
+          '<label>Room invite <input id="invite-link" type="url" readonly></label>', pauseMenu);
+        const field = el<HTMLInputElement>('invite-link');
+        field.value = invite.href;
+        field.select();
+      }
+    });
+  }
   wire('pause-manual', manual);
   wire('pause-settings', settingsMenu);
   wire('title', titleScreen);
@@ -568,7 +585,7 @@ async function startRun(resume: boolean, mod?: InstalledMod, difficulty = select
 }
 wire('enter', () => void startRun(!!runSummary));
 let rooms: import('./multiplayer/menu').RoomMenu | undefined;
-async function multiplayer() {
+async function multiplayer(invitedCode?: string) {
   if(enter.disabled)return;
   const requestedMode=mode;
   try {
@@ -588,7 +605,7 @@ async function multiplayer() {
         game?.dispose();game=null;horror.clear();hud.hidden=true;
       },
     });
-    rooms.menu();
+    rooms.menu(invitedCode);
   }catch{notify('Could not load multiplayer. Check your connection and try again.');}
 }
 wire('multiplayer',()=>void multiplayer());
@@ -750,6 +767,7 @@ document.addEventListener(
       event.preventDefault();
       event.stopImmediatePropagation();
       if (mode === 'pause' || mode === 'inventory') game?.resume();
+      else if (mode === 'room-invite') pauseMenu();
       else if (mode === 'code') game?.closeCode();
       else if (mode === 'mod-restart') modsMenu();
       else if (mode === 'mods' || mode === 'settings' || mode === 'manual') closeSubmenu();
@@ -775,6 +793,8 @@ document.addEventListener(
 updateSound();
 updateFullscreen();
 refreshHome();
+const invitation = /^#room=([A-HJ-NP-Z2-9]{6})$/i.exec(location.hash);
+if (invitation) void multiplayer(invitation[1].toUpperCase());
 window.setTimeout(() => {
   void loadRuntime().catch(() => {
     /* Retry from the start button if loading failed. */
