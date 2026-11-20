@@ -292,7 +292,8 @@ export class Game {
     this.world?.dispose();
     this.scene = new THREE.Scene();
     this.stage = stage;
-    this.world = buildWorld(this.scene, stage, this.mod ? undefined : campaignAtmosphere(stage.id));
+    this.world = buildWorld(this.scene, stage, this.mod ? undefined : campaignAtmosphere(stage.id),
+      (pan, gain) => this.sound.ballastBuzz(pan, gain));
     if (this.room?.state?.hunt) {
       for (const { mesh } of [...this.world.residents, ...this.world.additionalEntities]) mesh.visible = false;
       if (this.room.isMonster) {
@@ -1118,7 +1119,7 @@ export class Game {
     }
     this.sound.syncStage(this.time, danger);
     this.sound.tick(dt, danger, pan, this.stage.threat?.kind === 'farmer' && this.has('wind-east'), highCeiling);
-    this.world?.update(this.time, dt);
+    this.world?.update(this.time, dt, this.camera);
     this.tension = THREE.MathUtils.damp(
       this.tension,
       this.hidden ? 0 : danger,
@@ -1612,7 +1613,7 @@ export class Game {
       this.state.flashlight = watch.light;
       this.cameraPose(dt, false);
       this.sound.syncStage(this.time, 0);
-      this.world?.update(this.time, dt);
+      this.world?.update(this.time, dt, this.camera);
       this.renderer.render(this.scene, this.camera);
     }
     this.poseTime += dt;

@@ -1,3 +1,5 @@
+import { hallAir } from './hall-air';
+import { fixtureBank, fluorescentRig } from './fluorescents';
 import { buildOfficeDecay } from './office-decay';
 import { LooseWallpaper } from './loose-wallpaper';
 import { waterReflection } from './water-reflection';
@@ -39,7 +41,8 @@ function familyLight(stage: Stage) {
 }
 const newSurface = (): SurfaceData => ({ p: [], n: [], u: [], c: [], i: [] });
 
-export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmosphere) {
+export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmosphere,
+  buzz: (pan: number, volume: number) => void = () => {}) {
   scene.userData.isCampaignRoom = true;
   const projection = profile && stageProjection(profile);
   const style = styleFor(stage.theme, stage.id),
@@ -65,7 +68,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   const roof = monitor && buildRoofMonitor(kit, statics, root, monitor.x, monitor.z, h,
     style.family === 'garage' ? '#abcdd1' : style.family === 'hotel' ? '#efd1ae' : '#d7e4c8');
   const color = (s: string) => new THREE.Color(s);
-  const fog = color(profile?.haze ?? style.fog).multiplyScalar(style.open ? 0.84 : 0.57),
+  const fog = color(profile?.haze ?? style.fog).multiplyScalar(style.open ? 0.84 : 0.13),
     nightFog = color('#263642'),
     nightSky = color('#141e30');
   let domeHorizon: THREE.Color | undefined, domeTop: THREE.Color | undefined;
@@ -73,16 +76,16 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   scene.fog = new THREE.FogExp2(fog, style.open ? 0.018 : style.family === 'blackout' ? 0.063 : 0.033);
   const ambience = new THREE.AmbientLight(
     profile?.fill ?? (style.family === 'alarm' ? '#ffc7b5' : '#fff8e9'),
-    familyLight(stage) * (style.open ? 0.84 : 0.61),
+    familyLight(stage) * (style.open ? 0.84 : 0.18),
   );
   const sky = new THREE.HemisphereLight(
     profile?.lamp ?? (style.open ? '#e2ebe7' : '#fff9df'),
     profile?.fill ?? (style.open ? '#b2a888' : '#b4ac93'),
-    style.open ? 1.46 : 0.83,
+    style.open ? 1.46 : 0.24,
   );
   const directional = new THREE.DirectionalLight(
     profile?.lamp ?? (style.open ? '#d8dfcb' : '#e9dabe'),
-    style.open ? 0.65 : 0.47,
+    style.open ? 0.65 : 0.037,
   );
   if (profile) {
     const angle = profile.bearing * Math.PI / 180;
@@ -103,6 +106,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     (x >= 0 && x < stage.map[0].length && furnitureCells.has(z * stage.map[0].length + x));
   const isOutdoor = !!style.open,
     family = style.family;
+  const rig = isOutdoor || family === 'blackout' ? undefined : fluorescentRig(root,stage,profile?.lamp ?? style.lamp);
+  const air = rig && hallAir(root,stage,open,(x,z)=>terrainHeight(stage,x,z),h,profile?.lamp ?? style.lamp);
   const hotelAisle = stage.map.reduce(
     (best, row, i, rows) => (row.replace(/#/g, '').length > rows[best].replace(/#/g, '').length ? i : best),
     0,
@@ -134,6 +139,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     }
   const lampGrid = new Map<string, { x: number; z: number }[]>();
   for (const p of lamps) {
+    if (family === 'blackout' || fixtureBank(p.x,p.z) || hash(Math.round(p.x/TILE),Math.round(p.z/TILE),71) > .978) continue;
     const xi = Math.round(p.x / TILE),
       zi = Math.round(p.z / TILE);
     for (let dz = -2; dz <= 2; dz++)
@@ -180,9 +186,9 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     const pool = kind === 'ceil' ? 1.7 : kind === 'floor' ? 4.5 : 4.0;
     const direct = 1 / (1 + nearest / pool),
       bounce = 1 / (1 + second / 8);
-    let value = 0.091 + 0.95 * direct + 0.18 * bounce;
-    if (kind === 'floor') value = 0.112 + 0.89 * direct + 0.17 * bounce;
-    if (kind === 'ceil') value = 0.134 + 0.89 * direct + 0.13 * bounce;
+    let value = 0.018 + 0.95 * direct + 0.18 * bounce;
+    if (kind === 'floor') value = 0.022 + 0.89 * direct + 0.17 * bounce;
+    if (kind === 'ceil') value = 0.028 + 0.89 * direct + 0.13 * bounce;
     if (kind === 'wall' || kind === 'trim') {
       // A ceiling tube grazes the upper wall, then falls away toward the skirting.
       const rise = Math.max(.28, h - y);
@@ -227,7 +233,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     if (family === 'pipes') value *= 0.7;
     if (family === 'suburb' && stage.id === 'suburbs') value *= 0.59;
     if (kind === 'floor' && tile(tx, tz) === '!') value *= 0.13;
-    return Math.max(0.022, value * style.level);
+    return Math.max(0.004, value * style.level);
   }
   function quad(
     s: SurfaceData,
@@ -856,11 +862,14 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       side = compact ? 0.045 : 0.025,
       hh = h + (underMonitor(x / TILE, z / TILE) ? roofRise : 0) - 0.041;
     const glow = off ? '#75776a' : (profile?.lamp ?? style.lamp);
-    if (!off) decals.glow(statics, x, hh + .033, z, w, l);
+    const floor = terrainHeight(stage,x,z);
+    const bank = off ? 0 : rig?.add(x, floor+hh-.12, z, hh) ?? 0;
+    if (!off) rig?.bulb(decals.glow(statics, x, hh + .033, z, w, l), bank);
     b('#716f60', x, hh, z, w + 0.069, 0.052, l + 0.063);
     // The luminous tubes sit below a darker reflector and inside its folded rim.
     const tray = color(glow).multiplyScalar(.51).getHexString();
-    b('#' + tray, x, hh - .035, z, w, .024, l, !off);
+    const reflector = b('#' + tray, x, hh - .035, z, w, .024, l, !off);
+    rig?.bulb(reflector, bank);
     if (!compact) {
       for (const side of [-1, 1]) {
         const rim = b('#a7a599', x + side * w * .49, hh - .056, z, .035, .077, l);
@@ -871,6 +880,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         const tube = kit.cylinder(statics, off ? '#858779' : glow, tx, hh - .061, z,
           .048, l - .098, .048, off);
         tube.rotation.x = Math.PI / 2;
+        rig?.bulb(tube, bank);
         for (const end of [-1, 1])
           b('#827f70', tx, hh - .059, z + end * (l / 2 - .06), .061, .06, .042);
       }
@@ -879,6 +889,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     } else {
       const tube = kit.cylinder(statics, glow, x, hh - .057, z, .058, l - .06, .058, off);
       tube.rotation.x = Math.PI / 2;
+        rig?.bulb(tube, bank);
       b('#8b8f79', x - w / 2, hh - 0.065, z, side, 0.065, l);
       b('#8b8f79', x + w / 2, hh - 0.065, z, side, 0.065, l);
     }
@@ -1015,6 +1026,10 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     entity.position.set(stage.threat.x * TILE, 0, stage.threat.z * TILE);
     root.add(entity);
   }
+  for (const actor of [entity, ...additionalEntities.map(e=>e.mesh), ...residents.map(r=>r.mesh)])
+    actor?.traverse(part=>{
+      if (part instanceof THREE.Mesh && !part.material.transparent) part.castShadow = true;
+    });
   const decay = officeCells.length
     ? buildOfficeDecay(stage, officeCells, kit, statics, root, h, decals.shadowMaterial)
     : undefined;
@@ -1045,8 +1060,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     instances.push(mesh);
   }
   // A failing ballast affects only its circuit, including the lit panels themselves.
-  for (const mat of [...materials, ...kit.materials.values()]) {
-    if (!(mat instanceof THREE.MeshLambertMaterial || mat instanceof THREE.MeshPhongMaterial || mat instanceof THREE.MeshBasicMaterial)) continue;
+  for (const mat of [...materials, ...kit.materials.values(), ...(rig?.materials() ?? [])]) {
+    if (!(mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshLambertMaterial || mat instanceof THREE.MeshPhongMaterial || mat instanceof THREE.MeshBasicMaterial)) continue;
     const original = mat.onBeforeCompile.bind(mat);
     const originalKey = mat.customProgramCacheKey();
     const projectSurface = projection && materials.includes(mat) && !(mat instanceof THREE.MeshBasicMaterial);
@@ -1079,6 +1094,13 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       `,
         );
       if (projectSurface) projection.apply(shader);
+      if (air && mat.vertexColors && (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhongMaterial || mat instanceof THREE.MeshLambertMaterial)) {
+        // The vertex bake describes indirect room light. A moving beam can still light an unpowered corner.
+        shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', '')
+          .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\nreflectedLight.indirectDiffuse *= vColor.rgb;');
+        if (projectSurface) shader.fragmentShader = shader.fragmentShader.replace('diffuseColor.rgb*uStageLamp', 'vColor.rgb*diffuseColor.rgb*uStageLamp');
+      }
+      air?.apply(shader);
     };
   }
   const apparition = stage.threat?.kind === 'bacteria' ? makeLevelCreature('bacteria') : null;
@@ -1141,7 +1163,11 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     additionalEntities,
     underMonitor,
     haunt,
-    update(t: number, dt: number) {
+    update(t: number, dt: number, camera?: THREE.Camera) {
+      if (rig && camera) {
+        rig.update(t,camera,buzz);
+        air?.update(t,rig.spots);
+      }
       clock.value = t;
       projection?.update(t);
       roof?.update(t);
@@ -1184,6 +1210,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     },
     dispose() {
       scene.remove(root);
+      rig?.dispose();
+      air?.dispose();
       scans.dispose();
       decay?.dispose();
       reflection?.dispose();
