@@ -1,27 +1,22 @@
+import { crossesPartition, partitionsFor } from '../src/level-zero-rooms.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { stages } from '../src/campaign.ts';
-import { atriumWell, concourseFloor, concourseRoof, officeTile, basementBed } from '../src/concourse-plan.ts';
+import { concourseFloor, basementBed } from '../src/concourse-plan.ts';
 import { TILE, canStandAt, clearSight } from '../src/game-entity.ts';
 
 const stage = stages.lobby;
 const walk = (x, z) => canStandAt(stage, x * TILE, z * TILE);
 
-test('the atrium rails block travel while preserving views between the upper and lower routes', () => {
-  assert.equal(concourseFloor(47, 8), 6.4);
-  assert.equal(concourseFloor(45, 11), -3.4);
-  for (const [x, z] of [
-    [47, 8],
-    [47, 16],
-    [45, 12],
-    [36, 14],
-    [35, 11],
-  ])
-    assert.ok(walk(x, z));
-  assert.equal(atriumWell(42, 10), true);
-  assert.equal(walk(42, 10), false);
-  assert.ok(clearSight(stage, 42, 8, 42, 11));
-  assert.equal(clearSight(stage, 3, 4, 10, 4), false);
+test('angled partitions occupy the same space for walking, hunter navigation and sight', () => {
+  for (const id of ['lobby', 'pitwalk', 'lower']) {
+    for (const wall of partitionsFor(id)) {
+      const x = (wall.ax + wall.bx) / 2, z = (wall.az + wall.bz) / 2;
+      assert.equal(canStandAt(stages[id], x*TILE, z*TILE), false);
+      assert.ok(crossesPartition(id, x - wall.uz, z + wall.ux, x + wall.uz, z - wall.ux, .27/TILE));
+      assert.equal(clearSight(stages[id], x - wall.uz, z + wall.ux, x + wall.uz, z - wall.ux), false);
+    }
+  }
 });
 
 test('the planted floors of all connected tiles meet continuously', () => {
@@ -45,25 +40,23 @@ test('three independent ramps lead down to the carpeted records rooms', () => {
     for (let z = 23; z <= 35; z += 0.25) assert.ok(walk(x, z));
     assert.equal(concourseFloor(x, 23), 0);
     assert.equal(concourseFloor(x, 35), basementBed);
-    assert.ok(officeTile(x, 35));
-    assert.equal(concourseRoof(x, 35) - basementBed, 3.08);
   }
-  assert.ok(clearSight(stage, 64, 8, 89, 8));
 });
 
-test('the first view meets a wallpaper partition and every ladder piece is reachable on the office floor', () => {
-  const [sx, sz] = stage.spawn;
-  assert.equal(concourseRoof(sx, sz), 3.08);
-  assert.equal(clearSight(stage, sx, sz, sx + 8, sz), false);
-  const queue = [stage.spawn], seen = new Set([stage.spawn.join(',')]);
-  for (const [x, z] of queue) {
-    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const u = x + dx, v = z + dz, key = [u, v].join(',');
-      if (seen.has(key) || !officeTile(u, v) || !walk(u, v)) continue;
-      seen.add(key);
-      queue.push([u, v]);
+test('every Level 0 objective is reachable through the finished rooms', () => {
+  for (const id of ['lobby', 'pitwalk', 'lower']) {
+    const room = stages[id], queue = [room.spawn], seen = new Set([room.spawn.join(',')]);
+    for (const [x, z] of queue) {
+      for (const [dx, dz] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+        const u = x + dx, v = z + dz, key = [u,v].join(',');
+        if (seen.has(key) || room.map[v]?.[u] === 'X' ||
+            !canStandAt(room, u*TILE, v*TILE) || crossesPartition(id, x,z,u,v,.27/TILE)) continue;
+        if (![.25,.5,.75].every(t => canStandAt(room,(x+t*dx)*TILE,(z+t*dz)*TILE))) continue;
+        seen.add(key);
+        queue.push([u,v]);
+      }
     }
+    for (const obj of room.objects.filter(o => o.model !== 'pit'))
+      assert.ok(seen.has([obj.x,obj.z].join(',')), room.id + ' ' + obj.name);
   }
-  for (const obj of stage.objects.filter(o => o.gives?.some(flag => /^rail[1-4]$/.test(flag)) || o.target === 'pitwalk'))
-    assert.ok(seen.has([obj.x, obj.z].join(',')), obj.name);
 });

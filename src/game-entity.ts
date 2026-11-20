@@ -1,6 +1,7 @@
 import { TILE } from './world-units.ts';
 import { coverFits, coverBlocksSight, coverZone } from "./concourse-cover.ts";
-import { atriumWell, concourseFloor } from './concourse-plan.ts';
+import { crossesPartition } from './level-zero-rooms.ts';
+import { concourseFloor } from './concourse-plan.ts';
 import { shoutStrength } from './voice-reach.ts';
 import type { Stage } from './campaign';
 
@@ -19,6 +20,7 @@ export { TILE };
 export function canStandAt(stage: Stage, x: number, z: number, crouch=false, jump=0, doors:readonly number[] = []) {
   if (stage.id === "lobby" && !coverFits(x,z,crouch,jump,doors)) return false;
   const radius = 0.27;
+  if (crossesPartition(stage.id, x/TILE, z/TILE, x/TILE, z/TILE, radius/TILE)) return false;
   const minX = Math.floor((x - radius) / TILE + 0.5), maxX = Math.floor((x + radius) / TILE + 0.5);
   const minZ = Math.floor((z - radius) / TILE + 0.5), maxZ = Math.floor((z + radius) / TILE + 0.5);
   for (let iz = minZ; iz <= maxZ; iz++)
@@ -33,12 +35,13 @@ export function canStandAt(stage: Stage, x: number, z: number, crouch=false, jum
 const walkable = (stage: Stage, x: number, z: number) => !['#', 'X'].includes(tileAt(stage, x, z));
 export function clearSight(stage: Stage, x: number, z: number, px: number, pz: number,
   eye=1.58, targetEye=1.58, doors:readonly number[] = []) {
+  if (crossesPartition(stage.id, x, z, px, pz)) return false;
   if(stage.id==='lobby' && coverBlocksSight(x*TILE,concourseFloor(x,z)+eye,z*TILE,
     px*TILE,concourseFloor(px,pz)+targetEye,pz*TILE,doors)) return false;
   const steps = Math.ceil(Math.hypot(px - x, pz - z) * 4);
   for (let i = 1; i < steps; i++) {
     const tx = Math.round(x + (px - x) * i / steps), tz = Math.round(z + (pz - z) * i / steps);
-    if (tileAt(stage, tx, tz) === '#' && !(stage.id === 'lobby' && atriumWell(tx, tz))) return false;
+    if (tileAt(stage, tx, tz) === '#') return false;
   }
   return true;
 }
@@ -50,7 +53,7 @@ function hunterEdge(x:number,z:number,tx:number,tz:number){
   const key=(Math.min(z,tz)*128+Math.min(x,tx))*2+Number(x===tx);
   const cached=coverEdges.get(key);
   if(cached!==undefined)return cached;
-  let clear=true;
+  let clear = !crossesPartition('lobby', x, z, tx, tz, 0.27 / TILE);
   for(let i=0;i<=12&&clear;i++)clear=coverFits((x+(tx-x)*i/12)*TILE,(z+(tz-z)*i/12)*TILE,false);
   coverEdges.set(key,clear);
   return clear;

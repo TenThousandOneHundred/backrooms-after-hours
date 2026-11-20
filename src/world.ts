@@ -2,8 +2,9 @@ import { hallAir } from './hall-air';
 import { fixtureBank, fluorescentRig } from './fluorescents';
 import { markWet, surfaceMaterial, poolLevel } from './wet-finish';
 import {buildConcourseCover} from './concourse-cover-models';
-import { buildConcourseShell } from './concourse-shell';
-import { concourseFloor, concourseRoof, officeTile } from './concourse-plan';
+import { partitionFaces } from './concourse-shell';
+import { crossesPartition, isLevelZero } from './level-zero-rooms';
+import { concourseFloor } from './concourse-plan';
 import { buildOfficeDecay } from './office-decay';
 import { LooseWallpaper } from './loose-wallpaper';
 import { waterReflection } from './water-reflection';
@@ -104,6 +105,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   buzz: (pan: number, volume: number) => void = () => {}) {
   scene.userData.isCampaignRoom = true;
   const projection = profile && stageProjection(profile);
+  const yellowRooms = isLevelZero(stage.id);
   const style = styleFor(stage.theme, stage.id),
     kit = new ModelKit(),
     root = new THREE.Group(),
@@ -132,10 +134,10 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     nightSky = color('#141e30');
   let domeHorizon: THREE.Color | undefined, domeTop: THREE.Color | undefined;
   scene.background = fog.clone();
-  scene.fog = new THREE.FogExp2(fog, stage.id === 'lobby' ? 0.013 : style.open ? 0.018 : style.family === 'blackout' ? 0.063 : 0.033);
+  scene.fog = new THREE.FogExp2(fog, yellowRooms ? 0.013 : style.open ? 0.018 : style.family === 'blackout' ? 0.063 : 0.033);
   const ambience = new THREE.AmbientLight(
     profile?.fill ?? (style.family === 'alarm' ? '#ffc7b5' : '#fff8e9'),
-    familyLight(stage) * (style.open ? 0.84 : stage.id === 'lobby' ? 0.88 : 0.18),
+    familyLight(stage) * (style.open ? 0.84 : yellowRooms ? 0.88 : 0.18),
   );
   const sky = new THREE.HemisphereLight(
     profile?.lamp ?? (style.open ? '#e2ebe7' : '#fff9df'),
@@ -171,7 +173,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     (best, row, i, rows) => (row.replace(/#/g, '').length > rows[best].replace(/#/g, '').length ? i : best),
     0,
   );
-  const loosePaper = stage.id !== 'lobby' && (style.wall === 'paper' || style.wall === 'hotel') ? new LooseWallpaper() : undefined;
+  const loosePaper = !yellowRooms && (style.wall === 'paper' || style.wall === 'hotel') ? new LooseWallpaper() : undefined;
   const walls: SurfaceChunks = new Map(), floors: SurfaceChunks = new Map(),
     ceilings: SurfaceChunks = new Map(), trim: SurfaceChunks = new Map();
   const clock = { value: 0 },
@@ -182,14 +184,21 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     temp = new THREE.Vector3();
   let circuitAge = 10,
     apparitionAge = 10;
-  const lamps: { x: number; z: number }[] = [];
+  const lamps: { x: number; z: number; yaw?: number }[] = [];
   for (let z = 0; z < stage.map.length; z++)
     for (let x = 0; x < stage.map[z].length; x++) {
-      if (!open(x, z) || isOutdoor || (stage.id === 'lobby' && !officeTile(x,z))) continue;
-      if (stage.id === 'lobby') {
-        // Recessed troffers form continuous rows across Level 0's office ceilings.
-        const entryRow = z === stage.spawn[1] && x > stage.spawn[0] && x < stage.spawn[0] + 7;
-        if (entryRow || (x % 2 === 1 && z % 3 === 0)) lamps.push({ x: x * TILE, z: z * TILE });
+      if (!open(x, z) || isOutdoor) continue;
+      if (yellowRooms) {
+        // Each wing has its own ceiling grid, running across its angled doorways.
+        const yaw = stage.id !== 'lobby' ? -0.17 : z >= 24 ? 0.28 : x < 12 ? 0 : x < 34 ? -0.21 : x < 63 ? 0.37 : -0.31;
+        const c = Math.cos(yaw), s = Math.sin(yaw);
+        const u = Math.round((c*x - s*z - 1) / 2) * 2 + 1;
+        const v = Math.round((s*x + c*z) / 3) * 3;
+        const entryRow = stage.id === 'lobby' && z === stage.spawn[1] && x > stage.spawn[0] && x < stage.spawn[0] + 7;
+        const lx = entryRow ? x : c*u + s*v, lz = entryRow ? z : -s*u + c*v;
+        if (Math.round(lx) === x && Math.round(lz) === z &&
+            !crossesPartition(stage.id, lx, lz, lx, lz, .25))
+          lamps.push({ x: lx*TILE, z: lz*TILE, yaw });
         continue;
       }
       // Consecutive unpowered banks leave a pocket of darkness visible across a room.
@@ -202,14 +211,14 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     }
   const lampGrid = new Map<string, { x: number; z: number }[]>();
   for (const p of lamps) {
-    if (family === 'blackout' || (stage.id !== 'lobby' && fixtureBank(p.x,p.z)) || hash(Math.round(p.x/TILE),Math.round(p.z/TILE),71) > .978) continue;
+    if (family === 'blackout' || (!yellowRooms && fixtureBank(p.x,p.z)) || hash(Math.round(p.x/TILE),Math.round(p.z/TILE),71) > .978) continue;
     const xi = Math.round(p.x / TILE),
       zi = Math.round(p.z / TILE);
     for (let dz = -2; dz <= 2; dz++)
       for (let dx = -2; dx <= 2; dx++) {
         const tx = xi + dx,
           tz = zi + dz;
-        if (!open(tx, tz)) continue;
+        if (!open(tx, tz) || crossesPartition(stage.id, xi, zi, tx, tz)) continue;
         let clear = true;
         for (let step = 1; step < 8; step++) {
           const a = step / 8;
@@ -292,7 +301,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       const k = Math.max(0, Math.min(1, (field - 0.32) * 2.1));
       value *= 0.25 + 0.9 * k;
       // Low acoustic ceilings bounce warm light back onto the wallpaper.
-      if (stage.id === 'lobby' && officeTile(tx, tz)) {
+      if (yellowRooms) {
         const fill = kind === 'wall' ? 0.86 : kind === 'ceil' ? 0.54 : 0.41;
         value += fill * (0.74 + 0.26 * direct);
         // Spill from the continuous run of panels lights the far side of the opening.
@@ -338,7 +347,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         s.p.push(x, y + terrainHeight(stage, x, z), z);
         s.n.push(...N);
         if (N[1]) s.u.push(x / repeat, z / repeat);
-        else s.u.push((N[0] ? z : x) / repeat, y / repeat);
+        else s.u.push((N[0] && N[2] ? z * N[0] - x * N[2] : N[0] ? z : x) / repeat, y / repeat);
         const light = shade(x, y, z, N, kind, tx, tz);
         s.c.push(light, light * (0.982 + 0.018 * (1 - light)), light * (0.94 + 0.05 * (1 - light)));
         if (i < du && j < dv) {
@@ -353,7 +362,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   }
   function finish(chunks: SurfaceChunks, kind: Finish | undefined, col: string) {
     if (!chunks.size) return;
-    const officeFinish = stage.id === 'lobby' && (kind === 'paper' || kind === 'carpet' || kind === 'ceiling');
+    const officeFinish = yellowRooms && (kind === 'paper' || kind === 'carpet' || kind === 'ceiling');
     const tex = kind ? texture(kind, col, officeFinish) : null;
     if (tex) textures.push(tex);
     const surface = {
@@ -729,7 +738,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   }
   for (let z = 0; z < stage.map.length; z++)
     for (let x = 0; x < stage.map[z].length; x++) {
-      if (!open(x, z) || (stage.id === 'lobby' && !officeTile(x,z))) continue;
+      if (!open(x, z)) continue;
       const cx = x * TILE,
         cz = z * TILE,
         ox = cx - TILE / 2,
@@ -738,7 +747,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         tileType = tile(x, z),
         beam = tileType === '|',
         pit = tileType === 'X' || beam;
-      if (stage.id === 'lobby' && x >= 64 && z <= 23 && tileType === '.' && !underMonitor(x, z)) officeCells.push([x, z]);
+      if (stage.id === 'lobby' && x >= 87 && z >= 19 && z <= 23 && tileType === '.' && !underMonitor(x, z)) officeCells.push([x, z]);
       if (!pit)
         quad(
           floors,
@@ -871,14 +880,14 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         let height = h + (underMonitor(x, z) ? roofRise : 0);
         if (family === 'field') height = 0.22;
         if (family === 'sea') height = 0.16;
-        quad(walls, orig, U, [0, height, 0], side, 4, 5, stage.id === 'lobby' ? 1.32 : style.wall === 'paper' ? 2.35 : TILE, 'wall', x, z);
+        quad(walls, orig, U, [0, height, 0], side, 4, 5, yellowRooms ? 1.32 : style.wall === 'paper' ? 2.35 : TILE, 'wall', x, z);
         const fixtureRoll = hash(x + dx * 3, z + dz * 2, 3);
         if (fixtureRoll > .08 && fixtureRoll < .88)
           loosePaper?.add(wx, wz, dx, dz, x, z, height, shade(wx, h * .55, wz, side, 'wall', x, z));
         const bottom: Vec = [orig[0] - dx * 0.012, 0.002, orig[2] - dz * 0.012];
         if (!isOutdoor)
           quad(trim, bottom, U, [0, family === 'lobby' ? 0.105 : 0.13, 0], side, 4, 1, 1, 'trim', x, z);
-        if (stage.id === 'lobby') {
+        if (yellowRooms) {
           // A narrow ochre moulding runs just above the carpet in the reference rooms.
           quad(trim, [bottom[0], 0.29, bottom[2]], U, [0, 0.045, 0], side, 4, 1, 1, 'trim', x, z);
         } else makeArch(wx, wz, dx, dz, fixtureRoll);
@@ -952,9 +961,10 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     const floor = terrainHeight(stage,x,z);
     const bank = off ? 0 : rig?.add(x, floor+hh-.12, z, hh) ?? 0;
     if (!off) rig?.bulb(decals.glow(statics, x, hh + .033, z, w, l), bank);
-    if (stage.id === 'lobby') {
-      b('#a99f76', x, hh + .012, z, .68, .032, 1.56);
+    if (yellowRooms) {
+      const frame = b('#a99f76', x, hh + .012, z, .68, .032, 1.56);
       const diffuser = b(off ? '#a9a582' : '#ffffea', x, hh - .008, z, .62, .012, 1.50, !off);
+      frame.rotation.y = diffuser.rotation.y = lamps[i].yaw ?? 0;
       rig?.bulb(diffuser, bank);
       continue;
     }
@@ -1055,6 +1065,12 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     textures.push(fibers);
     materials.push(paperMat);
   }
+  partitionFaces(stage.id, (corner, span, normal, tx, tz) => {
+    quad(walls, corner, span, [0,h,0], normal, 4, 5, 1.32, 'wall', tx, tz);
+    const x = corner[0] + normal[0] * .012, z = corner[2] + normal[2] * .012;
+    quad(trim, [x,.002,z], span, [0,.105,0], normal, 3, 1, 1, 'trim', tx, tz);
+    quad(trim, [x,.29,z], span, [0,.045,0], normal, 3, 1, 1, 'trim', tx, tz);
+  });
   finish(walls, style.wall, style.wc);
   finish(floors, style.floor, style.fc);
   finish(
@@ -1129,11 +1145,6 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   // Repeated architectural details and loose furniture share a small number of draw calls.
   for (const node of statics.children)
     node.position.y += terrainHeight(stage, node.position.x, node.position.z);
-  if (stage.id === 'lobby') buildConcourseShell(stage, kit, root, statics, scans, strip => {
-    const {x,y,z} = strip.position;
-    const bank = rig?.add(x,y-.12,z,Math.max(2,y-terrainHeight(stage,x,z))) ?? 0;
-    rig?.bulb(strip,bank);
-  });
   const updateDoors = stage.id === 'lobby' ? buildConcourseCover(kit, statics, root) : undefined;
   const instances = batchStaticProps(statics, root, kit);
   // A failing ballast affects only its circuit, including the lit panels themselves.
@@ -1240,7 +1251,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     additionalEntities,
     underMonitor,
     tallRoom(x:number,z:number) {
-      return underMonitor(x,z) || (stage.id === 'lobby' ? concourseRoof(x,z)-concourseFloor(x,z)>6 : !style.open && h>6);
+      return underMonitor(x,z) || (!style.open && h > 6);
     },
     spills: decay?.spills ?? [],
     floorAt(x: number, z: number): Finish {
@@ -1248,8 +1259,6 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       if (cell === '=' || cell === '|') return 'wood';
       if (decay?.isWet(x,z)) return 'water';
       const finish: Finish = style.floor;
-      if (stage.id === 'lobby' && !officeTile(tx,tz))
-        return tx >= 36 && tx <= 59 && tz >= 4 && tz <= 20 ? 'metal' : 'concrete';
       return finish === 'concrete' && poolLevel(x,z)>1.47 ? 'water' : finish;
     },
     updateDoors,

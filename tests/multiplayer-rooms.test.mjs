@@ -18,7 +18,8 @@ for (const [stageId, lockerModel, pickupFlag] of [
     const stage = stages[room.journal.stage];
     const locker = stage.objects.find(o => o.kind === 'hide' && o.model === lockerModel);
     const item = stage.objects.find(o => o.gives?.includes(pickupFlag));
-    assert.ok(locker && item && stage.props.some(p => p.model === 'roof-monitor'));
+    assert.ok(locker && item);
+    if (stageId !== 'lobby') assert.ok(stage.props.some(p => p.model === 'roof-monitor'));
 
     function standAt(object, hidden) {
       room.command(guest, room.epoch, {

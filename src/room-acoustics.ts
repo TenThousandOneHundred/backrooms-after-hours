@@ -1,4 +1,4 @@
-import { officeTile } from './concourse-plan';
+import { isLevelZero } from './level-zero-rooms';
 import type { Stage } from './campaign-format';
 import { TILE, clearSight } from './game-entity';
 import { styleFor } from './world-materials';
@@ -24,7 +24,7 @@ export function roomAcoustics(stage: Stage, spills: Source[]) {
         if (stage.map[z][x] !== '#' || stage.map[z][x + 1] !== '.') continue;
         const hash = (x * 59 + z * 97) % 37,
           point = { x: x + 0.55, z };
-        const carpetedOffice = stage.id === 'lobby' && officeTile(x + 1, z);
+        const carpetedOffice = isLevelZero(stage.id);
         if (!carpetedOffice && hash === 0) machines.push(point);
         if (!carpetedOffice && hash === 11) structure.push(point);
         if (hash === 19 || (floor === 'water' && hash % 7 === 0)) leaks.push(point);

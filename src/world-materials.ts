@@ -1,3 +1,4 @@
+import { isLevelZero } from './level-zero-rooms';
 import * as THREE from 'three';
 
 export type Finish =
@@ -463,10 +464,10 @@ export function styleFor(theme: string, id: string): Style {
     'lobby',
     'paper',
     'carpet',
-    id === 'lobby' ? '#d2d18a' : '#c6b372',
-    id === 'lobby' ? '#a18d64' : '#9f884f',
-    id === 'lobby' ? '#cec7a1' : '#c4bc98',
-    id === 'lobby' ? '#aa9c68' : '#554735',
+    isLevelZero(id) ? '#d2d18a' : '#c6b372',
+    isLevelZero(id) ? '#a18d64' : '#9f884f',
+    isLevelZero(id) ? '#cec7a1' : '#c4bc98',
+    isLevelZero(id) ? '#aa9c68' : '#554735',
     '#fff8d6',
     '#726444',
     1.01,

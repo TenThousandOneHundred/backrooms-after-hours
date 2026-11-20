@@ -11,8 +11,6 @@ export const opening = [
     'Find the four ladder pieces scattered through the yellow rooms and the east offices.',
     concoursePlan,
     {
-      Q: prop('roof-monitor'),
-      S: prop('records-rack'),
       U: hide('Slip inside the archive locker', 'archive-locker'),
       P: note('Night filing roster', 'All the names in the returns ledger are yours. The last box is marked for collection tonight.', 'sign'),
       ...noteKeys(
@@ -40,14 +38,13 @@ export const opening = [
       G: note('East telephone exchange', 'Records is south of the exchange. Someone scratched a second message below it: “When the ceiling knocks twice, get low. When the faces sing, look at the floor.”','sign'),
       F: act('Lift the red receiver', 'exchange-call', 'telephone', 'Your own voice whispers from the receiver. “Put it down. It heard you.”'),
       J: hide('Slip into the switchboard cabinet'),
-      D: prop('desk'),
       W: note(
         'Pencil marks on a torn sleeve',
         'It heard my running feet. It sucked in a breath and went still. Then it crossed the whole corridor. Next time I heard it, I cut around the corner before it could spring.',
       ),
       N: note(
         'Maintenance slip',
-        'Left the service key above the broken ladder. The right rail is in the west rooms, past the little wall that stands by itself. The north passage leads to the other two pieces, by the red phone and the exchange stacks.',
+        'Left the service key above the broken ladder. The right rail is in the west rooms, past the little wall that stands by itself. The north passage leads to the other two pieces, by the red phone and the far office wall.',
       ),
     },
     'bacteria',
@@ -61,18 +58,22 @@ export const opening = [
     'The paint stripe runs the whole length of the beam. Everything beneath it is dark.',
     'Cross the intact strips to the far vent. A lower service route is available if you fall.',
     `
-##################
-#......V.........#
-#..###...###.....#
-#..XXX...XXX..XX.#
-#..XXX...XXX..XX.#
-#XXXXXXX|XXXXXXXX#
-#XXXXXXX|XXXXXXXX#
-#XXXXXXX|XXXXXXXX#
-#..XX..........X.#
-#..XXXXXXXX....X.#
-#.......@........#
-##################`,
+##########################
+#......V.................#
+#........................#
+#..XXX...XXX..XX.........#
+#..XXX...XXX..XX.........#
+#XXXXXXX|XXXXXXXX#########
+#XXXXXXX|XXXXXXXX#########
+#XXXXXXX|XXXXXXXX#########
+#..XX..........X.........#
+#..XXXXXXXX....X.........#
+#.......@................#
+#........................#
+#........................#
+#........................#
+#........................#
+##########################`,
     {
       X: exit('Drop into the service void', 'lower', [], 'pit'),
       V: exit('Enter the ventilation shaft', 'garage', [], 'vent'),
@@ -81,20 +82,20 @@ export const opening = [
   stage(
     'lower',
     'Level 0 / Subfloor',
-    'The Service Void',
-    'dark',
-    'An arrow has been scratched into the concrete at ankle height.',
+    'The Rooms Below',
+    'lobby',
+    'An arrow is pencilled just above the skirting. Ceiling panels buzz on the other side of the wall.',
     'Follow the marks to the maintenance vent.',
     `
 #################
-#@....#...A.....#
-####..#.#.#####.#
-#.....#.#...#...#
-#..####.###.#.#.#
-#......A....#.#.#
-######.######.#.#
-#....A....#...#V#
-#..H......#.....#
+#@..............#
+#...............#
+#...............#
+#...............#
+#...............#
+#...............#
+#..............V#
+#..H............#
 #################`,
     {
       A: prop('light', 0xe6b051),

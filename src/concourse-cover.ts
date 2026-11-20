@@ -85,8 +85,8 @@ for (const [tx, tz, rows] of [
   for (const sign of [-1, 1]) part(sign * 1.15, 0, 0.9, length, 0, 3.08, '#596260');
   part(0, 0, 1.41, length, 1.23, 2.95, '#465250');
 }
-for (const tz of [9.75, 11.22, 12.69, 14.16])
-  for (const tx of [72.85, 74.75, 76.65, 78.55, 80.45, 82.35]) {
+for (const tz of [11.22])
+  for (const tx of [87.5, 89]) {
     const { part } = site('cubicle', tx, tz, 3.55, 2.3);
     part(0, -1.4, 4.25, 0.15, 0, 1.44, '#5e6e5c');
     part(-2.05, -0.03, 0.15, 2.9, 0, 1.44, '#737965');
@@ -95,9 +95,7 @@ for (const tz of [9.75, 11.22, 12.69, 14.16])
     part(0, -1.01, 3.86, 0.64, 0.71, 0.79, '#797766');
   }
 for (const [tx, tz] of [
-  [13, 19],
-  [42, 38],
-  [72, 40],
+  [86.5, 43],
 ]) {
   const { part } = site('machine', tx, tz, 1.6, 4.6);
   for (const sign of [-1, 1]) {
