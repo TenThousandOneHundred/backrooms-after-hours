@@ -4,7 +4,7 @@ import { capacity, Expedition, roomSave, type Command, type Snapshot } from './e
 import { loadProgress, storeProgress } from '../game-state';
 
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const namespace = 'backrooms-afterhours-v2-';
+const namespace = 'backrooms-afterhours-campaign-3-';
 export function newCode() {
   return Array.from(
     crypto.getRandomValues(new Uint8Array(6)),
@@ -42,8 +42,7 @@ export class Room {
     this.peer.on('error', (error) => {
       if (error.type === 'peer-unavailable') {
         if (!this.hosting && !this.state) this.fail('Room not found. Check the code with the host.');
-      }
-      else if (error.type === 'unavailable-id')
+      } else if (error.type === 'unavailable-id')
         this.fail('This room code is already taken. Create a new room.');
       else if (!this.state || this.peer.destroyed)
         this.fail('Could not connect to the room service. Check your connection and try again.');
@@ -58,7 +57,7 @@ export class Room {
         const conn = this.peer.connect(namespace + code, {
           serialization: 'json',
           reliable: true,
-          label: 'campaign-v2',
+          label: 'campaign-v3',
         });
         this.upstream = conn;
         conn.on('data', (value) => this.receive(value));
@@ -67,7 +66,7 @@ export class Room {
       }
     });
     this.peer.on('connection', (conn) => {
-      if (!hosting || conn.label !== 'campaign-v2') {
+      if (!hosting || conn.label !== 'campaign-v3') {
         conn.close();
         return;
       }
@@ -137,6 +136,7 @@ export class Room {
         !state.players.some((p) => p?.slot === this.slot)
       )
         return;
+      if (!state.journal && (!this.state || this.state.revision !== state.revision)) return;
       state.journal ??= this.state!.journal;
       this.accept(state);
     }
@@ -178,8 +178,11 @@ export class Room {
   }
   command(epoch: number, action: Command) {
     if (this.hostGame) this.hostGame.command(this.slot, epoch, action);
-    else if (this.upstream?.open && (action.type !== 'pose' || this.upstream.dataChannel.bufferedAmount < 8192))
-      this.upstream.send({epoch, action});
+    else if (
+      this.upstream?.open &&
+      (action.type !== 'pose' || this.upstream.dataChannel.bufferedAmount < 8192)
+    )
+      this.upstream.send({ epoch, action });
   }
   private fail(message: string) {
     if (this.closed) return;
@@ -188,6 +191,8 @@ export class Room {
   }
   close() {
     if (this.closed) return;
+    if (this.hostGame && this.savedRevision !== this.hostGame.revision)
+      void storeProgress(this.hostGame.journal, roomSave);
     this.closed = true;
     clearInterval(this.timer);
     clearTimeout(this.deadline);

@@ -1,3 +1,4 @@
+import { detailCreature } from './creature-surfaces';
 import { AnimationMixer, AnimationUtils, Group, MathUtils, SkinnedMesh, type AnimationClip, type Object3D } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
@@ -14,6 +15,7 @@ export async function loadLevelCreatures() {
   await Promise.all(Object.entries(creatureLibraries).map(async ([file, entries]) => {
     if (Object.keys(entries).every(kind => templates.has(kind))) return;
     const asset = await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'models/' + file + '.glb');
+    detailCreature(asset.scene);
     for (const [kind, name] of Object.entries(entries)) {
       const model = asset.scene.getObjectByName(name);
       if (!model) throw new Error('Missing model for ' + name + ' in ' + file);

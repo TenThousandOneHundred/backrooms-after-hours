@@ -35,6 +35,8 @@ The whole campaign supports co-op. Split up to collect supplies, operate equipme
 
 If you die, you watch a surviving teammate and rejoin at the next level. If everyone dies, the host can retry the current level with completed objectives intact. The host’s browser saves the co-op campaign separately from single player. Create a room on the same browser and choose **Continue saved campaign** to pick up at your last area. Friends can join a campaign in progress using its current room code.
 
+![The field explorer suit, Hound, Smiler, and Deathmoth rendered in the game engine](docs/field-team.webp)
+
 The host's browser runs the room. Keep that tab active while playing. Closing it ends the room. Each device renders its own view. Explorer poses, microphone loudness and game state travel over the WebRTC data channels. [PeerJS Cloud](https://peerjs.com/server/getting-started) provides room discovery and connection signaling. Some networks restrict peer connections. No installation or account is required. Standard graphics caps multiplayer rendering at 30 FPS to reduce battery use. [Networking library licenses](public/licenses/Multiplayer.txt).
 
 ## Microphone hearing

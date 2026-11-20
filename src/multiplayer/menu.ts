@@ -6,7 +6,7 @@ import { stages } from '../campaign';
 type UI = {
   panel: (mode: string, section: string, title: string, html: string, back?: () => void) => void;
   button: (id: string, text: string, symbol?: string, primary?: boolean) => string;
-  enter: (room:Room) => void;
+  enter: (room: Room) => void;
   prepare: () => Promise<void>;
   stop: () => void;
   exit: () => void;
@@ -18,10 +18,7 @@ export class RoomMenu {
   private rendering = false;
   private generation = 0;
   private phase = '';
-  constructor(
-    private ui: UI,
-
-  ) {}
+  constructor(private ui: UI) {}
   menu() {
     this.disconnect();
     const button = this.ui.button;
@@ -77,7 +74,7 @@ export class RoomMenu {
     if (this.phase !== state.phase) {
       this.phase = state.phase;
       this.generation++;
-      if(this.inGame) this.ui.stop();
+      if (this.inGame) this.ui.stop();
       this.inGame = false;
       this.rendering = false;
       get('coop-hud').hidden = true;
@@ -103,7 +100,9 @@ export class RoomMenu {
           (r.hosting
             ? this.ui.button('start-room', waiting ? 'Start expedition' : 'Retry level', 'play', true)
             : '') +
-          (r.hosting && waiting && loadProgress(roomSave) ? this.ui.button('resume-room','Continue saved campaign') : '') +
+          (r.hosting && waiting && loadProgress(roomSave)
+            ? this.ui.button('resume-room', 'Continue saved campaign')
+            : '') +
           this.ui.button('leave-room', r.hosting ? 'Close room' : 'Leave room') +
           '</div>',
       );
@@ -160,7 +159,7 @@ export class RoomMenu {
     this.generation++;
     this.phase = '';
     this.rendering = false;
-    if(this.inGame) this.ui.stop();
+    if (this.inGame) this.ui.stop();
     this.inGame = false;
     this.room?.close();
     this.room = undefined;

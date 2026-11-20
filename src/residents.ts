@@ -1,3 +1,4 @@
+import { detailCreature } from './creature-surfaces';
 import { AnimationMixer, LoopOnce, SkinnedMesh } from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
@@ -6,6 +7,7 @@ import { ResidentBehavior, type ResidentSite } from './resident-behavior';
 let asset: GLTF;
 export async function loadResidents() {
   asset ??= await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'models/residents.glb');
+  detailCreature(asset.scene);
 }
 
 export function makeResident(site: ResidentSite, tile: number, height: number) {

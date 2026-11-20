@@ -165,6 +165,9 @@ export class Game {
   private moving = false;
   private sprinting = false;
   private restoredSupply = 0;
+  private spawnId = 0;
+  private cargoOrigins = new Map<string,THREE.Vector3>();
+  private carrying = '';
   get guest() { return !!this.room && !this.room.hosting; }
   get roomEndings() { return this.room ? this.state.endings : undefined; }
   constructor(
@@ -319,9 +322,11 @@ export class Game {
     }
     if (!restore || !this.state.checkpoint) this.markCheckpoint();
     this.aimOffsets.clear();
+    this.cargoOrigins.clear();this.carrying='';
     this.world.objects.forEach((mesh, id) => {
       const obj = stage.objects.find((o) => o.id === id);
       if (!obj) return;
+      if(this.room && obj.challenge?.kind==='haul')this.cargoOrigins.set(id,mesh.position.clone());
       const box = new THREE.Box3().setFromObject(mesh);
       if (!box.isEmpty()) {
         const v = box.getCenter(new THREE.Vector3());
@@ -579,11 +584,11 @@ export class Game {
       return;
     }
     if (obj.challenge) {
-      const mesh = this.world?.objects.get(obj.id),
-        origin = mesh?.position.clone();
-      this.challenge.start(obj, () => {
-        if (mesh && origin) mesh.position.copy(origin);
-      });
+      if(this.room && obj.challenge.kind==='haul'){
+        const carrier=this.room.state?.players.find(p=>p.alive && p.cargo===obj.id);
+        if(carrier) this.callbacks.message('Explorer '+carrier.slot+' is transporting this item.');
+        else {this.sendPose();this.room.command(this.epoch,{type:'carry',id:obj.id});}
+      }else this.startChallenge(obj);
       return;
     }
     if (obj.kind === 'code') {
@@ -592,6 +597,13 @@ export class Game {
       return;
     }
     this.complete(obj);
+  }
+  private startChallenge(obj: GameObject) {
+    const mesh = this.world?.objects.get(obj.id),
+      origin = mesh?.position.clone();
+    this.challenge.start(obj, () => {
+      if (mesh && origin) mesh.position.copy(origin);
+    });
   }
   private placeCompleted(obj: GameObject) {
     const mesh = this.world?.objects.get(obj.id);
@@ -981,6 +993,7 @@ export class Game {
     this.cameraPose(dt, distance > 0.001);
     this.updateChallenge(dt);
     if (this.phone) this.updateExchange();
+    if(this.room && this.encounter)this.closeEncounter(!this.world?.entity?.visible);
     if (!this.room && this.encounter) {
       const day = this.stage.id === 'village' && (this.time % 80 < 32 || this.time % 80 >= 69);
       if (this.stage.id === 'lobby' && this.lobbyWarning < 0) {
@@ -1029,7 +1042,7 @@ export class Game {
         return;
       }
     }
-    const residentDanger = this.updateResidents(dt, distance, crouched);
+    const residentDanger = this.room ? 0 : this.updateResidents(dt, distance, crouched);
     if (this.mode === 'death' || this.mode === 'spectating') return;
     const danger = Math.max(otherDanger, residentDanger, this.encounter?.danger ?? 0);
     const infectedWater = tile === '!' && this.stage.theme === 'pool';
@@ -1297,82 +1310,220 @@ export class Game {
     this.enemyWasVisible = visible;
   }
   private sendPose() {
-    if(!this.room)return;
-    const active=this.mode==='playing';
-    const pose:Pose={x:this.x,z:this.z,y:this.y,yaw:this.yaw,crouch:this.crouchBlend>.45,hidden:this.hidden,
-      moving:active&&this.moving,sprint:active&&this.sprinting,voice:active?this.voice:0,light:this.state.flashlight};
-    this.room.command(this.epoch,{type:'pose',pose});
+    if (!this.room) return;
+    const active = this.mode === 'playing';
+    const hunters = [
+      ...(this.encounter ? [{ encounter: this.encounter, height: this.entityCenterHeight }] : []),
+      ...this.additionalHunters,
+    ];
+    let gaze = 0,
+      beam = 0,
+      watching = 0;
+    if (active) {
+      hunters.forEach(({ encounter: e, height }, i) => {
+        if (this.entityVisible(1, e, height)) gaze |= 1 << i;
+        if (this.entityLit(e, height)) beam |= 1 << i;
+      });
+      this.world?.residents.forEach(({ mesh, site }, i) => {
+        this.vector.copy(mesh.position);
+        this.vector.y += site.kind === 'veil' ? 0.13 : -0.9;
+        this.vector.sub(this.camera.position).normalize();
+        if (this.camera.getWorldDirection(this.direction).dot(this.vector) > 0.94) watching |= 1 << i;
+      });
+    }
+    const pose: Pose = {
+      x: this.x,
+      z: this.z,
+      y: this.y,
+      yaw: this.yaw,
+      crouch: this.crouchBlend > 0.45,
+      hidden: this.hidden,
+      moving: active && this.moving,
+      sprint: active && this.sprinting,
+      voice: active ? this.voice : 0,
+      light: this.state.flashlight,
+      gaze,
+      beam,
+      watching,
+      spawnId: this.spawnId,
+    };
+    this.room.command(this.epoch, { type: 'pose', pose });
   }
-  private showHunter(e:Encounter,mesh:THREE.Group|null|undefined,m:Monster,dt:number){
-    if(!mesh)return;
-    e.x=m.x/TILE;e.z=m.z/TILE;e.angle=m.yaw;
-    e.danger=m.target===this.room!.slot?m.danger:0;
-    if(m.heard&&m.target===this.room!.slot)this.heardTime=.65;
-    mesh.visible=m.visible;
-    mesh.position.x=THREE.MathUtils.damp(mesh.position.x,m.x,22,dt);
-    mesh.position.z=THREE.MathUtils.damp(mesh.position.z,m.z,22,dt);
-    const turn=Math.atan2(Math.sin(m.yaw-mesh.rotation.y),Math.cos(m.yaw-mesh.rotation.y));
-    mesh.rotation.y+=turn*(1-Math.exp(-18*dt));
-    mesh.userData.setContactPose?.(dt,m.contactPose);
-    mesh.userData.pose?.(this.time,dt,m.speed,m.wind,m.strike,m.heard,m.reach,m.frozen,turn);
+  private showHunter(e: Encounter, mesh: THREE.Group | null | undefined, m: Monster, dt: number) {
+    if (!mesh) return;
+    e.x = m.x / TILE;
+    e.z = m.z / TILE;
+    e.angle = m.yaw;
+    e.danger = m.target === this.room!.slot ? m.danger : 0;
+    if (m.heard && m.target === this.room!.slot) this.heardTime = 0.65;
+    mesh.visible = m.visible;
+    mesh.position.x = THREE.MathUtils.damp(mesh.position.x, m.x, 22, dt);
+    mesh.position.z = THREE.MathUtils.damp(mesh.position.z, m.z, 22, dt);
+    const turn = Math.atan2(Math.sin(m.yaw - mesh.rotation.y), Math.cos(m.yaw - mesh.rotation.y));
+    mesh.rotation.y += turn * (1 - Math.exp(-18 * dt));
+    mesh.userData.setContactPose?.(dt, m.contactPose);
+    mesh.userData.pose?.(this.time, dt, m.speed, m.wind, m.strike, m.heard, m.reach, m.frozen, turn);
   }
-  private syncTeam(dt:number){
-    const room=this.room!, snap=room.state;
-    if(!snap||snap.phase!=='playing')return;
-    const self=snap.players.find(p=>p.slot===room.slot);
-    if(!self)return;
-    const transition=this.epoch!==snap.epoch;
-    if(this.revision!==snap.revision || transition){
-      const j=snap.journal, before=this.state.completed, oldPending=this.state.pending;
-      this.state.flags=j.flags.slice();this.state.completed=j.completed.slice();this.state.endings=j.endings.slice();
-      this.state.inventory={...j.inventory};this.state.pending=j.pending?{...j.pending}:null;
-      this.revision=snap.revision;
-      if(transition){
-        this.epoch=snap.epoch;
-        this.restoredSupply=self.supplies;
+  private syncTeam(dt: number) {
+    const room = this.room!,
+      snap = room.state;
+    if (!snap || snap.phase !== 'playing') return;
+    const self = snap.players.find((p) => p.slot === room.slot);
+    if (!self) return;
+    const transition = this.epoch !== snap.epoch;
+    if (this.revision !== snap.revision || transition) {
+      const j = snap.journal,
+        before = this.state.completed,
+        oldPending = this.state.pending;
+      this.state.flags = j.flags.slice();
+      this.state.completed = j.completed.slice();
+      this.state.endings = j.endings.slice();
+      this.state.inventory = { ...j.inventory };
+      this.state.pending = j.pending ? { ...j.pending } : null;
+      this.revision = snap.revision;
+      if (transition) {
+        this.epoch = snap.epoch;
+        this.restoredSupply = self.supplies;
+        this.spawnId = self.spawnId;
         this.enter(j.stage);
-        this.x=self.x;this.z=self.z;this.moving=this.sprinting=false;
-        this.cameraPose(0,false);
+        this.x = self.x;
+        this.z = self.z;
+        this.moving = this.sprinting = false;
+        this.cameraPose(0, false);
         this.change('playing');
         this.callbacks.message(this.stage.description);
-      }else{
-        for(const obj of this.stage.objects){
-          if(!this.done(obj)||before.includes(this.stage.id+'/'+obj.id))continue;
-          if(this.challenge.object===obj)this.challenge.clear();
-          if(this.keypad===obj){this.keypad=undefined;this.change('playing');}
-          this.placeCompleted(obj);this.sound.event(obj.kind==='pickup'?'pickup':'use');
-          this.callbacks.message(obj.description??obj.name);
-          if(obj===this.phone || obj.gives?.includes('rail3'))this.receiverScareAt=this.time+1.3;
-          if(obj.gives?.includes('archive-alarm'))this.sound.alarm();
+      } else {
+        for (const obj of this.stage.objects) {
+          if (!this.done(obj) || before.includes(this.stage.id + '/' + obj.id)) continue;
+          if (this.challenge.object === obj) this.challenge.clear();
+          if (this.keypad === obj) {
+            this.keypad = undefined;
+            this.change('playing');
+          }
+          this.placeCompleted(obj);
+          this.sound.event(obj.kind === 'pickup' ? 'pickup' : 'use');
+          this.callbacks.message(obj.description ?? obj.name);
+          if (obj === this.phone || obj.gives?.includes('rail3')) this.receiverScareAt = this.time + 1.3;
+          if (obj.gives?.includes('archive-alarm')) this.sound.alarm();
         }
-        this.refreshHUD();
+        if (this.mode !== 'spectating') this.refreshHUD();
       }
-      if(this.state.pending && (transition||!oldPending))this.change('ending',this.state.pending.ending);
+      if (this.state.pending && (transition || !oldPending)) this.change('ending', this.state.pending.ending);
     }
-    if(self.supplies!==this.restoredSupply){
-      this.restoredSupply=self.supplies;
-      if(self.lastSupply==='almond')this.state.sanity=Math.min(100,this.state.sanity+54);
-      else {this.state.stamina=Math.min(100,this.state.stamina+80);this.sprintLocked=false;}
+    if (this.spawnId !== self.spawnId) {
+      this.spawnId = self.spawnId;
+      this.x = self.x;
+      this.z = self.z;
+      this.y = 0;
+      this.yaw = self.yaw;
+      this.hidden = false;
+      this.challenge.clear();
+      this.change('playing');
+      this.cameraPose(0, false);
+      this.callbacks.message('The camera spotted you. Stay low or disable the feed.');
+    }
+    if (self.supplies !== this.restoredSupply) {
+      this.restoredSupply = self.supplies;
+      if (self.lastSupply === 'almond') this.state.sanity = Math.min(100, this.state.sanity + 54);
+      else {
+        this.state.stamina = Math.min(100, this.state.stamina + 80);
+        this.sprintLocked = false;
+      }
       this.sound.event('pickup');
     }
-    if(!self.alive && this.mode!=='spectating' && !this.state.pending){
-      const kind=self.cause.match(/^Caught by (\w+)\./)?.[1];
-      if(kind)this.callbacks.scare?.({kind,lethal:true,frame:this.contactFrame(kind,
-        this.additionalHunters.find(h=>h.kind===kind)?.mesh??this.world?.entity)});
-      this.change('spectating',self.cause);
+    if (!self.alive && this.mode !== 'spectating' && !this.state.pending) {
+      const kind = self.cause.match(/^Caught by (\w+)\./)?.[1];
+      if (kind)
+        this.callbacks.scare?.({
+          kind,
+          lethal: true,
+          frame: this.contactFrame(
+            kind,
+            this.world?.residents.find((r) => r.site.kind === kind)?.mesh ??
+              this.additionalHunters.find((h) => h.kind === kind)?.mesh ??
+              this.world?.entity,
+          ),
+        });
+      this.change('spectating', self.cause);
     }
-    this.time=snap.time;
-    if(this.encounter && snap.monsters[0])this.showHunter(this.encounter,this.world?.entity,snap.monsters[0],dt);
-    this.additionalHunters.forEach((h,i)=>{const m=snap.monsters[i+(this.encounter?1:0)];if(m)this.showHunter(h.encounter,h.mesh,m,dt);});
-    const watch=this.mode==='spectating'?snap.players.find(p=>p.alive):undefined;
-    this.team?.update(snap.players,room.slot,watch?.slot??0,dt,(x,z)=>terrainHeight(this.stage,x,z));
-    if(watch){
-      this.x=watch.x;this.z=watch.z;this.y=watch.y;this.yaw=watch.yaw;this.pitch=0;
-      this.state.flashlight=watch.light;this.cameraPose(dt,false);
-      this.world?.update(this.time,dt);this.renderer.render(this.scene,this.camera);
+    if (self.alive && this.mode === 'playing' && this.carrying !== self.cargo) {
+      this.carrying = self.cargo;
+      const obj = this.stage.objects.find((o) => o.id === self.cargo);
+      if (obj) this.startChallenge(obj);
     }
-    this.poseTime+=dt;
-    if(self.alive && this.poseTime>=.06){this.poseTime=0;this.sendPose();}
+    for (const [id, origin] of this.cargoOrigins) {
+      const obj = this.stage.objects.find((o) => o.id === id)!;
+      if (this.done(obj)) continue;
+      const carrier = snap.players.find((p) => p.alive && p.cargo === id);
+      const mesh = this.world?.objects.get(id);
+      if (mesh && carrier && carrier.slot !== room.slot)
+        mesh.position.set(
+          carrier.x - Math.sin(carrier.yaw) * 1.18,
+          origin.y,
+          carrier.z + Math.cos(carrier.yaw) * 1.18,
+        );
+      else if (mesh && !carrier) mesh.position.copy(origin);
+    }
+    this.time = snap.time;
+    if (this.encounter && snap.monsters[0])
+      this.showHunter(this.encounter, this.world?.entity, snap.monsters[0], dt);
+    this.additionalHunters.forEach((h, i) => {
+      const m = snap.monsters[i + (this.encounter ? 1 : 0)];
+      if (m) this.showHunter(h.encounter, h.mesh, m, dt);
+    });
+    this.residentHint = '';
+    this.world?.residents.forEach(({ mesh, site, behavior, animate }, i) => {
+      const remote = snap.residents[i];
+      if (!remote) return;
+      const previous = behavior.phase;
+      behavior.phase = remote.phase;
+      behavior.time = remote.time;
+      behavior.exposure = remote.exposure;
+      const p = snap.players.find((p) => p.slot === remote.target);
+      animate(dt, p ? Math.atan2(p.x - mesh.position.x, p.z - mesh.position.z) : mesh.rotation.y);
+      if (this.mode !== 'playing' || Math.hypot(this.x - mesh.position.x, this.z - mesh.position.z) > 12)
+        return;
+      const veil = site.kind === 'veil';
+      if (previous !== remote.phase) {
+        const cue =
+          remote.phase === 'warning'
+            ? veil
+              ? 'harmony'
+              : 'knock'
+            : remote.phase === 'listening'
+              ? 'listen'
+              : remote.phase === 'quiet'
+                ? 'toll'
+                : null;
+        if (cue) this.sound.residentCue(cue, 0);
+      }
+      if (remote.phase === 'listening' || remote.phase === 'warning')
+        this.residentHint = veil
+          ? 'The Veil • look away from the faces'
+          : remote.phase === 'listening'
+            ? 'Bellwether listening • hold still or crouch-walk'
+            : 'Two knocks • get low before it listens';
+    });
+    const watch = this.mode === 'spectating' ? snap.players.find((p) => p.alive) : undefined;
+    this.team?.update(snap.players, room.slot, watch?.slot ?? 0, dt, (x, z) =>
+      terrainHeight(this.stage, x, z),
+    );
+    if (watch) {
+      this.x = watch.x;
+      this.z = watch.z;
+      this.y = watch.y;
+      this.yaw = watch.yaw;
+      this.pitch = 0;
+      this.state.flashlight = watch.light;
+      this.cameraPose(dt, false);
+      this.world?.update(this.time, dt);
+      this.renderer.render(this.scene, this.camera);
+    }
+    this.poseTime += dt;
+    if (self.alive && this.poseTime >= 0.06) {
+      this.poseTime = 0;
+      this.sendPose();
+    }
   }
   private run() {
     if (this.frameId) return;

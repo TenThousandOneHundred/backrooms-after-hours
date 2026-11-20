@@ -1,3 +1,4 @@
+import { detailCreature } from './creature-surfaces';
 import { AnimationMixer, AnimationUtils, Group, LoopOnce, SkinnedMesh } from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { createContactPose } from './contact-animation';
@@ -12,6 +13,7 @@ export async function loadBacteria() {
   model.animations = model.animations.map(clip =>
     ['SoundTurn', 'BankLeft', 'BankRight', 'Seize'].includes(clip.name) ? AnimationUtils.makeClipAdditive(clip.clone()) : clip,
   );
+  detailCreature(model.scene);
   asset = model;
 }
 
