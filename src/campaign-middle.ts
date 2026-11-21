@@ -33,7 +33,7 @@ export const middle = [
     'The End',
     'library',
     'THE END hangs above the shelves in crooked letters. A single terminal is still indexing the returns.',
-    'Recover all sixteen reels and mount the archive. The blind Scratcher follows sound. The last tape went to the magnetic tape vault.',
+    'Restore the projection with sixteen archive reels, or wheel the backup projector out of the tape vault.',
     `
 ###########################
 #..a...b...c...d...A......#
@@ -43,12 +43,12 @@ export const middle = [
 #j......k....!.....l...m..#
 #..#####..#####..#####....#
 #n....o...............E...#
-#.....H....K.....@........#
+#.....H....K.Y...@........#
 ######.#############.######
 ######.:.............######
 ######.,..,..,..,..,.######
 ######.##..##..##..#.######
-######.{....^.....p..######
+######.{....^.T...p..######
 ######.##..##..##..#.######
 ######..,..,..,..,.,.######
 ######.....^......}..######
@@ -58,6 +58,12 @@ export const middle = [
       ...roomDetails("Magnetic tape vault", "stacks", 0x928a69, "records-rack",
         "Hide behind the listening booth grille", "shelter-booth", "Climb into the catalog locker", "archive-locker"),
       ...tapes,
+      T: challenge(item('Wheel the backup projector to Returns', 'archive-cart', 'projector-cart',
+        'The projector plugs into the splice deck. Its tracking needle starts to swing.'),
+        { kind: 'haul', destination: 'library-splice', delivery: 'the splice deck at the returns desk' }),
+      Y: challenge({ ...act('Lock the tracking needle', 'archive-done', 'splice-terminal',
+        'The film catches in the gate. A doorway flickers onto the wall behind the stacks.', ['archive-cart']), token: 'splice' },
+        { kind: 'align' }),
       K: {
         ...act(
           'Mount archived reels',

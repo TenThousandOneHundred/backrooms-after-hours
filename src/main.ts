@@ -55,6 +55,7 @@ let manualTab = 'controls';
 let returnTo = 'home';
 let previousFocus: HTMLElement | null = null;
 let inventory: string[] = [];
+let fieldNotes: string[] = [];
 let toastTimer = 0;
 const safe = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -240,7 +241,7 @@ const controls = [
   ['Hold to use the co-op walkie-talkie', ['V']],
   ['Sprint / crouch into low cover', ['Shift', 'C']],
   ['Jump', ['Space']],
-  ['Field inventory', ['Tab']],
+  ['Field notes and inventory', ['Tab']],
   ['Almond water / energy bar', ['1', '2']],
   ['Pause / release mouse', ['Esc']],
 ] as const;
@@ -405,13 +406,22 @@ function showInventory() {
     'inventory',
     'FIELD EQUIPMENT',
     'Inventory',
-    inventory.length
+    '<h3>Field notes</h3><ul class="field-notes" id="field-notes"></ul>' + (inventory.length
       ? '<div class="item-list">' +
           inventory.map((v) => '<span class="item">' + safe(v) + '</span>').join('') +
           '</div>'
-      : '<p class="panel-text">Your pack is empty.</p>',
+      : '<p class="panel-text">Your pack is empty.</p>'),
     () => game?.resume(),
   );
+  displayFieldNotes();
+}
+function displayFieldNotes() {
+  const list = document.getElementById('field-notes');
+  if (list) list.replaceChildren(...fieldNotes.map(note => {
+    const item = document.createElement('li');
+    item.textContent = note;
+    return item;
+  }));
 }
 const endingText: Record<string, string> = {
   wrong: 'The slide was a way out of the level. You wake in the Bunker with another route to follow.',
@@ -439,6 +449,12 @@ const callbacks: GameCallbacks = {
     el('hud-label').textContent = h.label;
     el('hud-name').textContent = (activeMod?.stages ?? campaign?.stages)?.[h.stage]?.name ?? h.stage;
     el('hud-objective').textContent = h.objective;
+    el('hud-notice').hidden = !h.notice;
+    el('hud-notice').textContent = h.notice;
+    if (fieldNotes.length !== h.fieldNotes.length || fieldNotes.some((note, i) => note !== h.fieldNotes[i])) {
+      fieldNotes = h.fieldNotes;
+      displayFieldNotes();
+    }
     const prompt = el('interact');
     prompt.hidden = !h.prompt;
     prompt.querySelector('span')!.textContent = h.prompt;
@@ -464,6 +480,7 @@ const callbacks: GameCallbacks = {
     }
     if(screen==='spectating'){
       mode='spectating';hidePanel();hud.hidden=false;
+      el('hud-notice').hidden=true;
       el('hud-objective').textContent=(detail??'You were caught.')+ ((game?.livesRemaining ?? 0) > 0 ? ' Returning to the level entrance…' : voiceRoom?.state?.hunt ? ' Out of lives. Watching the remaining explorers.' : ' Out of lives. You rejoin when a teammate reaches the next level.');
       el('interact').hidden=true;
       return;

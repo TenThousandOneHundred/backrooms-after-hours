@@ -1,5 +1,5 @@
-import { concoursePlan } from './concourse-plan.ts';
-import { roomDetails, stage, item, act, code, exit, note, hide, prop, noteKeys, rangeFlags } from './campaign-format.ts';
+import { concoursePlan, exchangePulses, exchangeTranscript } from './concourse-plan.ts';
+import { roomDetails, stage, item, act, code, exit, note, hide, prop, noteKeys, rangeFlags, challenge } from './campaign-format.ts';
 
 export const opening = [
   stage(
@@ -8,7 +8,7 @@ export const opening = [
     'The Lobby',
     'lobby',
     'The carpet gives under your shoes. Beyond the next corner, the same yellow wallpaper starts again.',
-    'Find the four ladder pieces scattered through the yellow rooms and the east offices.',
+    'Rebuild the service ladder, or answer the red phone in the east offices to open a way out below.',
     concoursePlan,
     {
       U: hide('Slip inside the archive locker', 'archive-locker'),
@@ -36,7 +36,13 @@ export const opening = [
       T: hide('Hide beneath the abandoned drafting desk', 'desk'),
       A: note('Records / night shift', 'Every incoming call is logged under your name. The last entry is still wet.','sign'),
       G: note('East telephone exchange', 'Records is south of the exchange. Someone scratched a second message below it: “When the ceiling knocks twice, get low. When the faces sing, look at the floor.”','sign'),
-      F: act('Lift the red receiver', 'exchange-call', 'telephone', 'Your own voice whispers from the receiver. “Put it down. It heard you.”'),
+      F: act('Lift the red receiver', 'exchange-call', 'telephone',
+        `Three groups of pulses. ${exchangeTranscript}. Your voice whispers, “Feed those into the relay in the central yellow rooms.”`),
+      R: { ...code('Tune the returns relay', exchangePulses.join(''), 'returns-power',
+        'The relay catches. Below you, the basement pump starts to knock.', ['exchange-call']), model: 'returns-terminal' },
+      V: challenge(act('Bleed the pressure line', 'returns-bled', 'returns-valve',
+        'The gauge drops to zero. The bolts draw back on the hatch along the north wall.', ['returns-power']), { kind: 'wind' }),
+      B: exit('Open the pressure hatch', 'lower', ['returns-bled'], 'pressure-door'),
       J: hide('Slip into the switchboard cabinet'),
       W: note(
         'Pencil marks on a torn sleeve',
@@ -44,7 +50,7 @@ export const opening = [
       ),
       N: note(
         'Maintenance slip',
-        'Left the service key above the broken ladder. The right rail is in the west rooms, past the little wall that stands by itself. The north passage leads to the other two pieces, by the red phone and the far office wall.',
+        'The key is still above the broken ladder. Two pieces in the west yellow rooms, one past the freestanding wall. The north passage leads to two more in the east offices. If you hear the red phone, there’s another way out.',
       ),
     },
     'bacteria',

@@ -287,7 +287,15 @@ export function makeModel(k: ModelKit, s: Spec) {
       b('#b9b9a0', -0.35, 1.02, 0.15, 0.22, 0.045, 0.055);
       b('#54584d', 0, 0.2, 0.06, 1.16, 0.21, 0.025);
     }
-    label(lift ? 'LIFT' : 'EXIT', 0, 2.42, 0.102, 0.57, 0.18, '#23483d', '#e6f2d9');
+    if (model === 'pressure-door') {
+      label('RETURNS / PRESSURE HATCH', 0, 2.42, 0.12, 1.5, 0.25, '#314342', '#ebe7c4');
+      const indicator = a('#e59b45', 0.54, 1.93, 0.13, 0.11, 0.11, 0.06, false);
+      const bolt = b('#c49958', 0.29, 0.97, 0.18, 0.86, 0.09, 0.1);
+      g.userData.releaseHatch = () => {
+        indicator.material = k.get('#85dfae', false);
+        bolt.position.x = -0.19;
+      };
+    } else label(lift ? 'LIFT' : 'EXIT', 0, 2.42, 0.102, 0.57, 0.18, '#23483d', '#e6f2d9');
   } else if (/vent|grate/.test(model)) {
     b(steel, 0, 0.49, 0, 0.94, 0.88, 0.19);
     b('#202827', 0, 0.49, 0.1, 0.83, 0.76, 0.05);
@@ -336,6 +344,8 @@ export function makeModel(k: ModelKit, s: Spec) {
     }
   } else if (/terminal|computer|monitor|keypad/.test(model)) {
     panel();
+    if (model === 'returns-terminal') label('RETURNS RELAY', 0, 1.99, 0.24, 0.88, 0.2);
+    if (model === 'splice-terminal') label('RETURNS / SPLICE', 0, 1.99, 0.24, 0.88, 0.2);
     b('#223632', 0, 1.49, 0.327, 0.405, 0.3, 0.02);
     for (let i = 0; i < 5; i++)
       b('#83b693', -0.05, 1.57 - i * 0.042, 0.341, 0.23 - (i % 3) * 0.038, 0.011, 0.005, false);
@@ -382,6 +392,25 @@ export function makeModel(k: ModelKit, s: Spec) {
     }
     label(linen ? 'CLEAN LINEN' : parts ? 'SERVICE PARTS' : 'RECORDS  /  B',
       0, 2.08, .36, 1.15, .18, paint, '#e2d7b8');
+  } else if (model === 'projector-cart') {
+    for (const x of [-0.39, 0.39]) for (const z of [-0.26, 0.26]) {
+      b(steel, x, 0.43, z, 0.045, 0.67, 0.045);
+      const wheel = cy(dark, x, 0.09, z, 0.17, 0.065);
+      wheel.rotation.z = Math.PI / 2;
+    }
+    b('#797c6c', 0, 0.76, 0, 0.96, 0.06, 0.69);
+    b('#5d655d', 0, 0.99, 0, 0.48, 0.42, 0.53);
+    label('BACKUP', 0, 0.95, 0.27, 0.35, 0.10);
+    for (const x of [-0.19, 0.19]) {
+      const reel = cy('#b3aa91', x, 1.32, 0.06, 0.33, 0.075);
+      reel.rotation.x = Math.PI / 2;
+      for (let i = 0; i < 3; i++) {
+        const angle = i * Math.PI * 2 / 3;
+        a(dark, x + 0.084 * Math.cos(angle), 1.32 + 0.084 * Math.sin(angle), 0.102, 0.068, 0.068, 0.012);
+      }
+    }
+    const lens = cy('#303735', -0.28, 1.07, 0, 0.17, 0.2);
+    lens.rotation.z = Math.PI / 2;
   } else if (/shelf|bookcase|cart|trolley|spool/.test(model)) {
     for (const x of [-0.54, 0.54]) for (const z of [-0.2, 0.2]) b(steel, x, 0.91, z, 0.04, 1.83, 0.05);
     for (let i = 0; i < 4; i++) {
@@ -512,6 +541,10 @@ export function makeModel(k: ModelKit, s: Spec) {
     for (const y of [0.14, 0.71, 0.93]) cy(steel, 0, y, 0, 0.67, 0.026);
   } else if (/valve|wheel|crank/.test(model)) {
     cy('#626e68', 0, 0.52, 0, 0.18, 1.04);
+    if (model === 'returns-valve') {
+      rod(steel, [0, 0.61, -0.09], [0, 1.72, -0.09], 0.045);
+      label('HATCH / BLEED', 0, 1.62, 0, 0.76, 0.2, '#8d7049', '#fff0c6');
+    }
     const ring = new T.TorusGeometry(0.235, 0.036, 7, 18);
     k.geometries.push(ring);
     k.add(g, ring, '#ae523e', 0, 1.11, 0.06, 1, 1, 1);

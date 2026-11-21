@@ -15,6 +15,8 @@ import { Explorers } from './multiplayer/explorers';
 import type { Room } from './multiplayer/room';
 import type { Pose, Monster } from './multiplayer/expedition';
 import { recordObjective } from './campaign-progress';
+import { campaignObjective } from './campaign-objectives';
+import { exchangePulses, exchangeTranscript } from './concourse-plan';
 import { FieldChallenge } from './campaign-challenges';
 import type { ModPack } from './mods';
 import { EndingCinema } from './ending-cinema';
@@ -35,6 +37,8 @@ export type GameHUD = {
   stage: string;
   label: string;
   objective: string;
+  fieldNotes: string[];
+  notice: string;
   prompt: string;
   stamina: number;
   sanity: number;
@@ -631,6 +635,7 @@ export class Game {
     this.target = this.findTarget();
     const obj = this.target;
     if (!obj) return;
+    if (this.stage.id === 'lobby' && obj === this.phone) this.sound.receiverPulses(exchangePulses);
     if (this.done(obj) && ['switch', 'code', 'pickup'].includes(obj.kind)) {
       this.callbacks.message(obj.description ?? 'Already completed.');
       return;
@@ -674,7 +679,8 @@ export class Game {
     }
     if (obj.kind === 'code') {
       this.keypad = obj;
-      this.change('code', obj.name);
+      this.change('code', obj.model === 'returns-terminal'
+        ? `Enter one digit for each group in the receiver log. ${exchangeTranscript}` : obj.name);
       return;
     }
     this.complete(obj);
@@ -689,6 +695,10 @@ export class Game {
   private placeCompleted(obj: GameObject) {
     const mesh = this.world?.objects.get(obj.id);
     if (!mesh) return;
+    if (obj.gives?.includes('returns-bled')) {
+      const hatch = this.stage.objects.find(o => o.model === 'pressure-door');
+      if (hatch) this.world?.objects.get(hatch.id)?.userData.releaseHatch?.();
+    }
     const spec = obj.challenge;
     if (spec?.kind === 'haul') {
       const drop = this.stage.objects.find(
@@ -784,7 +794,7 @@ export class Game {
     }
     if (this.phone && (obj === this.phone || (obj.gives?.includes('rail3') && !this.has('exchange-call')))) {
       this.haunt('flicker');
-      this.receiverScareAt = this.time + 1.3;
+      this.receiverScareAt = this.time + (obj === this.phone ? 3.5 : 1.3);
       this.encounter?.investigate(this.phone.x, this.phone.z);
     }
     if (obj.gives?.includes('archive-alarm')) {
@@ -876,13 +886,16 @@ export class Game {
               ? `${obj.name} · completed`
               : obj.name;
     const cover = this.naturalCover();
+    const mission = campaignObjective(this.stage, this.state);
     const items = Object.values(this.state.inventory);
     const hud = {
       lives: this.state.lives,
       difficulty: this.state.difficulty,
       stage: this.stage.id,
       label: this.stage.label,
-      objective: this.room?.isMonster ? 'Follow the sound arrow. Face an explorer at arm’s reach and press E to grab.' : this.residentHint || (cover ? coverLabels[cover] : this.stage.objective) || this.stage.description,
+      objective: this.room?.isMonster ? 'Follow the sound arrow. Face an explorer at arm’s reach and press E to grab.' : mission.current,
+      fieldNotes: mission.notes ?? [mission.current],
+      notice: this.room?.isMonster ? '' : this.residentHint || (cover ? coverLabels[cover] : ''),
       prompt,
       stamina: Math.round(this.state.stamina),
       sanity: Math.round(this.state.sanity),
@@ -1552,7 +1565,7 @@ export class Game {
           this.placeCompleted(obj);
           this.sound.event(obj.kind === 'pickup' ? 'pickup' : 'use');
           this.callbacks.message(obj.description ?? obj.name);
-          if (obj === this.phone || obj.gives?.includes('rail3')) this.receiverScareAt = this.time + 1.3;
+          if (obj === this.phone || obj.gives?.includes('rail3')) this.receiverScareAt = this.time + (obj === this.phone ? 3.5 : 1.3);
           if (obj.gives?.includes('archive-alarm')) this.sound.alarm();
         }
         if (this.mode !== 'spectating') this.refreshHUD();

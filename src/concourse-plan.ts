@@ -1,5 +1,7 @@
 // Coordinates are tile centres. Elevations are metres above the main hall.
 export const basementBed = -4.8;
+export const exchangePulses = [2, 4, 1] as const;
+export const exchangeTranscript = exchangePulses.map(count => '•'.repeat(count)).join(' / ');
 
 export function concourseFloor(_x: number, z: number) {
   return z <= 23.5 ? 0 : basementBed * Math.min(1, (z - 23.5) / 8);
@@ -36,6 +38,9 @@ function buildPlan() {
     [68, 2, '1'],
     [86, 9, '3'],
     [88, 8, 'F'],
+    [47, 12, 'R'],
+    [54, 35, 'V'],
+    [58, 33, 'B'],
     [89, 7, 'J'],
     [65, 15, 'G'],
     [89, 20, 'T'],

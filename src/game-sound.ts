@@ -352,6 +352,16 @@ export class Soundscape {
       this.sound(533, 516, 0.17, 0.11 * strength, pan, 'triangle', delay);
     }
   }
+  receiverPulses(groups: readonly number[]) {
+    let delay = 0;
+    for (const count of groups) {
+      for (let i = 0; i < count; i++) {
+        this.sound(830, 700, 0.13, 0.19, 0, 'triangle', delay);
+        delay += 0.26;
+      }
+      delay += 0.5;
+    }
+  }
   alarm() {
     for (let i = 0; i < 10; i++) {
       this.sound(770, 650, 0.35, 0.14, 0.78, 'triangle', i * 1.4);
