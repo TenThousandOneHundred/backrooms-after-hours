@@ -435,6 +435,7 @@ const callbacks: GameCallbacks = {
   microphone: dt => mic.read(dt),
   haunt: (event) => horror.haunt(event),
   dread: (level) => horror.dread(level),
+  prepareCatches: kinds => horror.prepareCatches(kinds),
   scare: (encounter) => horror.scare(encounter),
   message: notify,
   bearing: angle => {
@@ -471,6 +472,7 @@ const callbacks: GameCallbacks = {
       horror.quiet();
     }
     if (screen === 'playing') {
+      horror.stopScare();
       mode = 'playing';
       syncMic();
       home.hidden = true;
@@ -617,9 +619,13 @@ async function multiplayer(invitedCode?: string) {
         game=new runtime!.Game(el<HTMLCanvasElement>('world'), callbacks, undefined, room);
         game.applySettings(settings); game.start(false);
       },
-      stop:()=>{
+      stop:(terminal, cause)=>{
+        const kind = terminal && mode !== 'spectating' && cause?.match(/^Caught by (\w+)\./)?.[1];
         radioHeld=false; voiceRoom?.setListening(false); mic.stop(); voiceRoom=undefined; roomMicEnabled=false;
-        game?.dispose();game=null;horror.clear();hud.hidden=true;
+        game?.dispose();game=null;hud.hidden=true;
+        if (kind) horror.scare({ kind, lethal: true, caught: true });
+        if (terminal) horror.quiet();
+        else horror.clear();
       },
     });
     rooms.menu(invitedCode);

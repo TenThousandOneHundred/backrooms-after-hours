@@ -495,6 +495,7 @@ const officeStock: Partial<Record<Finish,string>> = {
   paper: '#d2d18a', carpet: '#a18d64', ceiling: '#cec7a1'
 };
 const bakedOfficeImages = new Map<Finish, Promise<HTMLImageElement>>();
+const readyOfficeImages = new Map<Finish, HTMLImageElement>();
 
 export function texture(finish: Finish, hex: string, office = false): THREE.Texture<HTMLCanvasElement | HTMLImageElement> {
   const key = finish + '/' + hex + (office ? '/office' : '');
@@ -503,7 +504,8 @@ export function texture(finish: Finish, hex: string, office = false): THREE.Text
   else canvas = drawFinish(finish, hex, office);
   finishImages.set(key, canvas);
   if (finishImages.size > 8) finishImages.delete(finishImages.keys().next().value!);
-  const t: THREE.Texture<HTMLCanvasElement | HTMLImageElement> = new THREE.CanvasTexture(canvas);
+  const t: THREE.Texture<HTMLCanvasElement | HTMLImageElement> = new THREE.Texture(office && hex === officeStock[finish] ? readyOfficeImages.get(finish) ?? canvas : canvas);
+  t.needsUpdate = true;
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 4;
@@ -513,7 +515,15 @@ export function texture(finish: Finish, hex: string, office = false): THREE.Text
       sheet = new THREE.ImageLoader().loadAsync(import.meta.env.BASE_URL + 'surfaces/office-' + finish + '.webp');
       bakedOfficeImages.set(finish, sheet);
     }
-    void sheet.then(image => { t.image = image; t.needsUpdate = true; })
+    void sheet.then(image => {
+      readyOfficeImages.set(finish, image);
+      if (t.image === image) return;
+      // WebGL storage for the procedural placeholder may already be allocated.
+      // The photographic finish has a different size and needs fresh storage.
+      if (t.image.width !== image.width || t.image.height !== image.height) t.dispose();
+      t.image = image;
+      t.needsUpdate = true;
+    })
       .catch(() => bakedOfficeImages.delete(finish));
   }
   return t;

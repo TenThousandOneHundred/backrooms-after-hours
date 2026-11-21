@@ -1,3 +1,5 @@
+import { catchShot } from './catch-shots';
+import type { Attack } from './horror';
 import { AdaptiveResolution, pixelRatio, type GraphicsQuality } from './render-quality';
 import { ClosetDoors, coverFits, coverZone, reachableDoor, headroom, standingHeight, crouchingHeight } from './concourse-cover';
 import { FilmCamera } from './film-camera';
@@ -52,7 +54,8 @@ export type GameCallbacks = {
   hud: (h: GameHUD) => void;
   message: (s: string) => void;
   screen: (s: Screen, detail?: string) => void;
-  scare?: (encounter: { kind: string; lethal: boolean; frame?: string }) => void;
+  prepareCatches?: (kinds: string[]) => void;
+  scare?: (encounter: Attack) => void;
   dread?: (intensity: number) => void;
   microphone?: (dt: number) => number;
   haunt?: (event: 'flicker' | 'steps' | 'breath' | 'silhouette') => void;
@@ -315,6 +318,11 @@ export class Game {
     this.world?.dispose();
     this.scene = new THREE.Scene();
     this.stage = stage;
+    const hunters = this.room?.state?.hunt ? ['bacteria'] : [
+      stage.threat?.kind, ...(stage.additionalThreats ?? []).map(t => t.kind),
+      ...(stage.residents ?? []).map(r => r.kind),
+    ].filter((kind): kind is string => Boolean(kind));
+    this.callbacks.prepareCatches?.(hunters);
     this.doors = new ClosetDoors();
     if (restore && stage.id === 'lobby') this.doors.restore(this.state.closetDoors ?? 0, this.state.position);
     this.world = buildWorld(this.scene, stage, this.mod ? undefined : campaignAtmosphere(stage.id),
@@ -1160,6 +1168,7 @@ export class Game {
       if (this.encounter.contact && this.stage.threat?.kind === 'camera') {
         if (!this.has('office-camera')) {
           this.enter(this.stage.id);
+          this.captureScare('camera', false);
           this.callbacks.message('The camera caught you. Stay low or disable the security feed.');
           return;
         }
@@ -1237,8 +1246,12 @@ export class Game {
       if (distance > 0.001 || this.keys.size || danger > 0.1) this.persist();
     }
   }
+  private captureScare(kind: string, lethal: boolean, mesh?: THREE.Object3D | null) {
+    this.callbacks.scare?.({ kind, lethal, caught: true,
+      frame: catchShot(kind) ? undefined : this.contactFrame(kind, mesh) });
+  }
   private caught(kind: string, mesh: THREE.Object3D | null | undefined) {
-    this.callbacks.scare?.({ kind, lethal: true, frame: this.contactFrame(kind, mesh) });
+    this.captureScare(kind, true, mesh);
     this.lastScare = this.activeClock;
     this.die(`Caught by ${creatureNames[kind] ?? labelOf(kind)}.`);
   }
@@ -1312,7 +1325,7 @@ export class Game {
         this.encounter?.investigate(site.x, site.z);
       }
       if (event === 'capture') {
-        this.callbacks.scare?.({ kind: site.kind, lethal: true, frame: this.contactFrame(site.kind, mesh) });
+        this.captureScare(site.kind, true, mesh);
         this.die(veil ? 'The Veil caught your gaze. Turn away when its voices rise.' :
           'The Bellwether heard you. After the knocks, keep your voice down and stand still or crouch-walk until it tolls.');
         return 1;
@@ -1597,6 +1610,7 @@ export class Game {
       }
       this.change('playing');
       this.cameraPose(0, false);
+      if (!self.cause) this.captureScare('camera', false);
       this.callbacks.message(self.cause ? 'Back at the entrance · ' + lifeCount(self.lives) + ' left.' : 'The camera spotted you. Stay low or disable the feed.');
     }
     if (self.supplies !== this.restoredSupply) {
@@ -1610,17 +1624,8 @@ export class Game {
     }
     if (!self.alive && this.mode !== 'spectating' && !this.state.pending) {
       const kind = self.cause.match(/^Caught by (\w+)\./)?.[1];
-      if (kind)
-        this.callbacks.scare?.({
-          kind,
-          lethal: true,
-          frame: this.contactFrame(
-            kind,
-            this.world?.residents.find((r) => r.site.kind === kind)?.mesh ??
-              this.additionalHunters.find((h) => h.kind === kind)?.mesh ??
-              this.world?.entity,
-          ),
-        });
+      if (kind) this.captureScare(kind, true, this.world?.residents.find(r => r.site.kind === kind)?.mesh ??
+        this.additionalHunters.find(h => h.kind === kind)?.mesh ?? this.world?.entity);
       this.change('spectating', self.cause);
     }
     if (self.alive && this.mode === 'playing' && this.carrying !== self.cargo) {

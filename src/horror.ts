@@ -1,7 +1,8 @@
 import './horror.css';
+import { catchShot } from './catch-shots';
 
 export type Haunt = 'flicker' | 'steps' | 'breath' | 'silhouette';
-export type Attack = { kind: string; lethal: boolean; frame?: string };
+export type Attack = { kind: string; lethal: boolean; caught?: boolean; frame?: string };
 const plates: Record<string, string> = { bacteria: 'wire', hound: 'hound', smiler: 'smiler' };
 const base = import.meta.env.BASE_URL + 'encounters/';
 const creatureSamples = new Map<string, HTMLImageElement>();
@@ -15,6 +16,9 @@ export class Horror {
   private nextHeartbeat = 0;
   private cueTimer = 0;
   private attackTimer = 0;
+  private prepared = new Map<string, HTMLVideoElement>();
+  private playing?: HTMLVideoElement;
+  private reduced = matchMedia('(prefers-reduced-motion: reduce)');
   private view = document.createElement('div');
   private impact = document.createElement('div');
   private curtain = document.createElement('div');
@@ -149,8 +153,85 @@ export class Horror {
       this.voice(0.32, 0.48, 390, 820, 0.12, side, 'noise', 0.1);
     }
   }
+  prepareCatches(kinds: string[]) {
+    const needed = new Set(kinds.filter(kind => catchShot(kind)));
+    for (const [kind, video] of this.prepared) {
+      if (!needed.has(kind)) {
+        this.prepared.delete(kind);
+        if (video !== this.playing) this.releaseFilm(video);
+      }
+    }
+    for (const kind of needed) {
+      if (this.prepared.has(kind)) continue;
+      this.prepared.set(kind, this.createFilm(kind));
+    }
+  }
+  private createFilm(kind: string) {
+    const video = document.createElement('video');
+    video.className = 'catch-film';
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = this.reduced.matches ? 'none' : 'auto';
+    video.setAttribute('aria-hidden','true');
+    video.poster = base + 'catches/' + kind + '.webp';
+    video.src = base + 'catches/' + kind + '.mp4';
+    return video;
+  }
+  private releaseFilm(video: HTMLVideoElement) {
+    video.removeAttribute('src');
+    video.load();
+  }
+  stopScare() {
+    clearTimeout(this.attackTimer);
+    this.impact.className = '';
+    this.curtain.style.backgroundImage = '';
+    if (this.playing) {
+      const video = this.playing;
+      this.playing = undefined;
+      video.onended = video.onplaying = null;
+      video.remove();
+      video.pause();
+      if (video.readyState >= 1) video.currentTime = 0;
+      if (![...this.prepared.values()].includes(video)) this.releaseFilm(video);
+    }
+  }
+  private playCatch(kind: string) {
+    const shot = catchShot(kind);
+    if (!shot) return false;
+    this.stopScare();
+    const video = this.prepared.get(kind) ?? this.createFilm(kind);
+    this.playing = video;
+    this.impact.dataset.kind = kind;
+    this.impact.className = 'caught-film';
+    this.curtain.style.backgroundImage = 'url("' + video.poster + '")';
+    if (!this.reduced.matches) {
+      this.impact.append(video);
+      video.onplaying = () => {
+        if (this.playing !== video) return;
+        clearTimeout(this.attackTimer);
+        const remaining = Number.isFinite(video.duration) ? video.duration - video.currentTime : 1.6;
+        this.attackTimer = window.setTimeout(() => this.stopScare(), 350 + remaining * 1000);
+      };
+      video.onended = () => { if (this.playing === video) this.stopScare(); };
+      void video.play().catch(() => { if (this.playing === video) video.remove(); });
+    }
+    // A still remains available on a cold connection and for reduced motion.
+    // A stalled decoder must always yield to the death or spectator screen.
+    this.attackTimer = window.setTimeout(() => this.stopScare(), this.reduced.matches ? 750 : 1850);
+    const [, , side, , , , style, pitch, impactFrame] = shot;
+    const at = impactFrame / 24, pan = side / 100;
+    this.voice(0, at, pitch * .76, pitch, .18, pan, style === 'water' ? 'sine' : 'triangle', .08);
+    if (style === 'dive' || style === 'lock')
+      this.voice(at * .55, at * .44, pitch * 2.3, pitch * 1.4, .18, -pan, 'sine');
+    this.voice(at, .32, style === 'water' ? 68 : 104, 29, .66, 0, 'sine', .009);
+    this.voice(at + .012, .43, pitch * 6.4, pitch * 1.12, .55, -pan, 'noise', .012);
+    this.voice(at + .05, .46, pitch * 1.45, pitch * .61, .26, pan, style === 'blackout' ? 'sine' : 'sawtooth');
+    return true;
+  }
   scare(hit: Attack) {
     const kind = hit.kind.toLowerCase();
+    if (hit.caught && this.playCatch(kind)) return;
+    if (this.playing) return;
     const plate = plates[kind];
     const frame = hit.frame ?? (plate ? base + plate + '.webp' : undefined);
     const duration = hit.lethal ? 1080 : 370;
@@ -191,8 +272,7 @@ export class Horror {
   }
   clear() {
     this.quiet();
-    clearTimeout(this.attackTimer);
-    this.impact.className = '';
-    this.curtain.style.backgroundImage = '';
+    this.stopScare();
+    this.prepareCatches([]);
   }
 }

@@ -10,7 +10,7 @@ type UI = {
   button: (id: string, text: string, symbol?: string, primary?: boolean) => string;
   enter: (room: Room) => void;
   prepare: () => Promise<void>;
-  stop: () => void;
+  stop: (terminal?: boolean, cause?: string) => void;
   exit: () => void;
 };
 const get = (id: string) => document.getElementById(id)!;
@@ -94,7 +94,11 @@ export class RoomMenu {
       this.panelHost = r.hosting;
       this.phase = state.phase;
       this.generation++;
-      if (this.inGame) this.ui.stop();
+      if (this.inGame) {
+        const terminal = state.phase === 'lost' || state.hunt?.result === 'caught';
+        const self = state.players.find(player => player.slot === r.slot);
+        this.ui.stop(terminal, self && !self.alive ? self.cause : undefined);
+      }
       this.inGame = false;
       this.rendering = false;
       get('coop-hud').hidden = true;

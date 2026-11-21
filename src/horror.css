@@ -113,3 +113,21 @@ body:has(#hud:not([hidden])) #peripheral {
   background: radial-gradient(ellipse at center, transparent 30%, #150500aa 85%);
   backdrop-filter: contrast(1.32) saturate(0.65);
 }
+
+#capture-impact.caught-film {
+  display: block;
+  background: #080908;
+}
+.caught-film .attack-image,
+.catch-film {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-position: center;
+  filter: none;
+}
+#capture-impact.caught-film:after {
+  opacity: .28;
+}
