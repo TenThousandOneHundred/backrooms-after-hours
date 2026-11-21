@@ -9,6 +9,7 @@ import {
   MeshStandardMaterial,
   SkinnedMesh,
   type Scene,
+  type Skeleton,
 } from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
@@ -38,7 +39,17 @@ function explorer(slot: number) {
   tag.flipY = false;
   const patch = new MeshStandardMaterial({ map: tag, roughness: 0.92 });
   const trim = new MeshStandardMaterial({ color: new Color(colors[slot - 1]), roughness: 0.66 });
+  const palettes: Skeleton[] = [];
   mesh.traverse((o) => {
+    if (o instanceof SkinnedMesh) {
+      // SkeletonUtils clones a palette for each GLTF primitive, even when the bones are shared.
+      // Bind matrices remain per mesh. Only primitives driven by this actor's same rig can share.
+      const rig = o.skeleton;
+      const shared = palettes.find(p => p.boneInverses === rig.boneInverses &&
+        p.bones.length === rig.bones.length && p.bones.every((bone, i) => bone === rig.bones[i]));
+      if (shared) o.skeleton = shared;
+      else palettes.push(rig);
+    }
     if (o instanceof Mesh) {
       const tint = (m: MeshStandardMaterial) =>
         m.name === 'Unit stripe' ? trim : m.name === 'Explorer ID tape' ? patch : m;
@@ -48,7 +59,7 @@ function explorer(slot: number) {
   detailCreature(mesh);
   const mixer = new AnimationMixer(mesh);
   const actions = asset.animations.map((clip) => mixer.clipAction(clip).play().setEffectiveWeight(0));
-  return { mesh, mixer, actions, trim, patch, tag, initialized: false };
+  return { mesh, mixer, actions, trim, patch, tag, palettes, initialized: false };
 }
 export class Explorers {
   root = new Group();
@@ -105,9 +116,7 @@ export class Explorers {
     m.trim.dispose();
     m.patch.dispose();
     m.tag.dispose();
-    m.mesh.traverse((o) => {
-      if (o instanceof SkinnedMesh) o.skeleton.dispose();
-    });
+    for (const palette of m.palettes) palette.dispose();
   }
   dispose() {
     for (const m of this.models.values()) this.release(m);
