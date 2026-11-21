@@ -1,5 +1,6 @@
+import { shareActorPalettes } from './actor-rig';
 import { detailCreature } from './creature-surfaces';
-import { AnimationMixer, LoopOnce, SkinnedMesh } from 'three';
+import { AnimationMixer, LoopOnce } from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { ResidentBehavior, type ResidentSite } from './resident-behavior';
@@ -13,6 +14,7 @@ export async function loadResidents() {
 export function makeResident(site: ResidentSite, tile: number, height: number) {
   const veil = site.kind === 'veil';
   const mesh = clone(asset.scene.getObjectByName(veil ? 'Veil' : 'Bellwether')!);
+  const palettes = shareActorPalettes(mesh);
   mesh.position.set(site.x * tile, veil ? 1.85 : height - 0.04, site.z * tile);
   const behavior = new ResidentBehavior(site.kind);
   const mixer = new AnimationMixer(mesh);
@@ -59,7 +61,7 @@ export function makeResident(site: ResidentSite, tile: number, height: number) {
   function dispose() {
     mixer.stopAllAction();
     mixer.uncacheRoot(mesh);
-    mesh.traverse(child => { if (child instanceof SkinnedMesh) child.skeleton.dispose(); });
+    for (const palette of palettes) palette.dispose();
   }
   return { site, mesh, behavior, animate, dispose };
 }

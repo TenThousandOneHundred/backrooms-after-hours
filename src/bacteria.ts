@@ -1,5 +1,6 @@
+import { shareActorPalettes } from './actor-rig';
 import { detailCreature } from './creature-surfaces';
-import { AnimationMixer, AnimationUtils, Group, LoopOnce, SkinnedMesh } from 'three';
+import { AnimationMixer, AnimationUtils, Group, LoopOnce } from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { createContactPose } from './contact-animation';
 import { bacteriaChargeSeconds } from './game-entity';
@@ -21,6 +22,7 @@ export function makeBacteria() {
   if (!asset) throw new Error('The Bacteria model has not finished loading.');
   const root = new Group();
   const model = clone(asset.scene);
+  const palettes = shareActorPalettes(model);
   root.add(model);
   const mixer = new AnimationMixer(model);
   const actions = new Map(asset.animations.map(clip => [clip.name, mixer.clipAction(clip)]));
@@ -88,7 +90,7 @@ export function makeBacteria() {
   root.userData.release = () => {
     mixer.stopAllAction();
     mixer.uncacheRoot(model);
-    model.traverse(child => { if (child instanceof SkinnedMesh) child.skeleton.dispose(); });
+    for (const palette of palettes) palette.dispose();
   };
   return root;
 }

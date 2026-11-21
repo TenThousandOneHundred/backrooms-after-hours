@@ -1,5 +1,6 @@
+import { shareActorPalettes } from './actor-rig';
 import { detailCreature } from './creature-surfaces';
-import { AnimationMixer, AnimationUtils, Group, MathUtils, SkinnedMesh, type AnimationClip, type Object3D } from 'three';
+import { AnimationMixer, AnimationUtils, Group, MathUtils, type AnimationClip, type Object3D } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { createContactPose } from './contact-animation';
@@ -49,6 +50,7 @@ export function makeLevelCreature(kind: string) {
   if (!template) throw new Error('Missing creature model for ' + kind);
   const root = new Group();
   const model = clone(template.model);
+  const palettes = shareActorPalettes(model);
   model.position.set(0, 0, 0);
   root.add(model);
   root.userData.focus = model.getObjectByName(model.name + '_Focus');
@@ -97,7 +99,7 @@ export function makeLevelCreature(kind: string) {
   root.userData.release = () => {
     mixer.stopAllAction();
     mixer.uncacheRoot(model);
-    model.traverse(child => { if (child instanceof SkinnedMesh) child.skeleton.dispose(); });
+    for (const palette of palettes) palette.dispose();
   };
   return root;
 }
