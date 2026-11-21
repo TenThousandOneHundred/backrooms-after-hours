@@ -37,3 +37,5 @@ The Level 0 decay maps in surfaces/decay adapt the paper and plaster scans
 above with original water stains, torn edges, print layouts, and glass fractures.
 
 The office-paper, office-carpet and office-ceiling variants bake the corresponding scans into the game’s printed paper, textile and acoustic tile finishes.
+The hardware patina detail map is a low-contrast monochrome derivative of Rusty Metal 04.
+The wall deposit atlas uses Plastered Wall grain with original mineral, damp and scuff masks.

@@ -1,3 +1,4 @@
+import { addStageDetails } from './stage-details';
 import { hallAir } from './hall-air';
 import { fixtureBank, fluorescentRig } from './fluorescents';
 import { markWet, surfaceMaterial, poolLevel } from './wet-finish';
@@ -1153,6 +1154,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   const decay = officeCells.length
     ? buildOfficeDecay(stage, officeCells, kit, statics, root, h, decals.shadowMaterial)
     : undefined;
+  const detailAnchors = addStageDetails(stage, kit, statics, decals.plane);
   // Repeated architectural details and loose furniture share a small number of draw calls.
   for (const node of statics.children)
     node.position.y += terrainHeight(stage, node.position.x, node.position.z);
@@ -1193,7 +1195,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       `,
         );
       if (projectSurface) projection.apply(shader);
-      if (air && mat.vertexColors && (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhongMaterial || mat instanceof THREE.MeshLambertMaterial)) {
+      if (air && !mat.userData.stageDetailPaint && mat.vertexColors && (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhongMaterial || mat instanceof THREE.MeshLambertMaterial)) {
         // The vertex bake describes indirect room light. A moving beam can still light an unpowered corner.
         shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', '')
           .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\nreflectedLight.indirectDiffuse *= vColor.rgb;');
@@ -1256,6 +1258,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     dayDirectional = directional.intensity,
     daySky = color(profile?.fill ?? '#8bafb3');
   return {
+    detailAnchors,
     objects,
     residents,
     entity,
