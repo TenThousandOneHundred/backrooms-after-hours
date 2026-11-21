@@ -419,6 +419,17 @@ h1 span + span {
   flex-direction: column;
   gap: 5px;
 }
+#hud-notice {
+  color: var(--amber);
+  font-weight: 600;
+}
+.field-notes {
+  padding-left: 1.2em;
+  line-height: 1.5;
+}
+.field-notes li + li {
+  margin-top: .5em;
+}
 .vitals > div {
   display: flex;
   align-items: center;
