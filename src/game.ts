@@ -100,7 +100,7 @@ export class Game {
   private film: FilmCamera;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(70, 1, 0.06, 145);
-  private lamp = new THREE.SpotLight(0xffefd7, 0, 29, 0.58, 0.78, 1.15);
+  private lamp = new THREE.SpotLight(0xffefd7, 0, 29, 0.54, 0.78, 1.15);
   private lampTarget = new THREE.Object3D();
   private world?: ReturnType<typeof buildWorld>;
   private encounter?: Encounter;

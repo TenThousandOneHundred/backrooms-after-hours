@@ -217,7 +217,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
   const lampGrid = new Map<number, BakedTube[]>();
   for (const p of lamps) {
     if (family === 'blackout' || (!yellowRooms && fixtureBank(p.x,p.z)) || hash(Math.round(p.x/TILE),Math.round(p.z/TILE),71) > .978) continue;
-    const tube = { x:p.x, z:p.z, ux:Math.cos(p.yaw ?? 0), uz:-Math.sin(p.yaw ?? 0) };
+    const tube = { x:p.x, z:p.z, ux:Math.sin(p.yaw ?? 0), uz:Math.cos(p.yaw ?? 0) };
     const xi = Math.round(p.x / TILE),
       zi = Math.round(p.z / TILE);
     for (let dz = -2; dz <= 2; dz++)
