@@ -35,3 +35,5 @@ https://polyhaven.com/a/concrete_brick_wall_001
 
 The Level 0 decay maps in surfaces/decay adapt the paper and plaster scans
 above with original water stains, torn edges, print layouts, and glass fractures.
+
+The office-paper, office-carpet and office-ceiling variants bake the corresponding scans into the game’s printed paper, textile and acoustic tile finishes.

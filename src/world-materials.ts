@@ -489,6 +489,13 @@ const SIZE = 256;
 // Keep a bounded set of deterministic source images for retries and repeated room finishes.
 const finishImages = new Map<string, HTMLCanvasElement>();
 
+// The campaign's office finishes combine the printed stock and photographed wear
+// in a single texture. Keep the procedural stock for other palettes and offline loads.
+const officeStock: Partial<Record<Finish,string>> = {
+  paper: '#d2d18a', carpet: '#a18d64', ceiling: '#cec7a1'
+};
+const bakedOfficeImages = new Map<Finish, Promise<HTMLImageElement>>();
+
 export function texture(finish: Finish, hex: string, office = false): THREE.CanvasTexture {
   const key = finish + '/' + hex + (office ? '/office' : '');
   let canvas = finishImages.get(key);
@@ -500,6 +507,15 @@ export function texture(finish: Finish, hex: string, office = false): THREE.Canv
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 4;
+  if (office && hex === officeStock[finish]) {
+    let sheet = bakedOfficeImages.get(finish);
+    if (!sheet) {
+      sheet = new THREE.ImageLoader().loadAsync(import.meta.env.BASE_URL + 'surfaces/office-' + finish + '.webp');
+      bakedOfficeImages.set(finish, sheet);
+    }
+    void sheet.then(image => { t.image = image; t.needsUpdate = true; })
+      .catch(() => bakedOfficeImages.delete(finish));
+  }
   return t;
 }
 
