@@ -958,6 +958,9 @@ export class Game {
     this.clearScan();
     this.scanAge = 0;
     this.sound.event('scan');
+    const ray = new THREE.Raycaster(), hardware = this.world?.scanHardware ?? [];
+    const hits: THREE.Intersection[] = [];
+    ray.ray.origin.copy(this.camera.position);
     const coords: number[] = [],
       colors: number[] = [];
     for (let j = 0; j < 32; j++)
@@ -972,9 +975,21 @@ export class Game {
             y = this.camera.position.y + dy * d,
             z = this.z + dz * d;
           if (y > 0.08 && y < 2.92 && tileAt(this.stage, x / TILE, z / TILE) !== '#') continue;
-          coords.push(x - dx * 0.17, clamp(y - dy * 0.16, 0.065, 2.94), z - dz * 0.17);
+          // The room grid stops this pulse at the wall. Resolve the mounted
+          // antenna against its rendered mesh so scanning reveals its broken tines.
+          ray.ray.direction.set(dx, dy, dz);
+          ray.far = d;
+          hits.length = 0;
+          ray.intersectObjects(hardware, false, hits);
+          if (hits.length) {
+            const point = hits[0].point;
+            coords.push(point.x - dx * .016, point.y - dy * .016, point.z - dz * .016);
+          } else {
+            coords.push(x - dx * 0.17, clamp(y - dy * 0.16, 0.065, 2.94), z - dz * 0.17);
+          }
           const v = clamp(1 - d / 38, 0.26, 1);
-          colors.push(0.12 * v, 0.94 * v, 0.73 * v);
+          if (hits.length) colors.push(.57 * v, v, .89 * v);
+          else colors.push(0.12 * v, 0.94 * v, 0.73 * v);
           break;
         }
       }

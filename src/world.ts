@@ -1265,6 +1265,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     daySky = color(profile?.fill ?? '#8bafb3');
   return {
     detailAnchors,
+    scanHardware: stage.id === 'dark' ? instances.filter(m => !Array.isArray(m.material) && m.material.userData.stageDetailPaint) : [],
     objects,
     residents,
     entity,
