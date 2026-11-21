@@ -78,7 +78,12 @@ export function addStageDetails(stage: Stage, kit: ModelKit, statics: THREE.Grou
   for(const anchor of anchors) {
     const assembly=new THREE.Group();
     assembly.name=spec.name;
-    assembly.add(new THREE.Mesh(combined,paint),wear.clone());
+    const hardware=new THREE.Mesh(combined,paint), marks=wear.clone();
+    if (spec.offset) {
+      hardware.position.set(spec.offset[0],spec.offset[1],0);
+      marks.position.copy(hardware.position);
+    }
+    assembly.add(hardware,marks);
     assembly.rotation.y=Math.atan2(-anchor.dx,-anchor.dz);
     assembly.position.set((anchor.x+anchor.dx*.498)*TILE,0,(anchor.z+anchor.dz*.498)*TILE);
     statics.add(assembly);

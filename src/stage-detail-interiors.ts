@@ -147,7 +147,7 @@ export const interiorDetails:Record<string,DetailSpec> = {
     sheaf(d,.31,1.44,.30,.39,'#b9b398',-.09);sheaf(d,.51,1.35,.26,.31,'#cdc6ac',.12);
     for(let i=0;i<4;i++)stripe(d,.52,1.40-i*.04,.12,'#9a947b');
   }},
-  hotel:{name:'Moth-dusted bell annunciator',build(d){
+  hotel:{name:'Moth-dusted bell annunciator',offset:[.90,0],build(d){
     cabinet(d,-.02,1.64,1.44,.59,'#694933');
     d.box('#93805a',-.02,1.64,.159,1.35,.5,.022);
     for(let i=0;i<5;i++) {
@@ -240,7 +240,7 @@ export const interiorDetails:Record<string,DetailSpec> = {
     }
     d.box(ink,-.03,.93,.19,.27,.09,.033);d.stain('scuff',-.08,.71,.94,.71);
   }},
-  redrooms:{name:'Stripped alarm cage',build(d){
+  redrooms:{name:'Stripped alarm cage',offset:[-.91,0],build(d){
     d.disc('#5d5048',0,1.94,.11,.51,.15);
     d.disc('#a64739',0,1.94,.198,.30,.09);
     for(const x of [-.16,-.05,.06,.16]) {

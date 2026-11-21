@@ -11,5 +11,7 @@ export interface DetailDrawing {
 
 export interface DetailSpec {
   name: string;
+  // Shift the installation along the wall or above its sill when the architecture needs clearance.
+  offset?: [number, number];
   build(d: DetailDrawing): void;
 }
