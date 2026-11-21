@@ -34,7 +34,7 @@ export const exteriorDetails: Record<string, DetailSpec> = {
     },
   },
   courtyard1: {
-    name:'Copper downspout and rain-washed masonry',
+    name:'Copper downspout and rain-washed masonry', offset:[-.72,0],
     build(d) {
       d.stain('mineral',-.26,.65,.61,1.27);
       d.rod('#728478',[-.27,2.59,.15],[-.27,.47,.15],.079);
@@ -184,7 +184,7 @@ export const exteriorDetails: Record<string, DetailSpec> = {
     },
   },
   courtyard2: {
-    name:'Wire-stitched board over shattered wired glass',
+    name:'Wire-stitched board over shattered wired glass', offset:[0,.48],
     build(d) {
       d.box('#657576',0,1.42,.09,1.31,.94,.11);
       d.box('#3d4d51',0,1.42,.16,1.17,.8,.03);
