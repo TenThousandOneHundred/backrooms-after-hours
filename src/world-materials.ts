@@ -548,7 +548,14 @@ function drawFinish(finish: Finish, hex: string, office: boolean) {
         off = a * 13 + b * 5 + Math.sin(x * 0.29 + Math.sin((y * Math.PI) / 64) * 0.35) * 5 + grain * 9;
       if (finish === 'ceiling') off = grain * 19 + b * 10 + a * 8 + (rng() < 0.031 ? -30 : 0);
       if (finish === 'road') off = grain * 30 + a * 13 + b * 9;
-      if (office) off *= finish === 'paper' ? 0.34 : 0.45;
+      if (office && finish === 'paper') {
+        // A lifted lap joint shows a pale lip and a narrow shadow in grazing light.
+        const seam = (x + Math.round(1.5*Math.sin(y*Math.PI/64)) + SIZE) % SIZE;
+        off = off*.38 + (seam === 1 ? 9 : seam === 2 ? -12 : 0) * (.6 + b);
+      } else if (office && finish === 'carpet') {
+        // Alternate the nap across tufting rows instead of adding a full-screen noise layer.
+        off = off*.62 + (x%4 < 2 ? 1 : -1)*(4 + b*5);
+      } else if (office) off *= .55;
       const p = (y * SIZE + x) * 4;
       for (let n = 0; n < 3; n++) img.data[p + n] = Math.max(0, Math.min(255, rgb[n] + off));
       img.data[p + 3] = 255;

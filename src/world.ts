@@ -209,9 +209,14 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       if ((even && hash(x, z, 13) > 0.48) || lane || (x === stage.spawn[0] && z === stage.spawn[1]))
         lamps.push({ x: x * TILE, z: z * TILE });
     }
-  const lampGrid = new Map<string, { x: number; z: number }[]>();
+  // Measure from the tube segment. A long fluorescent fixture casts an oval pool
+  // and grazes a facing wall differently from a light centred behind it.
+  type BakedTube = { x:number; z:number; ux:number; uz:number };
+  const gridWidth = stage.map[0].length;
+  const lampGrid = new Map<number, BakedTube[]>();
   for (const p of lamps) {
     if (family === 'blackout' || (!yellowRooms && fixtureBank(p.x,p.z)) || hash(Math.round(p.x/TILE),Math.round(p.z/TILE),71) > .978) continue;
+    const tube = { x:p.x, z:p.z, ux:Math.cos(p.yaw ?? 0), uz:-Math.sin(p.yaw ?? 0) };
     const xi = Math.round(p.x / TILE),
       zi = Math.round(p.z / TILE);
     for (let dz = -2; dz <= 2; dz++)
@@ -228,10 +233,10 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
           }
         }
         if (!clear) continue;
-        const key = tx + ',' + tz;
-        const arr = lampGrid.get(key) ?? [];
-        arr.push(p);
-        lampGrid.set(key, arr);
+        const key = tz * gridWidth + tx;
+        const arr = lampGrid.get(key);
+        if (arr) arr.push(tube);
+        else lampGrid.set(key, [tube]);
       }
   }
   function shade(
@@ -243,16 +248,19 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     tx: number,
     tz: number,
   ) {
-    const lights = lampGrid.get(tx + ',' + tz) ?? [];
+    const lights = lampGrid.get(tz * gridWidth + tx);
     let nearest = 10000,
-      second = 10000;
-    for (const p of lights) {
+      second = 10000, incidence = 0;
+    if (lights) for (const p of lights) {
       const dx = x - p.x,
         dz = z - p.z,
-        d2 = dx * dx + dz * dz;
+        along = Math.max(-.82, Math.min(.82, dx*p.ux + dz*p.uz)),
+        ex = dx-p.ux*along, ez = dz-p.uz*along,
+        d2 = ex*ex+ez*ez;
       if (d2 < nearest) {
         second = nearest;
         nearest = d2;
+        incidence = -(normal[0]*ex+normal[2]*ez);
       } else if (d2 < second) second = d2;
     }
     const pool = kind === 'ceil' ? 1.7 : kind === 'floor' ? 4.5 : 4.0;
@@ -266,25 +274,26 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       const rise = Math.max(.28, h - y);
       value *= .53 + .85 * (nearest + 1.6) / (nearest + 1.6 + rise * rise);
       value *= 0.83 + 0.21 * (y / h) + 0.07 * Math.sin((Math.PI * y) / h);
-      value *= 1 + normal[0] * 0.17 + normal[2] * 0.09;
+      const facing = Math.min(1, Math.max(0, incidence) / Math.sqrt(1 + nearest));
+      value *= .78 + .46 * facing;
     }
     // Ground contact darkening along built walls, with smooth interpolation across the floor.
     const localX = x / TILE - tx,
       localZ = z / TILE - tz;
-    const edges = [
-      [1, 0, 0.5 - localX],
-      [-1, 0, 0.5 + localX],
-      [0, 1, 0.5 - localZ],
-      [0, -1, 0.5 + localZ],
-    ];
     let gap = 1;
-    for (const [dx, dz, d] of edges)
-      if (!(dx === -normal[0] && dz === -normal[2]) && !open(tx + dx, tz + dz))
-        gap = Math.min(gap, Math.max(0, d));
+    if (normal[0] !== -1 && !open(tx+1,tz)) gap=Math.min(gap,.5-localX);
+    if (normal[0] !==  1 && !open(tx-1,tz)) gap=Math.min(gap,.5+localX);
+    if (normal[2] !== -1 && !open(tx,tz+1)) gap=Math.min(gap,.5-localZ);
+    if (normal[2] !==  1 && !open(tx,tz-1)) gap=Math.min(gap,.5+localZ);
+    gap = Math.max(0, gap);
     value *= 1 - (kind === 'floor' ? 0.29 : 0.17) * Math.exp(-gap * 8.5);
     if (kind === 'wall')
       value *= 1 - 0.29 * Math.exp(-Math.max(0, y) * 3.2) - 0.13 * Math.exp(-Math.max(0, h - y) * 3.5);
-    if (isOutdoor) value = (kind === 'floor' ? 0.76 : 0.82) + 0.18 * Math.sin(x * 0.28 + z * 0.18);
+    if (isOutdoor) {
+      const exposure = Math.min(1, gap * 2);
+      const sun = normal[0]*directional.position.x + normal[2]*directional.position.z;
+      value = (kind === 'floor' ? .74 : .78) + .13*exposure + .12*Math.max(-1,Math.min(1,sun/8));
+    }
     if (family === 'lobby') {
       // Banks share a ballast. Their shadows cross floor and wallpaper continuously.
       const bx = x / (TILE * 2.9),
@@ -349,7 +358,9 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         if (N[1]) s.u.push(x / repeat, z / repeat);
         else s.u.push((N[0] && N[2] ? z * N[0] - x * N[2] : N[0] ? z : x) / repeat, y / repeat);
         const light = shade(x, y, z, N, kind, tx, tz);
-        s.c.push(light, light * (0.982 + 0.018 * (1 - light)), light * (0.94 + 0.05 * (1 - light)));
+        // Cool ambient shadow and warm fixture spill are baked once, including on Standard.
+        const spill = Math.min(1,light);
+        s.c.push(light*(.94+.10*spill), light*(.975+.025*spill), light*(1.055-.13*spill));
         if (i < du && j < dv) {
           const a = index + j * (du + 1) + i,
             b = a + 1,
