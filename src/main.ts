@@ -436,6 +436,7 @@ const callbacks: GameCallbacks = {
   haunt: (event) => horror.haunt(event),
   dread: (level) => horror.dread(level),
   prepareCatches: kinds => horror.prepareCatches(kinds),
+  catchVisible: () => horror.catchVisible,
   scare: (encounter) => horror.scare(encounter),
   message: notify,
   bearing: angle => {

@@ -55,6 +55,7 @@ export type GameCallbacks = {
   message: (s: string) => void;
   screen: (s: Screen, detail?: string) => void;
   prepareCatches?: (kinds: string[]) => void;
+  catchVisible?: () => boolean;
   scare?: (encounter: Attack) => void;
   dread?: (intensity: number) => void;
   microphone?: (dt: number) => number;
@@ -1733,7 +1734,8 @@ export class Game {
   }
   private renderView(dt: number) {
     if (dt > 0) this.sound.listener(this.x,this.z,this.yaw,dt);
-    this.film.render(this.renderer,this.scene,this.camera,dt,this.renderer.shadowMap.enabled);
+    // A caught host continues the simulation and voice mix while the film covers the world.
+    if (!this.callbacks.catchVisible?.()) this.film.render(this.renderer,this.scene,this.camera,dt,this.renderer.shadowMap.enabled);
   }
   private run() {
     if (this.frameId) return;

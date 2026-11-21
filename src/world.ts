@@ -435,12 +435,10 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       m.castShadow = chunks === walls;
       if (chunks === walls) m.renderOrder = -2;
       if (kind === 'water') waterChunks.push(m);
-      if (chunks === floors)
-        m.onBeforeRender = (renderer, scene, camera, _geo, _mat, group) => {
-          reflection?.capture(renderer, scene, camera, group);
-          camera.getWorldPosition(eye);
-          camera.getWorldDirection(view);
-        };
+      if (kind === 'water') {
+        m.onBeforeRender = (renderer, scene, camera, _geo, _mat, group) =>
+          reflection!.capture(renderer, scene, camera, group);
+      }
       root.add(m);
       geometries.push(geo);
     }
@@ -1285,6 +1283,10 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     updateDoors,
     haunt,
     update(t: number, dt: number, camera?: THREE.Camera) {
+      if (camera) {
+        camera.getWorldPosition(eye);
+        camera.getWorldDirection(view);
+      }
       if (rig && camera) {
         rig.update(t,camera,buzz);
         air?.update(t,rig.spots);

@@ -16,8 +16,9 @@ export class Horror {
   private nextHeartbeat = 0;
   private cueTimer = 0;
   private attackTimer = 0;
-  private prepared = new Map<string, HTMLVideoElement>();
+  private prepared = new Map<string, { controller: AbortController; bytes: Promise<Blob | undefined> }>();
   private playing?: HTMLVideoElement;
+  private movieUrl?: string;
   private reduced = matchMedia('(prefers-reduced-motion: reduce)');
   private view = document.createElement('div');
   private impact = document.createElement('div');
@@ -154,33 +155,23 @@ export class Horror {
     }
   }
   prepareCatches(kinds: string[]) {
-    const needed = new Set(kinds.filter(kind => catchShot(kind)));
-    for (const [kind, video] of this.prepared) {
-      if (!needed.has(kind)) {
-        this.prepared.delete(kind);
-        if (video !== this.playing) this.releaseFilm(video);
-      }
+    const needed = new Set(this.reduced.matches ? [] : kinds.filter(kind => catchShot(kind)));
+    for (const [kind, source] of this.prepared) {
+      if (needed.has(kind)) continue;
+      source.controller.abort();
+      this.prepared.delete(kind);
     }
     for (const kind of needed) {
       if (this.prepared.has(kind)) continue;
-      this.prepared.set(kind, this.createFilm(kind));
+      // Buffer compressed bytes. A lobby or corridor needs no idle video decoders.
+      const controller = new AbortController();
+      const bytes = fetch(base + 'catches/' + kind + '.mp4', {signal: controller.signal, priority:'low'})
+        .then(response => response.ok ? response.blob() : undefined)
+        .catch(() => undefined);
+      this.prepared.set(kind, { controller, bytes });
     }
   }
-  private createFilm(kind: string) {
-    const video = document.createElement('video');
-    video.className = 'catch-film';
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = this.reduced.matches ? 'none' : 'auto';
-    video.setAttribute('aria-hidden','true');
-    video.poster = base + 'catches/' + kind + '.webp';
-    video.src = base + 'catches/' + kind + '.mp4';
-    return video;
-  }
-  private releaseFilm(video: HTMLVideoElement) {
-    video.removeAttribute('src');
-    video.load();
-  }
+  get catchVisible() { return this.playing !== undefined; }
   stopScare() {
     clearTimeout(this.attackTimer);
     this.impact.className = '';
@@ -191,15 +182,22 @@ export class Horror {
       video.onended = video.onplaying = null;
       video.remove();
       video.pause();
-      if (video.readyState >= 1) video.currentTime = 0;
-      if (![...this.prepared.values()].includes(video)) this.releaseFilm(video);
+      video.removeAttribute('src');
+      video.load();
+      if (this.movieUrl) URL.revokeObjectURL(this.movieUrl);
+      this.movieUrl = undefined;
     }
   }
   private playCatch(kind: string) {
     const shot = catchShot(kind);
     if (!shot) return false;
     this.stopScare();
-    const video = this.prepared.get(kind) ?? this.createFilm(kind);
+    const video = document.createElement('video');
+    video.className = 'catch-film';
+    video.muted = video.playsInline = true;
+    video.setAttribute('aria-hidden','true');
+    video.dataset.kind = kind;
+    video.poster = base + 'catches/' + kind + '.webp';
     this.playing = video;
     this.impact.dataset.kind = kind;
     this.impact.className = 'caught-film';
@@ -213,7 +211,13 @@ export class Horror {
         this.attackTimer = window.setTimeout(() => this.stopScare(), 350 + remaining * 1000);
       };
       video.onended = () => { if (this.playing === video) this.stopScare(); };
-      void video.play().catch(() => { if (this.playing === video) video.remove(); });
+      const source = this.prepared.get(kind);
+      void Promise.resolve(source?.bytes).then(bytes => {
+        if (this.playing !== video) return;
+        if (bytes) this.movieUrl = URL.createObjectURL(bytes);
+        video.src = this.movieUrl ?? base + 'catches/' + kind + '.mp4';
+        void video.play().catch(() => { if (this.playing === video) video.remove(); });
+      });
     }
     // A still remains available on a cold connection and for reduced motion.
     // A stalled decoder must always yield to the death or spectator screen.
