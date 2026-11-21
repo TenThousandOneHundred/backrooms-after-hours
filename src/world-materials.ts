@@ -496,14 +496,14 @@ const officeStock: Partial<Record<Finish,string>> = {
 };
 const bakedOfficeImages = new Map<Finish, Promise<HTMLImageElement>>();
 
-export function texture(finish: Finish, hex: string, office = false): THREE.CanvasTexture {
+export function texture(finish: Finish, hex: string, office = false): THREE.Texture<HTMLCanvasElement | HTMLImageElement> {
   const key = finish + '/' + hex + (office ? '/office' : '');
   let canvas = finishImages.get(key);
   if (canvas) finishImages.delete(key);
   else canvas = drawFinish(finish, hex, office);
   finishImages.set(key, canvas);
   if (finishImages.size > 8) finishImages.delete(finishImages.keys().next().value!);
-  const t = new THREE.CanvasTexture(canvas);
+  const t: THREE.Texture<HTMLCanvasElement | HTMLImageElement> = new THREE.CanvasTexture(canvas);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 4;
