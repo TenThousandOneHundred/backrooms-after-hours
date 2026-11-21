@@ -1,0 +1,455 @@
+{
+  "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "results": [
+    {
+      "j": 1,
+      "route": "corridor",
+      "quality": "standard",
+      "cpuSubmitMedian": 2.5,
+      "cpuSubmitP95": 3.2999999821186066,
+      "readbackWaitMedian": 5.700000017881393,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 3.846666,
+      "gpuP95": 4.067958,
+      "median": 8.299999982118607,
+      "p95": 9.600000023841858,
+      "rafMedian": 16.699999999999818,
+      "rafP95": 16.700000000000273,
+      "calls": 90,
+      "tri": 58710,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 68,
+        "textures": 19
+      },
+      "programs": 17,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "corridor",
+      "quality": "performance",
+      "cpuSubmitMedian": 1,
+      "cpuSubmitP95": 2.300000011920929,
+      "readbackWaitMedian": 3.9000000059604645,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 2.324875,
+      "gpuP95": 3.171708,
+      "median": 5.299999982118607,
+      "p95": 7,
+      "rafMedian": 16.699999999999818,
+      "rafP95": 16.700000000000728,
+      "calls": 90,
+      "tri": 58710,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 68,
+        "textures": 19
+      },
+      "programs": 17,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "corridor",
+      "quality": "high",
+      "cpuSubmitMedian": 2.300000011920929,
+      "cpuSubmitP95": 3.199999988079071,
+      "readbackWaitMedian": 7.200000017881393,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 5.108791,
+      "gpuP95": 5.779166,
+      "median": 9.400000005960464,
+      "p95": 11.199999988079071,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.799999999999272,
+      "calls": 103,
+      "tri": 69936,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 78,
+        "textures": 27
+      },
+      "programs": 26,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "corridor",
+      "quality": "auto",
+      "cpuSubmitMedian": 2.699999988079071,
+      "cpuSubmitP95": 3.4000000059604645,
+      "readbackWaitMedian": 7.399999976158142,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 5.149999,
+      "gpuP95": 5.742166,
+      "median": 10.199999988079071,
+      "p95": 11.200000017881393,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.700000000000728,
+      "calls": 103,
+      "tri": 69936,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 78,
+        "textures": 27
+      },
+      "programs": 26,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "standard",
+      "cpuSubmitMedian": 1.5,
+      "cpuSubmitP95": 2,
+      "readbackWaitMedian": 6.200000017881393,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 3.782416,
+      "gpuP95": 4.521249,
+      "median": 7.899999976158142,
+      "p95": 8.699999988079071,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.799999999999272,
+      "calls": 45,
+      "tri": 38430,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 35,
+        "textures": 26
+      },
+      "programs": 27,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "performance",
+      "cpuSubmitMedian": 1.300000011920929,
+      "cpuSubmitP95": 1.800000011920929,
+      "readbackWaitMedian": 4.0999999940395355,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 2.284083,
+      "gpuP95": 2.927499,
+      "median": 5.300000011920929,
+      "p95": 6.800000011920929,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.700000000000728,
+      "calls": 45,
+      "tri": 38430,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 35,
+        "textures": 24
+      },
+      "programs": 26,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "high",
+      "cpuSubmitMedian": 2.0999999940395355,
+      "cpuSubmitP95": 3.4000000059604645,
+      "readbackWaitMedian": 9,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 6.370416,
+      "gpuP95": 11.289208,
+      "median": 11.700000017881393,
+      "p95": 17,
+      "rafMedian": 16.700000000000728,
+      "rafP95": 16.799999999999272,
+      "calls": 54,
+      "tri": 54992,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 38,
+        "textures": 30
+      },
+      "programs": 35,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "auto",
+      "cpuSubmitMedian": 1.9000000059604645,
+      "cpuSubmitP95": 3.7999999821186066,
+      "readbackWaitMedian": 12.699999988079071,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 10.564416,
+      "gpuP95": 43.561124,
+      "median": 14.900000005960464,
+      "p95": 55.19999998807907,
+      "rafMedian": 16.700000000000728,
+      "rafP95": 50,
+      "calls": 55,
+      "tri": 55028,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 38,
+        "textures": 30
+      },
+      "programs": 35,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "monster",
+      "quality": "standard",
+      "cpuSubmitMedian": 1.600000023841858,
+      "cpuSubmitP95": 3.199999988079071,
+      "readbackWaitMedian": 7.800000011920929,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 5.182249,
+      "gpuP95": 5.870333,
+      "median": 9.699999988079071,
+      "p95": 11.099999994039536,
+      "rafMedian": 16.700000000000728,
+      "rafP95": 16.80000000000291,
+      "calls": 251,
+      "tri": 278727,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 166,
+        "textures": 43
+      },
+      "programs": 38,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "monster",
+      "quality": "performance",
+      "cpuSubmitMedian": 1.7000000178813934,
+      "cpuSubmitP95": 3.5,
+      "readbackWaitMedian": 5.899999976158142,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 3.54025,
+      "gpuP95": 4.196874,
+      "median": 7.9000000059604645,
+      "p95": 9.599999994039536,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.799999999999272,
+      "calls": 251,
+      "tri": 278727,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 166,
+        "textures": 43
+      },
+      "programs": 38,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "monster",
+      "quality": "high",
+      "cpuSubmitMedian": 2.2000000178813934,
+      "cpuSubmitP95": 3.5,
+      "readbackWaitMedian": 9.5,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 7.072624,
+      "gpuP95": 7.873166,
+      "median": 11.699999988079071,
+      "p95": 13.600000023841858,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.700000000004366,
+      "calls": 269,
+      "tri": 364840,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 167,
+        "textures": 48
+      },
+      "programs": 50,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "monster",
+      "quality": "auto",
+      "cpuSubmitMedian": 2.300000011920929,
+      "cpuSubmitP95": 3.899999976158142,
+      "readbackWaitMedian": 9.300000011920929,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 7.01425,
+      "gpuP95": 7.823583,
+      "median": 12.099999994039536,
+      "p95": 13.5,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.700000000004366,
+      "calls": 269,
+      "tri": 364840,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 167,
+        "textures": 48
+      },
+      "programs": 50,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "host",
+      "quality": "standard",
+      "cpuSubmitMedian": 2,
+      "cpuSubmitP95": 4,
+      "readbackWaitMedian": 7.699999988079071,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 5.15275,
+      "gpuP95": 5.896541,
+      "median": 10.099999994039536,
+      "p95": 11.200000017881393,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.80000000000291,
+      "calls": 320,
+      "tri": 373368,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 173,
+        "textures": 51
+      },
+      "programs": 52,
+      "avatars": 7
+    },
+    {
+      "j": 1,
+      "route": "host",
+      "quality": "performance",
+      "cpuSubmitMedian": 2,
+      "cpuSubmitP95": 3.5,
+      "readbackWaitMedian": 5.699999988079071,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 3.502624,
+      "gpuP95": 4.169833,
+      "median": 8,
+      "p95": 9.100000023841858,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.799999999995634,
+      "calls": 320,
+      "tri": 373368,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 173,
+        "textures": 51
+      },
+      "programs": 52,
+      "avatars": 7
+    },
+    {
+      "j": 1,
+      "route": "host",
+      "quality": "high",
+      "cpuSubmitMedian": 2.5,
+      "cpuSubmitP95": 4.0999999940395355,
+      "readbackWaitMedian": 9.399999976158142,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 7.102999,
+      "gpuP95": 8.099875,
+      "median": 12,
+      "p95": 13.5,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.799999999995634,
+      "calls": 409,
+      "tri": 558650,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 174,
+        "textures": 56
+      },
+      "programs": 56,
+      "avatars": 7
+    },
+    {
+      "j": 1,
+      "route": "host",
+      "quality": "auto",
+      "cpuSubmitMedian": 2.9000000059604645,
+      "cpuSubmitP95": 3.7999999821186066,
+      "readbackWaitMedian": 10.5,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 8.073625,
+      "gpuP95": 12.812,
+      "median": 13.799999982118607,
+      "p95": 18.30000001192093,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.700000000004366,
+      "calls": 409,
+      "tri": 558650,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 174,
+        "textures": 56
+      },
+      "programs": 56,
+      "avatars": 7
+    }
+  ],
+  "errors": [],
+  "frames": 45
+}

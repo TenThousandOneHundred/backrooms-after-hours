@@ -1,0 +1,211 @@
+{
+  "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "results": [
+    {
+      "j": 1,
+      "route": "aisle",
+      "quality": "standard",
+      "median": 8.400000005960464,
+      "p95": 10.599999994039536,
+      "rafMedian": 16.699999999999818,
+      "rafP95": 16.800000000000182,
+      "calls": 328,
+      "tri": 184278,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 54
+      },
+      "programs": 23,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 5.999999999999659,
+      "animationSamples": {
+        "approach": 0,
+        "windup": 0,
+        "strike": 0,
+        "recover": 0
+      }
+    },
+    {
+      "j": 1,
+      "route": "aisle",
+      "quality": "performance",
+      "median": 7.899999976158142,
+      "p95": 9,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.80000000000109,
+      "calls": 328,
+      "tri": 184278,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 54
+      },
+      "programs": 23,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 5.999999999999659,
+      "animationSamples": {
+        "approach": 0,
+        "windup": 0,
+        "strike": 0,
+        "recover": 0
+      }
+    },
+    {
+      "j": 2,
+      "route": "aisle",
+      "quality": "performance",
+      "median": 7.9000000059604645,
+      "p95": 9,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.799999999999272,
+      "calls": 328,
+      "tri": 184278,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 54
+      },
+      "programs": 23,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 5.999999999999659,
+      "animationSamples": {
+        "approach": 0,
+        "windup": 0,
+        "strike": 0,
+        "recover": 0
+      }
+    },
+    {
+      "j": 2,
+      "route": "aisle",
+      "quality": "standard",
+      "median": 9.299999982118607,
+      "p95": 10.400000005960464,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.700000000000728,
+      "calls": 328,
+      "tri": 184278,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 54
+      },
+      "programs": 23,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 5.999999999999659,
+      "animationSamples": {
+        "approach": 0,
+        "windup": 0,
+        "strike": 0,
+        "recover": 0
+      }
+    },
+    {
+      "j": 3,
+      "route": "aisle",
+      "quality": "standard",
+      "median": 8.900000005960464,
+      "p95": 10.5,
+      "rafMedian": 16.700000000000728,
+      "rafP95": 16.700000000000728,
+      "calls": 328,
+      "tri": 184278,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 54
+      },
+      "programs": 23,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 5.999999999999659,
+      "animationSamples": {
+        "approach": 0,
+        "windup": 0,
+        "strike": 0,
+        "recover": 0
+      }
+    },
+    {
+      "j": 3,
+      "route": "aisle",
+      "quality": "performance",
+      "median": 7.300000011920929,
+      "p95": 8.5,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.700000000004366,
+      "calls": 328,
+      "tri": 184278,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 54
+      },
+      "programs": 23,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 5.999999999999659,
+      "animationSamples": {
+        "approach": 0,
+        "windup": 0,
+        "strike": 0,
+        "recover": 0
+      }
+    }
+  ],
+  "errors": [],
+  "frames": 90
+}

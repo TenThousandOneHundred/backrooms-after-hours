@@ -1,0 +1,173 @@
+{
+  "startMs": 2620,
+  "passes": [
+    {
+      "id": "lobby",
+      "startScale": 1,
+      "endScale": 1,
+      "scales": [
+        1
+      ],
+      "buffer": [
+        1366,
+        768
+      ],
+      "median": 16.699999999999818,
+      "p95": 16.800000000000182,
+      "resources": {
+        "geometries": 152,
+        "textures": 36
+      },
+      "programs": 24
+    },
+    {
+      "id": "deepool",
+      "startScale": 1,
+      "endScale": 1,
+      "scales": [
+        1
+      ],
+      "buffer": [
+        1366,
+        768
+      ],
+      "median": 16.69999999999891,
+      "p95": 16.700000000000728,
+      "resources": {
+        "geometries": 30,
+        "textures": 26
+      },
+      "programs": 28
+    },
+    {
+      "id": "lobby",
+      "startScale": 1,
+      "endScale": 1,
+      "scales": [
+        1
+      ],
+      "buffer": [
+        1366,
+        768
+      ],
+      "median": 16.69999999999891,
+      "p95": 16.700000000000728,
+      "resources": {
+        "geometries": 152,
+        "textures": 36
+      },
+      "programs": 27
+    },
+    {
+      "id": "deepool",
+      "startScale": 1,
+      "endScale": 1,
+      "scales": [
+        1
+      ],
+      "buffer": [
+        1366,
+        768
+      ],
+      "median": 16.69999999999891,
+      "p95": 16.700000000000728,
+      "resources": {
+        "geometries": 30,
+        "textures": 26
+      },
+      "programs": 28
+    },
+    {
+      "id": "lobby",
+      "startScale": 1,
+      "endScale": 1,
+      "scales": [
+        1
+      ],
+      "buffer": [
+        1366,
+        768
+      ],
+      "median": 16.700000000000728,
+      "p95": 16.700000000000728,
+      "resources": {
+        "geometries": 152,
+        "textures": 36
+      },
+      "programs": 27
+    },
+    {
+      "id": "deepool",
+      "startScale": 1,
+      "endScale": 1,
+      "scales": [
+        1
+      ],
+      "buffer": [
+        1366,
+        768
+      ],
+      "median": 16.700000000000728,
+      "p95": 16.700000000000728,
+      "resources": {
+        "geometries": 30,
+        "textures": 26
+      },
+      "programs": 28
+    },
+    {
+      "id": "lobby",
+      "startScale": 1,
+      "endScale": 1,
+      "scales": [
+        1
+      ],
+      "buffer": [
+        1366,
+        768
+      ],
+      "median": 16.69999999999709,
+      "p95": 16.700000000000728,
+      "resources": {
+        "geometries": 152,
+        "textures": 36
+      },
+      "programs": 27
+    }
+  ],
+  "errors": [],
+  "model": [
+    {
+      "name": "bacteria.glb",
+      "encodedBytes": 6773764
+    },
+    {
+      "name": "residents.glb",
+      "encodedBytes": 899096
+    },
+    {
+      "name": "level-creatures.glb",
+      "encodedBytes": 6982600
+    },
+    {
+      "name": "bestiary.glb",
+      "encodedBytes": 7139028
+    },
+    {
+      "name": "surfaces/shell.png",
+      "encodedBytes": 111485
+    },
+    {
+      "name": "surfaces/dermis.png",
+      "encodedBytes": 116722
+    },
+    {
+      "name": "surfaces/sinew.png",
+      "encodedBytes": 112095
+    },
+    {
+      "name": "surfaces/weave.png",
+      "encodedBytes": 152252
+    }
+  ]
+}

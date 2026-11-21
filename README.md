@@ -8,6 +8,8 @@ The east telephone exchange links Records, Dispatch, and the old switchboard to 
 
 The game uses original, condensed layouts that recreate the campaign progression. Each area loads as you enter it. Checkpoints, puzzle progress, inventory, discovered endings, and settings are saved in the browser you use to play.
 
+Compare all 50 stages and the field team under matching lighting, watch the encounters in motion, or inspect the eight-player frame-time measurements in the [campaign graphics review](https://tenthousandonehundred.github.io/backrooms-after-hours/graphics-review/).
+
 ![The playable yellow lobby, seen from the player’s perspective](docs/lobby.webp)
 
 In the Lobby, the Bacteria shares its hunting ground with two other creatures. The **Veil** sings when you look into its floating masks. Turn away or break sight to escape its hold. The ceiling-dwelling **Bellwether** knocks twice before listening. Stand still or crouch-walk until it tolls. The toll draws the roaming hunter toward the bell, giving you a chance to slip past. The masks also appear in the guest wing, and a Bellwether hangs in the archive.

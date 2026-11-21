@@ -1,0 +1,211 @@
+{
+  "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "results": [
+    {
+      "j": 1,
+      "route": "attack",
+      "quality": "standard",
+      "median": 8.900000005960464,
+      "p95": 10.400000005960464,
+      "rafMedian": 16.699999999999818,
+      "rafP95": 16.799999999999272,
+      "calls": 344,
+      "tri": 264307,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 60
+      },
+      "programs": 26,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 0,
+      "animationSamples": {
+        "approach": 32,
+        "windup": 24,
+        "strike": 19,
+        "recover": 15
+      }
+    },
+    {
+      "j": 1,
+      "route": "attack",
+      "quality": "performance",
+      "median": 7.5,
+      "p95": 9.400000005960464,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.700000000000728,
+      "calls": 344,
+      "tri": 264307,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 60
+      },
+      "programs": 26,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 0,
+      "animationSamples": {
+        "approach": 32,
+        "windup": 24,
+        "strike": 19,
+        "recover": 15
+      }
+    },
+    {
+      "j": 2,
+      "route": "attack",
+      "quality": "performance",
+      "median": 7.300000011920929,
+      "p95": 8.700000017881393,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.700000000000728,
+      "calls": 344,
+      "tri": 264307,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 60
+      },
+      "programs": 26,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 0,
+      "animationSamples": {
+        "approach": 32,
+        "windup": 24,
+        "strike": 19,
+        "recover": 15
+      }
+    },
+    {
+      "j": 2,
+      "route": "attack",
+      "quality": "standard",
+      "median": 9.300000011920929,
+      "p95": 11.199999988079071,
+      "rafMedian": 16.700000000000728,
+      "rafP95": 16.799999999999272,
+      "calls": 344,
+      "tri": 264307,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 60
+      },
+      "programs": 26,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 0,
+      "animationSamples": {
+        "approach": 32,
+        "windup": 24,
+        "strike": 19,
+        "recover": 15
+      }
+    },
+    {
+      "j": 3,
+      "route": "attack",
+      "quality": "standard",
+      "median": 10,
+      "p95": 11,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.799999999999272,
+      "calls": 344,
+      "tri": 264307,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 60
+      },
+      "programs": 26,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 0,
+      "animationSamples": {
+        "approach": 32,
+        "windup": 24,
+        "strike": 19,
+        "recover": 15
+      }
+    },
+    {
+      "j": 3,
+      "route": "attack",
+      "quality": "performance",
+      "median": 8,
+      "p95": 9.800000011920929,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.799999999999272,
+      "calls": 344,
+      "tri": 264307,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 60
+      },
+      "programs": 26,
+      "avatars": 0,
+      "path": {
+        "x": 150.4,
+        "z": 38.400000000000006,
+        "dx": 1,
+        "dz": 0
+      },
+      "groundDistanceMetres": 0,
+      "animationSamples": {
+        "approach": 32,
+        "windup": 24,
+        "strike": 19,
+        "recover": 15
+      }
+    }
+  ],
+  "errors": [],
+  "frames": 90
+}

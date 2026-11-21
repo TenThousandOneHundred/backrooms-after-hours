@@ -1,0 +1,119 @@
+{
+  "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "results": [
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "standard",
+      "cpuSubmitMedian": 1.5,
+      "cpuSubmitP95": 1.9000000059604645,
+      "readbackWaitMedian": 6.299999982118607,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 3.94225,
+      "gpuP95": 4.744125,
+      "median": 7.700000017881393,
+      "p95": 8.800000011920929,
+      "rafMedian": 16.699999999999818,
+      "rafP95": 16.800000000000182,
+      "calls": 47,
+      "tri": 37668,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 33,
+        "textures": 22
+      },
+      "programs": 18,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "performance",
+      "cpuSubmitMedian": 1.300000011920929,
+      "cpuSubmitP95": 1.5999999940395355,
+      "readbackWaitMedian": 4.0999999940395355,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 2.288999,
+      "gpuP95": 2.65675,
+      "median": 5.4000000059604645,
+      "p95": 6.200000017881393,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.700000000000728,
+      "calls": 47,
+      "tri": 37668,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 33,
+        "textures": 20
+      },
+      "programs": 17,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "high",
+      "cpuSubmitMedian": 2.2000000178813934,
+      "cpuSubmitP95": 4.5,
+      "readbackWaitMedian": 9.799999982118607,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 7.473166,
+      "gpuP95": 10.45375,
+      "median": 12.5,
+      "p95": 16.599999994039536,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.80000000000109,
+      "calls": 59,
+      "tri": 53474,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 36,
+        "textures": 28
+      },
+      "programs": 25,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "auto",
+      "cpuSubmitMedian": 1.199999988079071,
+      "cpuSubmitP95": 2.9000000059604645,
+      "readbackWaitMedian": 7.9000000059604645,
+      "gpuTimerAvailable": true,
+      "gpuTimerSamples": 45,
+      "gpuMedian": 6.268666,
+      "gpuP95": 6.992083,
+      "median": 9.300000011920929,
+      "p95": 11.5,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.700000000000728,
+      "calls": 59,
+      "tri": 53474,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 36,
+        "textures": 28
+      },
+      "programs": 25,
+      "avatars": 0
+    }
+  ],
+  "errors": [],
+  "frames": 45
+}

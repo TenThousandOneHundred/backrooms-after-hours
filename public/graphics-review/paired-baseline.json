@@ -1,0 +1,1015 @@
+{
+  "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "results": [
+    {
+      "j": 1,
+      "route": "corridor",
+      "quality": "standard",
+      "median": 8.099999994039536,
+      "p95": 9.399999976158142,
+      "rafMedian": 16.699999999999818,
+      "rafP95": 16.800000000000182,
+      "calls": 98,
+      "tri": 62602,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 72,
+        "textures": 19
+      },
+      "programs": 17,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "corridor",
+      "quality": "performance",
+      "median": 6.5,
+      "p95": 7.299999982118607,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.700000000000728,
+      "calls": 98,
+      "tri": 62602,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 72,
+        "textures": 19
+      },
+      "programs": 17,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "corridor",
+      "quality": "high",
+      "median": 12.300000011920929,
+      "p95": 20,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.80000000000109,
+      "calls": 116,
+      "tri": 74272,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 81,
+        "textures": 26
+      },
+      "programs": 25,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "corridor",
+      "quality": "auto",
+      "median": 11,
+      "p95": 12.099999994039536,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.700000000000728,
+      "calls": 116,
+      "tri": 74272,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 81,
+        "textures": 26
+      },
+      "programs": 25,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "standard",
+      "median": 7,
+      "p95": 8.400000005960464,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.700000000000728,
+      "calls": 47,
+      "tri": 37668,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 34,
+        "textures": 24
+      },
+      "programs": 24,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "performance",
+      "median": 5.4000000059604645,
+      "p95": 6.4000000059604645,
+      "rafMedian": 16.700000000000728,
+      "rafP95": 16.700000000000728,
+      "calls": 47,
+      "tri": 37668,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 34,
+        "textures": 22
+      },
+      "programs": 23,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "high",
+      "median": 10.900000005960464,
+      "p95": 25.400000005960464,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 33.299999999995634,
+      "calls": 62,
+      "tri": 58370,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 36,
+        "textures": 28
+      },
+      "programs": 30,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "auto",
+      "median": 10.300000011920929,
+      "p95": 12.400000005960464,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.799999999995634,
+      "calls": 62,
+      "tri": 58370,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 36,
+        "textures": 28
+      },
+      "programs": 30,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "monster",
+      "quality": "standard",
+      "median": 10.299999982118607,
+      "p95": 12.900000005960464,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.700000000004366,
+      "calls": 275,
+      "tri": 274545,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 163,
+        "textures": 41
+      },
+      "programs": 33,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "monster",
+      "quality": "performance",
+      "median": 8.199999988079071,
+      "p95": 9.799999982118607,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.700000000004366,
+      "calls": 275,
+      "tri": 274545,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 163,
+        "textures": 41
+      },
+      "programs": 33,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "monster",
+      "quality": "high",
+      "median": 12,
+      "p95": 16.69999998807907,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.700000000004366,
+      "calls": 293,
+      "tri": 360958,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 164,
+        "textures": 46
+      },
+      "programs": 43,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "monster",
+      "quality": "auto",
+      "median": 12.800000011920929,
+      "p95": 24.399999976158142,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 33.299999999995634,
+      "calls": 293,
+      "tri": 360958,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 164,
+        "textures": 46
+      },
+      "programs": 43,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "host",
+      "quality": "standard",
+      "median": 11.599999994039536,
+      "p95": 18.19999998807907,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.80000000000291,
+      "calls": 345,
+      "tri": 370764,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 119
+      },
+      "programs": 45,
+      "avatars": 7
+    },
+    {
+      "j": 1,
+      "route": "host",
+      "quality": "performance",
+      "median": 9,
+      "p95": 9.899999976158142,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.70000000001164,
+      "calls": 345,
+      "tri": 370764,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 119
+      },
+      "programs": 45,
+      "avatars": 7
+    },
+    {
+      "j": 1,
+      "route": "host",
+      "quality": "high",
+      "median": 16.19999998807907,
+      "p95": 26.700000017881393,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 33.30000000000291,
+      "calls": 433,
+      "tri": 551410,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 171,
+        "textures": 124
+      },
+      "programs": 49,
+      "avatars": 7
+    },
+    {
+      "j": 1,
+      "route": "host",
+      "quality": "auto",
+      "median": 17.80000001192093,
+      "p95": 26.900000005960464,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 33.39999999999418,
+      "calls": 433,
+      "tri": 551410,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 171,
+        "textures": 124
+      },
+      "programs": 49,
+      "avatars": 7
+    },
+    {
+      "j": 2,
+      "route": "corridor",
+      "quality": "auto",
+      "median": 10.300000011920929,
+      "p95": 20.099999994039536,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.80000000000291,
+      "calls": 116,
+      "tri": 74272,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 92,
+        "textures": 26
+      },
+      "programs": 47,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "corridor",
+      "quality": "high",
+      "median": 10.099999994039536,
+      "p95": 14.5,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.80000000000291,
+      "calls": 116,
+      "tri": 74272,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 92,
+        "textures": 26
+      },
+      "programs": 47,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "corridor",
+      "quality": "performance",
+      "median": 6.0999999940395355,
+      "p95": 7.899999976158142,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.79999999998836,
+      "calls": 98,
+      "tri": 62602,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 83,
+        "textures": 21
+      },
+      "programs": 45,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "corridor",
+      "quality": "standard",
+      "median": 8.599999994039536,
+      "p95": 9.400000005960464,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.70000000001164,
+      "calls": 98,
+      "tri": 62602,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 83,
+        "textures": 21
+      },
+      "programs": 45,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "pool",
+      "quality": "auto",
+      "median": 10.700000017881393,
+      "p95": 13.5,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.80000000000291,
+      "calls": 62,
+      "tri": 58370,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 47,
+        "textures": 30
+      },
+      "programs": 49,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "pool",
+      "quality": "high",
+      "median": 10.300000011920929,
+      "p95": 12.900000005960464,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.69999999999709,
+      "calls": 62,
+      "tri": 58370,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 47,
+        "textures": 28
+      },
+      "programs": 48,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "pool",
+      "quality": "performance",
+      "median": 6.199999988079071,
+      "p95": 7.5,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.70000000001164,
+      "calls": 47,
+      "tri": 37668,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 45,
+        "textures": 22
+      },
+      "programs": 46,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "pool",
+      "quality": "standard",
+      "median": 8.400000005960464,
+      "p95": 9.099999994039536,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.79999999998836,
+      "calls": 47,
+      "tri": 37668,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 45,
+        "textures": 22
+      },
+      "programs": 46,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "monster",
+      "quality": "auto",
+      "median": 17.5,
+      "p95": 31.900000005960464,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 33.39999999999418,
+      "calls": 293,
+      "tri": 360958,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 175,
+        "textures": 46
+      },
+      "programs": 48,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "monster",
+      "quality": "high",
+      "median": 18.900000005960464,
+      "p95": 24.5,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 33.39999999999418,
+      "calls": 293,
+      "tri": 360958,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 175,
+        "textures": 46
+      },
+      "programs": 48,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "monster",
+      "quality": "performance",
+      "median": 11.900000005960464,
+      "p95": 15.799999982118607,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.79999999998836,
+      "calls": 275,
+      "tri": 274545,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 174,
+        "textures": 41
+      },
+      "programs": 46,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "monster",
+      "quality": "standard",
+      "median": 10.400000005960464,
+      "p95": 31.400000005960464,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.79999999998836,
+      "calls": 275,
+      "tri": 274545,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 174,
+        "textures": 41
+      },
+      "programs": 46,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "host",
+      "quality": "auto",
+      "median": 13.400000005960464,
+      "p95": 26.400000005960464,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 33.29999999998836,
+      "calls": 433,
+      "tri": 551410,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 171,
+        "textures": 124
+      },
+      "programs": 50,
+      "avatars": 7
+    },
+    {
+      "j": 2,
+      "route": "host",
+      "quality": "high",
+      "median": 12.800000011920929,
+      "p95": 14.800000011920929,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.70000000001164,
+      "calls": 433,
+      "tri": 551410,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 171,
+        "textures": 124
+      },
+      "programs": 50,
+      "avatars": 7
+    },
+    {
+      "j": 2,
+      "route": "host",
+      "quality": "performance",
+      "median": 9,
+      "p95": 10.199999988079071,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.70000000001164,
+      "calls": 345,
+      "tri": 370764,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 119
+      },
+      "programs": 48,
+      "avatars": 7
+    },
+    {
+      "j": 2,
+      "route": "host",
+      "quality": "standard",
+      "median": 11.800000011920929,
+      "p95": 30,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 33.30000000001746,
+      "calls": 345,
+      "tri": 370764,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 119
+      },
+      "programs": 48,
+      "avatars": 7
+    },
+    {
+      "j": 3,
+      "route": "corridor",
+      "quality": "standard",
+      "median": 8.899999976158142,
+      "p95": 9.799999982118607,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.70000000001164,
+      "calls": 98,
+      "tri": 62602,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 83,
+        "textures": 21
+      },
+      "programs": 46,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "corridor",
+      "quality": "performance",
+      "median": 6.899999976158142,
+      "p95": 8.200000017881393,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.70000000001164,
+      "calls": 98,
+      "tri": 62602,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 83,
+        "textures": 21
+      },
+      "programs": 46,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "corridor",
+      "quality": "high",
+      "median": 10.5,
+      "p95": 11.400000005960464,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.70000000001164,
+      "calls": 116,
+      "tri": 74272,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 92,
+        "textures": 26
+      },
+      "programs": 48,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "corridor",
+      "quality": "auto",
+      "median": 10.599999994039536,
+      "p95": 11.699999988079071,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.70000000001164,
+      "calls": 116,
+      "tri": 74272,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 92,
+        "textures": 26
+      },
+      "programs": 48,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "pool",
+      "quality": "standard",
+      "median": 7.199999988079071,
+      "p95": 24.799999982118607,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.79999999998836,
+      "calls": 47,
+      "tri": 37668,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 45,
+        "textures": 24
+      },
+      "programs": 47,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "pool",
+      "quality": "performance",
+      "median": 4,
+      "p95": 4.399999976158142,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.70000000001164,
+      "calls": 47,
+      "tri": 37668,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 45,
+        "textures": 22
+      },
+      "programs": 46,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "pool",
+      "quality": "high",
+      "median": 8.800000011920929,
+      "p95": 11.400000005960464,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.70000000001164,
+      "calls": 62,
+      "tri": 58370,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 47,
+        "textures": 28
+      },
+      "programs": 48,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "pool",
+      "quality": "auto",
+      "median": 9.900000005960464,
+      "p95": 13.100000023841858,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.79999999998836,
+      "calls": 62,
+      "tri": 58370,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 47,
+        "textures": 28
+      },
+      "programs": 48,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "monster",
+      "quality": "standard",
+      "median": 12.400000005960464,
+      "p95": 13.300000011920929,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.79999999998836,
+      "calls": 275,
+      "tri": 274545,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 174,
+        "textures": 41
+      },
+      "programs": 46,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "monster",
+      "quality": "performance",
+      "median": 7.5999999940395355,
+      "p95": 9.699999988079071,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.70000000001164,
+      "calls": 275,
+      "tri": 274545,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 174,
+        "textures": 41
+      },
+      "programs": 46,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "monster",
+      "quality": "high",
+      "median": 14.699999988079071,
+      "p95": 20.69999998807907,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.79999999998836,
+      "calls": 293,
+      "tri": 360958,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 175,
+        "textures": 46
+      },
+      "programs": 48,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "monster",
+      "quality": "auto",
+      "median": 11.699999988079071,
+      "p95": 17.399999976158142,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.70000000001164,
+      "calls": 293,
+      "tri": 360958,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 175,
+        "textures": 46
+      },
+      "programs": 48,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "host",
+      "quality": "standard",
+      "median": 11.099999994039536,
+      "p95": 18,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.79999999998836,
+      "calls": 345,
+      "tri": 370764,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 119
+      },
+      "programs": 48,
+      "avatars": 7
+    },
+    {
+      "j": 3,
+      "route": "host",
+      "quality": "performance",
+      "median": 8.700000017881393,
+      "p95": 9.800000011920929,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.70000000001164,
+      "calls": 345,
+      "tri": 370764,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 170,
+        "textures": 119
+      },
+      "programs": 48,
+      "avatars": 7
+    },
+    {
+      "j": 3,
+      "route": "host",
+      "quality": "high",
+      "median": 15.800000011920929,
+      "p95": 23.099999994039536,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.79999999998836,
+      "calls": 445,
+      "tri": 700824,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 171,
+        "textures": 130
+      },
+      "programs": 50,
+      "avatars": 7
+    },
+    {
+      "j": 3,
+      "route": "host",
+      "quality": "auto",
+      "median": 14.099999994039536,
+      "p95": 23.399999976158142,
+      "rafMedian": 16.699999999982538,
+      "rafP95": 16.79999999998836,
+      "calls": 433,
+      "tri": 551410,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 171,
+        "textures": 124
+      },
+      "programs": 50,
+      "avatars": 7
+    }
+  ],
+  "errors": [],
+  "frames": 90
+}

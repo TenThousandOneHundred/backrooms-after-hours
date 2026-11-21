@@ -1,0 +1,1189 @@
+{
+  "order": [
+    "baseline",
+    "candidate",
+    "candidate",
+    "baseline",
+    "baseline",
+    "candidate"
+  ],
+  "coldAuto": {
+    "baseline": {
+      "roster": 8,
+      "visibleExplorerMeshes": 7,
+      "quality": "auto",
+      "intervalMedian": 16.69999999999891,
+      "intervalP95": 16.700000000000728,
+      "buffer": [
+        1366,
+        768
+      ]
+    },
+    "candidate": {
+      "roster": 8,
+      "visibleExplorerMeshes": 7,
+      "quality": "auto",
+      "intervalMedian": 16.699999999999818,
+      "intervalP95": 33.30000000000018,
+      "buffer": [
+        1366,
+        768
+      ]
+    }
+  },
+  "warmedAuto": {
+    "baseline": [
+      {
+        "roster": 8,
+        "visibleExplorerMeshes": 7,
+        "quality": "auto",
+        "intervalMedian": 16.69999999999891,
+        "intervalP95": 16.799999999999272,
+        "warmupFrames": 120,
+        "sampledFrames": 180,
+        "mode": "playing",
+        "buffer": [
+          1366,
+          768
+        ]
+      },
+      {
+        "roster": 8,
+        "visibleExplorerMeshes": 7,
+        "quality": "auto",
+        "intervalMedian": 16.69999999999891,
+        "intervalP95": 16.700000000000728,
+        "warmupFrames": 120,
+        "sampledFrames": 180,
+        "mode": "playing",
+        "buffer": [
+          1366,
+          768
+        ]
+      },
+      {
+        "roster": 8,
+        "visibleExplorerMeshes": 7,
+        "quality": "auto",
+        "intervalMedian": 16.69999999999891,
+        "intervalP95": 16.799999999999272,
+        "warmupFrames": 120,
+        "sampledFrames": 180,
+        "mode": "playing",
+        "buffer": [
+          1366,
+          768
+        ]
+      }
+    ],
+    "candidate": [
+      {
+        "roster": 8,
+        "visibleExplorerMeshes": 7,
+        "quality": "auto",
+        "intervalMedian": 16.69999999999891,
+        "intervalP95": 16.799999999999272,
+        "warmupFrames": 120,
+        "sampledFrames": 180,
+        "mode": "playing",
+        "buffer": [
+          1366,
+          768
+        ]
+      },
+      {
+        "roster": 8,
+        "visibleExplorerMeshes": 7,
+        "quality": "auto",
+        "intervalMedian": 16.69999999999891,
+        "intervalP95": 16.700000000000728,
+        "warmupFrames": 120,
+        "sampledFrames": 180,
+        "mode": "playing",
+        "buffer": [
+          1366,
+          768
+        ]
+      },
+      {
+        "roster": 8,
+        "visibleExplorerMeshes": 7,
+        "quality": "auto",
+        "intervalMedian": 16.69999999999891,
+        "intervalP95": 16.799999999999272,
+        "warmupFrames": 120,
+        "sampledFrames": 180,
+        "mode": "playing",
+        "buffer": [
+          1366,
+          768
+        ]
+      }
+    ]
+  },
+  "warmedFixedPresets": {
+    "baseline": [
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 343,
+          "triangles": 370002,
+          "resources": {
+            "geometries": 169,
+            "textures": 126
+          },
+          "programs": 29,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ]
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.799999999999272,
+          "calls": 343,
+          "triangles": 370002,
+          "resources": {
+            "geometries": 169,
+            "textures": 126
+          },
+          "programs": 29,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ]
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 343,
+          "triangles": 370002,
+          "resources": {
+            "geometries": 169,
+            "textures": 126
+          },
+          "programs": 29,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ]
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.799999999999272,
+          "calls": 343,
+          "triangles": 370002,
+          "resources": {
+            "geometries": 169,
+            "textures": 126
+          },
+          "programs": 29,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ]
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.799999999999272,
+          "calls": 343,
+          "triangles": 370002,
+          "resources": {
+            "geometries": 169,
+            "textures": 126
+          },
+          "programs": 29,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ]
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 343,
+          "triangles": 370002,
+          "resources": {
+            "geometries": 169,
+            "textures": 126
+          },
+          "programs": 29,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ]
+        }
+      ]
+    ],
+    "candidate": [
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.799999999999272,
+          "calls": 319,
+          "triangles": 372606,
+          "resources": {
+            "geometries": 172,
+            "textures": 58
+          },
+          "programs": 33,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ]
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 319,
+          "triangles": 372606,
+          "resources": {
+            "geometries": 172,
+            "textures": 58
+          },
+          "programs": 33,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ]
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.699999999999818,
+          "intervalP95": 16.700000000000728,
+          "calls": 319,
+          "triangles": 372606,
+          "resources": {
+            "geometries": 172,
+            "textures": 58
+          },
+          "programs": 33,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ]
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 319,
+          "triangles": 372606,
+          "resources": {
+            "geometries": 172,
+            "textures": 58
+          },
+          "programs": 33,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ]
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 319,
+          "triangles": 372606,
+          "resources": {
+            "geometries": 172,
+            "textures": 58
+          },
+          "programs": 33,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ]
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 319,
+          "triangles": 372606,
+          "resources": {
+            "geometries": 172,
+            "textures": 58
+          },
+          "programs": 33,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ]
+        }
+      ]
+    ]
+  },
+  "mergedBaseline": "0887973",
+  "mergedRevisionAtCapture": "946c5cf",
+  "finalRelease": "392390d",
+  "mergedRooms": {
+    "baseline": [
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 11.400000005960464,
+          "workP95": 12.099999994039536,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 9.300000011920929,
+          "workP95": 10.5,
+          "workFrames": 90
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 9.099999994039536,
+          "workP95": 10.300000011920929,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.799999999999272,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 11,
+          "workP95": 12.400000005960464,
+          "workFrames": 90
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.699999999999818,
+          "intervalP95": 16.799999999999272,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 11.099999994039536,
+          "workP95": 12.299999982118607,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.799999999999272,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 9.199999988079071,
+          "workP95": 10.5,
+          "workFrames": 90
+        }
+      ]
+    ],
+    "candidate": [
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 59
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 8.5,
+          "workP95": 10.5,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999709,
+          "intervalP95": 16.700000000000728,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 59
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 10.199999988079071,
+          "workP95": 11.799999982118607,
+          "workFrames": 90
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 59
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 10.200000017881393,
+          "workP95": 11.699999988079071,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 59
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 8.199999988079071,
+          "workP95": 9.700000017881393,
+          "workFrames": 90
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 59
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 8.300000011920929,
+          "workP95": 10.200000017881393,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 59
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 10.699999988079071,
+          "workP95": 12.699999988079071,
+          "workFrames": 90
+        }
+      ]
+    ]
+  },
+  "releasedRooms": {
+    "baseline": [
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.799999999999272,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 11,
+          "workP95": 12.199999988079071,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 9.199999988079071,
+          "workP95": 10.300000011920929,
+          "workFrames": 90
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.699999999999818,
+          "intervalP95": 16.799999999999272,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 9,
+          "workP95": 9.900000005960464,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 11,
+          "workP95": 12.400000005960464,
+          "workFrames": 90
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 10.799999982118607,
+          "workP95": 11.900000005960464,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 362,
+          "triangles": 370220,
+          "resources": {
+            "geometries": 170,
+            "textures": 127
+          },
+          "programs": 30,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 9.099999994039536,
+          "workP95": 10.599999994039536,
+          "workFrames": 90
+        }
+      ]
+    ],
+    "candidate": [
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.699999999999818,
+          "intervalP95": 16.700000000000728,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 41
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 8.099999994039536,
+          "workP95": 10,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 41
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 10,
+          "workP95": 11.700000017881393,
+          "workFrames": 90
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 41
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 10.5,
+          "workP95": 12,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.700000000000728,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 41
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 8,
+          "workP95": 9.800000011920929,
+          "workFrames": 90
+        }
+      ],
+      [
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "performance",
+          "intervalMedian": 16.699999999999818,
+          "intervalP95": 16.700000000000728,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 41
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1024,
+            576
+          ],
+          "workMedian": 8.300000011920929,
+          "workP95": 10.300000011920929,
+          "workFrames": 90
+        },
+        {
+          "roster": 8,
+          "visibleExplorerMeshes": 7,
+          "minMeshes": 7,
+          "quality": "standard",
+          "intervalMedian": 16.69999999999891,
+          "intervalP95": 16.799999999999272,
+          "calls": 326,
+          "triangles": 372824,
+          "resources": {
+            "geometries": 173,
+            "textures": 41
+          },
+          "programs": 34,
+          "warmupFrames": 120,
+          "sampledFrames": 180,
+          "mode": "playing",
+          "viewport": [
+            1366,
+            768
+          ],
+          "buffer": [
+            1366,
+            768
+          ],
+          "workMedian": 10.5,
+          "workP95": 11.400000005960464,
+          "workFrames": 90
+        }
+      ]
+    ]
+  }
+}

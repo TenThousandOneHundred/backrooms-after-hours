@@ -1,0 +1,133 @@
+{
+  "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "results": [
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "standard",
+      "median": 9.5,
+      "p95": 16,
+      "rafMedian": 16.699999999999818,
+      "rafP95": 16.799999999999272,
+      "calls": 46,
+      "tri": 38466,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 36,
+        "textures": 22
+      },
+      "programs": 19,
+      "avatars": 0
+    },
+    {
+      "j": 1,
+      "route": "pool",
+      "quality": "performance",
+      "median": 6.5,
+      "p95": 7.199999988079071,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.700000000000728,
+      "calls": 46,
+      "tri": 38466,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 36,
+        "textures": 22
+      },
+      "programs": 19,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "pool",
+      "quality": "performance",
+      "median": 6.5999999940395355,
+      "p95": 7.4000000059604645,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.700000000000728,
+      "calls": 46,
+      "tri": 38466,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 36,
+        "textures": 22
+      },
+      "programs": 19,
+      "avatars": 0
+    },
+    {
+      "j": 2,
+      "route": "pool",
+      "quality": "standard",
+      "median": 8.300000011920929,
+      "p95": 9.300000011920929,
+      "rafMedian": 16.69999999999891,
+      "rafP95": 16.700000000000728,
+      "calls": 46,
+      "tri": 38466,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 36,
+        "textures": 22
+      },
+      "programs": 19,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "pool",
+      "quality": "standard",
+      "median": 7.700000017881393,
+      "p95": 8.5,
+      "rafMedian": 16.700000000000728,
+      "rafP95": 16.700000000000728,
+      "calls": 46,
+      "tri": 38466,
+      "size": [
+        1366,
+        768
+      ],
+      "mem": {
+        "geometries": 36,
+        "textures": 22
+      },
+      "programs": 19,
+      "avatars": 0
+    },
+    {
+      "j": 3,
+      "route": "pool",
+      "quality": "performance",
+      "median": 6.0999999940395355,
+      "p95": 6.9000000059604645,
+      "rafMedian": 16.69999999999709,
+      "rafP95": 16.799999999999272,
+      "calls": 46,
+      "tri": 38466,
+      "size": [
+        1024,
+        576
+      ],
+      "mem": {
+        "geometries": 36,
+        "textures": 22
+      },
+      "programs": 19,
+      "avatars": 0
+    }
+  ],
+  "errors": [],
+  "frames": 90
+}

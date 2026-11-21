@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Campaign graphics review · Backrooms After Hours</title>
+<style>
+:root{color-scheme:dark;--ink:#eee9db;--muted:#b8b8a8;--edge:#42443b;--lamp:#f7da99}
+*{box-sizing:border-box}
+body{margin:0;background:#141814;color:var(--ink);font:1rem/1.55 system-ui,sans-serif}
+main{max-width:1080px;margin:auto;padding:clamp(20px,5vw,65px) 20px 65px}
+nav,footer,.links{display:flex;flex-wrap:wrap;align-items:center;gap:1.2rem}a{color:var(--lamp);text-underline-offset:4px}
+h1,h2,h3{line-height:1.13;text-wrap:balance}h1{font-size:clamp(2.1rem,6vw,4.5rem);margin:.6em 0 .28em;letter-spacing:-.045em}h2{font-size:clamp(1.55rem,4vw,2.4rem);margin-bottom:.2em}
+p{color:var(--muted);max-width:78ch}.section{border-top:1px solid var(--edge);margin-top:2.4rem;padding-top:.65rem}
+img{display:block;width:100%;height:auto;background:#222}.feature{margin:1.2rem 0}.tiles{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));margin-top:1.2rem}
+.tiles a{border:1px solid var(--edge);padding:.8rem;text-decoration:none}.tiles img{margin-bottom:.65rem}
+a:hover,a:focus-visible{color:white}.tiles a:hover,.tiles a:focus-visible{border-color:var(--lamp)}
+</style>
+</head>
+<body><main>
+<nav aria-label="Review navigation"><a href="../">Play Backrooms After Hours</a><a href="rooms.html">50-stage gallery</a><a href="https://github.com/TenThousandOneHundred/backrooms-after-hours/blob/main/public/graphics-review/performance.md">Benchmark results</a></nav>
+<h1>Campaign graphics review</h1>
+<p>Compare the released campaign with the previous build at the same camera position. The room gallery includes both flashlight states. The cast sheets match animation time, camera and lighting.</p>
+<section class="section"><h2>Rooms under a flashlight</h2><p>Follow the worn surfaces through the Lobby, inspect the waterline in the Poolrooms or compare a return visit with its first encounter.</p>
+<a class="feature" href="rooms.html"><img src="rooms-preview.jpg" width="1440" height="888" alt="Before and after views of six campaign environments"></a>
+<p><a href="rooms.html">Explore all 50 rooms and original frames</a></p></section>
+<section class="section"><h2>Monsters, residents and explorers</h2>
+<p>The Blender sheets make it easier to inspect changes to individual faces, joints and silhouettes. The films show how those details read in the game.</p>
+<div class="tiles">
+<a href="actors/01-pursuers.webp"><img loading="lazy" src="actors/01-pursuers.webp" alt="Six pursuing monsters before and after">Pursuers</a>
+<a href="actors/02-masks.webp"><img loading="lazy" src="actors/02-masks.webp" alt="Masks and clothed figures before and after">Masks and clothed figures</a>
+<a href="actors/03-limbs-water-machinery.webp"><img loading="lazy" src="actors/03-limbs-water-machinery.webp" alt="Limb, water and machinery figures before and after">Limbs, water and machinery</a>
+<a href="actors/04-regional-residents-explorer.webp"><img loading="lazy" src="actors/04-regional-residents-explorer.webp" alt="Regional creatures, residents and the explorer before and after">Residents and field explorer</a>
+</div><p><a href="https://github.com/TenThousandOneHundred/backrooms-after-hours/blob/main/public/graphics-review/actors/Actor%20checklist.md">Read the 26-actor checklist</a></p>
+<p>Compare the same cast under in-game lighting in four runtime contact sheets.</p><div class="links"><a href="actors/Runtime gallery 1.webp">Pursuers</a><a href="actors/Runtime gallery 2.webp">Masks and clothed figures</a><a href="actors/Runtime gallery 3.webp">Limbs, water and machinery</a><a href="actors/Runtime gallery 4.webp">Residents and explorer</a></div>
+<h3>Motion studies</h3><div class="links"><a href="In-game actor motion.mp4">Watch the in-game encounters</a>
+<a href="Field explorer and radio.mp4">Watch a teammate sprint, crouch and transmit</a>
+<a href="Flashlight and wet floor.mp4">Watch flashlight and water motion</a></div>
+</section>
+<section class="section"><h2>Frame time and hosting</h2>
+<p>Four routes exercise Level 0, the Dark Poolrooms, a Bacteria attack and a host with seven explorers in view. The report includes the actual rendering resolution, draw calls, triangles, renderer memory counters and hardware used.</p>
+<a href="https://github.com/TenThousandOneHundred/backrooms-after-hours/blob/main/public/graphics-review/performance.md">Read the measurements and test conditions</a></section>
+</main></body></html>
