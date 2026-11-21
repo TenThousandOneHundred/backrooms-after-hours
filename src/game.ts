@@ -384,9 +384,9 @@ export class Game {
       const obj = stage.objects.find((o) => o.id === id);
       if (!obj) return;
       if(this.room && obj.challenge?.kind==='haul')this.cargoOrigins.set(id,mesh.position.clone());
-      const original = mesh.userData.aimCenter as THREE.Vector3 | undefined;
-      const v = original?.clone() ?? new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
-      if (original || mesh.children.length) {
+      const box: THREE.Box3 = mesh.userData.aimBounds ?? new THREE.Box3().setFromObject(mesh);
+      if (!box.isEmpty()) {
+        const v = box.getCenter(new THREE.Vector3());
         const floor = terrainHeight(stage, v.x, v.z);
         v.y = clamp(v.y, floor + 0.35, floor + 1.85);
         this.aimOffsets.set(id, v);
