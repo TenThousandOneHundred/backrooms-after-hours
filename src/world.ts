@@ -19,6 +19,7 @@ import type { Stage } from './campaign';
 import { hash, styleFor, texture, type Finish } from './world-materials';
 import { buildRoofMonitor, roofHalfDepth, roofHalfWidth, roofRise } from './roof-monitor';
 import { makeLevelCreature } from './level-creatures';
+import { batchItemPaint } from './interactive-batches';
 import { makeModel, ModelKit } from './world-models';
 
 import { TILE } from './game-entity';
@@ -1112,6 +1113,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
     group.rotation.y = spec.rotation ?? pos.angle;
     statics.add(group);
   }
+  const itemBatches: THREE.InstancedMesh[] = [];
+  const itemPaint = kit.get(0xffffff) as THREE.MeshLambertMaterial;
   for (const spec of stage.objects) {
     const group = makeModel(kit, spec),
       pos = alignment(spec.x, spec.z);
@@ -1131,6 +1134,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
         part.receiveShadow = true;
       }
     });
+    batchItemPaint(group, itemPaint, itemBatches);
     objects.set(spec.id, group);
     root.add(group);
   }
@@ -1336,6 +1340,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       entity?.userData.release?.();
       for (const { mesh } of additionalEntities) mesh.userData.release?.();
       for (const m of instances) m.dispose();
+      for (const m of itemBatches) m.dispose();
       for (const g of geometries) g.dispose();
       for (const m of materials) m.dispose();
       for (const tex of textures) tex.dispose();
