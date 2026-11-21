@@ -23,7 +23,7 @@ export function batchItemPaint(item: Group, paint: MeshLambertMaterial, batches:
     mesh.castShadow = mesh.receiveShadow = true;
     parts.forEach((part, i) => {
       mesh.setMatrixAt(i, part.matrix);
-      mesh.setColorAt(i, part.material.color);
+      mesh.setColorAt(i, (part.material as MeshLambertMaterial).color);
       part.removeFromParent();
     });
     mesh.computeBoundingSphere();

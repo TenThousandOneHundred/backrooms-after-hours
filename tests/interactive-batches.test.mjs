@@ -27,7 +27,6 @@ test('rigid batching preserves targeting, hinge transforms and per-part paint', 
     assert.ok(restored.elements.every((v,j) => Math.abs(parts[i].matrix.elements[j]-v)<.000001));
     const color = parts[i].material.color.clone();
     batches[0].getColorAt(i,color);
-    assert.ok(color.distanceTo ? color.distanceTo(parts[i].material.color) < .000001 :
-      color.toArray().every((v,j)=>Math.abs(v-parts[i].material.color.toArray()[j])<.000001));
+    assert.ok(color.toArray().every((v,j)=>Math.abs(v-parts[i].material.color.toArray()[j])<.000001));
   }
 });
