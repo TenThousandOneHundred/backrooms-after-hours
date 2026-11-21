@@ -388,6 +388,8 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       ? surfaceMaterial(kind, { ...surface, bumpMap: tex, bumpScale: officeFinish ? .002 : gloss ? .022 : .035 })
       : new THREE.MeshLambertMaterial(surface);
     if (kind && !officeFinish && mat instanceof THREE.MeshStandardMaterial) scans.apply(mat, kind, chunks === floors, col);
+    const waterChunks: THREE.Mesh[] = [];
+    if (kind === 'water') reflection = waterReflection(waterChunks);
     if (kind === 'water')
       mat.onBeforeCompile = (shader) => {
         shader.uniforms.uWaterTime = clock;
@@ -432,7 +434,7 @@ export function buildWorld(scene: THREE.Scene, stage: Stage, profile?: LevelAtmo
       m.receiveShadow = true;
       m.castShadow = chunks === walls;
       if (chunks === walls) m.renderOrder = -2;
-      if (kind === 'water') reflection = waterReflection(m);
+      if (kind === 'water') waterChunks.push(m);
       if (chunks === floors)
         m.onBeforeRender = (renderer, scene, camera, _geo, _mat, group) => {
           reflection?.capture(renderer, scene, camera, group);
